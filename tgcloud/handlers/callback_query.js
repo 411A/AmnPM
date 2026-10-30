@@ -63,6 +63,14 @@ async function mode(q, k, opened, lang, now) {
   const link = opened.link;
   if (link.state !== 'active') return answer(q, t(lang, 'linkInactive'));
 
+  const globalKey = await userKeyFor(p.sender_id);
+  if (await store.hasBlock(link.owner_key, link.id, p.sender_key)
+      || await store.hasBlock(link.owner_key, 0, globalKey)) {
+    await store.clearPending(p.user_key, p.group_key);
+    await store.deleteActionToken(opened.row.prefix);
+    return answer(q, t(lang, 'blockedNotice'));
+  }
+
   const pending = await store.listPending(p.user_key, p.group_key);
   if (!pending.length) return answer(q, t(lang, 'answerExpired'));
 
@@ -139,21 +147,23 @@ async function read(q, opened, lang) {
 async function block(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
+  const globalKey = await userKeyFor(p.sender_chat_id);
   const scope = p.scope === 'all' ? 0 : link.id;
-  const blocked = await store.hasBlock(link.owner_key, scope, p.sender_key);
+  const key = p.scope === 'all' ? globalKey : p.sender_key;
+  const blocked = await store.hasBlock(link.owner_key, scope, key);
 
-  if (blocked) await store.clearBlock(link.owner_key, scope, p.sender_key);
-  else await store.setBlock(link.owner_key, scope, p.sender_key, now);
+  if (blocked) await store.clearBlock(link.owner_key, scope, key);
+  else await store.setBlock(link.owner_key, scope, key, now);
 
   const blockedLink = await store.hasBlock(link.owner_key, link.id, p.sender_key);
-  const blockedAll = await store.hasBlock(link.owner_key, 0, p.sender_key);
+  const blockedAll = await store.hasBlock(link.owner_key, 0, globalKey);
   await toggleBlockButton(q, blockedLink, blockedAll, lang);
 
   const nowBlocked = !blocked;
-  const key = p.scope === 'all'
+  const labelKey = p.scope === 'all'
     ? (nowBlocked ? 'blockedAll' : 'unblockedAll')
     : (nowBlocked ? 'blockedLink' : 'unblockedLink');
-  return answer(q, t(lang, key));
+  return answer(q, t(lang, labelKey));
 }
 
 async function revokePrompt(q, opened, lang, now) {

@@ -228,6 +228,21 @@ test('a forwarded link menu does not reveal the link to another user', async () 
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
 });
 
+test('block all refuses the next message on another link', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const blockAllData = controls.args.reply_markup.inline_keyboard.flat()
+    .filter((button) => String(button.callback_data).startsWith('B|')).at(-1).callback_data;
+  await click(blockAllData, 100, controls.args.reply_markup);
+
+  await onMessage(message('/newlink', 100));
+  const token = tokenOfFirstLink();
+  await onMessage(message(`/start ${token}`, 200));
+  await onMessage(message('again', 200));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
+});
+
 test('a failed read receipt shows a popup', async () => {
   await setupLink();
   const controls = await deliverAnonymous();

@@ -259,7 +259,9 @@ async function plain(msg, lang, now) {
   }
 
   const senderKey = await senderKeyFrom(base, link.id);
-  if (await store.isBlocked(link.owner_key, link.id, senderKey)) {
+  const globalKey = await userKeyFor(chatId);
+  if (await store.hasBlock(link.owner_key, link.id, senderKey)
+      || await store.hasBlock(link.owner_key, 0, globalKey)) {
     return send(chatId, t(lang, 'blockedNotice'));
   }
 

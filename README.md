@@ -143,6 +143,11 @@ Revocation deletes every link-scoped row (jobs, actions, rates, blocks, topics, 
 pending messages, sessions, reply windows, the link itself). Telegram history is retained by
 design; the topics receive a deletion notice and are closed where the API permits.
 
+Global **Block all** rows are owner-level and are not link-scoped; they survive revocation and
+apply to other links. Link-scope blocks are deleted with the link. A global block stores a fast
+HMAC of the blocked sender so it works across links, which the operator can resolve to a sender
+id; a link-scope block uses the PBKDF2 sender key.
+
 ## Known limits
 
 - Albums always ask for a mode tap once, even after a mode is set, because the tap is the only
