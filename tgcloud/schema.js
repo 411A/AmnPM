@@ -78,6 +78,7 @@ export const conversations = table('conversations', {
   indicator: text('indicator'),
   sender_chat_ct: text('sender_chat_ct'),
   last_message_id: integer('last_message_id').notNull().default(0),
+  setup_prompted: integer('setup_prompted').notNull().default(0),
   topic_id: integer('topic_id').notNull().default(0),
   created_at: integer('created_at').notNull(),
   last_at: integer('last_at').notNull(),

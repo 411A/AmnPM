@@ -361,6 +361,12 @@ async function replyToWindow(msg, window, lang, now) {
 }
 
 async function directReply(msg, link, conversation, lang, now) {
+  if (!conversation.sender_chat_ct) {
+    if (await store.markConversationSetupPrompted(conversation.id)) {
+      return sendHere(msg, t(lang, 'replySetup'));
+    }
+    return sendHere(msg, t(lang, 'answerOnly'));
+  }
   let targetChat = 0;
   try {
     targetChat = await conversationChatId(link, conversation);

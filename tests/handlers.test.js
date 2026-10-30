@@ -333,6 +333,47 @@ test('direct owner text in a per-sender topic replies to the latest message', as
   assert.match(callsOf('sendMessage').at(-1).args.text, /Reply sent/);
 });
 
+test('an old per-sender topic is backfilled by one Answer', async () => {
+  await setupLink();
+  const senderThread = firstSenderThread();
+  await onMessage(message('hello', 200, {
+    first_name: 'V',
+    message_thread_id: senderThread,
+    message_id: 55,
+  }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+
+  const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+  const conversation = rawDb().prepare("SELECT id FROM conversations WHERE mode = 'history'").get();
+  rawDb().prepare(`UPDATE conversations SET sender_chat_ct = NULL,
+    last_message_id = 0, setup_prompted = 0 WHERE id = ?`).run(conversation.id);
+
+  await onMessage(message('first direct', 100, { message_thread_id: ownerThread }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /created before direct replies/);
+  assert.equal(callsOf('copyMessage').length, 0);
+
+  const controls = callsOf('sendMessage').filter((call) => call.args.reply_markup).at(-1);
+  const answerData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  await click(answerData, 100, controls.args.reply_markup, ownerThread);
+  assert.ok(
+    rawDb().prepare('SELECT sender_chat_ct FROM conversations WHERE id = ?').get(conversation.id).sender_chat_ct,
+  );
+
+  await onCallback({
+    id: 'cb-cancel-old',
+    from: { id: 100, language_code: 'en' },
+    message: { message_id: 501, chat: { id: 100 }, message_thread_id: ownerThread },
+    data: 'X',
+  });
+
+  const before = callsOf('copyMessage').length;
+  await onMessage(message('now direct', 100, { message_thread_id: ownerThread }));
+  const copy = callsOf('copyMessage').at(-1);
+  assert.equal(callsOf('copyMessage').length, before + 1);
+  assert.equal(copy.args.reply_to_message_id, 55);
+});
+
 test('the reply prompt can be cancelled without sending', async () => {
   await setupLink();
   const controls = await deliverAnonymous();

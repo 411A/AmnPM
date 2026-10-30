@@ -4,7 +4,7 @@ import * as store from '../lib/store.js';
 import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken } from '../lib/keys.js';
+import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, requestMemo } from '../lib/menu.js';
@@ -156,6 +156,32 @@ async function replyWindow(q, opened, lang, now) {
   const link = opened.link;
   if (await store.getMemoState(link.owner_key)) {
     return answer(q, t(lang, 'memoBusy'), true);
+  }
+  let conversationId = p.conversation_id ?? 0;
+  if (!conversationId) {
+    const topicThread = q.message?.message_thread_id ?? p.owner_thread_id ?? 0;
+    if (topicThread) {
+      const topic = await store.getOwnedTopicByThread(link.owner_key, topicThread);
+      if (topic?.conversation_id) conversationId = topic.conversation_id;
+    }
+  }
+  if (conversationId) {
+    const conversation = await store.getConversationById(conversationId);
+    if (conversation) {
+      if (!conversation.sender_chat_ct) {
+        try {
+          await store.setConversationChat(
+            conversation.id,
+            await sealConversationChat(link, p.sender_chat_id, conversation.sender_key, conversation.mode),
+          );
+        } catch {
+          // direct replies stay unavailable; Answer still works
+        }
+      }
+      if (p.original_id) {
+        await store.setConversationLastMessage(conversation.id, p.original_id);
+      }
+    }
   }
   const dek = await linkDek(link);
   const target = JSON.stringify({

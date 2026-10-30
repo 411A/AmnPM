@@ -70,6 +70,9 @@ const en = {
   answerSent: '{e.check} Reply sent.',
   answerExpired: '{e.hourglass} That reply is no longer available. Press Answer again.',
   answerOnly: '{e.info} Press Answer on a message to reply.',
+  replySetup:
+    '{e.info} This topic was created before direct replies. Press Answer once on any message here, ' +
+    'or ask the sender to send one message. After that, typing here replies directly.',
   modeCleared: '{e.repeat} Mode cleared. Send your next message to choose again.',
   cancelled: 'Cancelled.',
   btnAnswer: '{e.answer} Answer',
@@ -163,6 +166,9 @@ const fa = {
   answerSent: '{e.check} پاسخ ارسال شد.',
   answerExpired: '{e.hourglass} این پاسخ دیگر در دسترس نیست. دوباره Answer را بزنید.',
   answerOnly: '{e.info} برای پاسخ، روی پیام Answer را بزنید.',
+  replySetup:
+    '{e.info} این موضوع پیش از فعال‌شدن پاسخ مستقیم ساخته شده است. یک بار روی Answer هر پیام همین‌جا بزنید، ' +
+    'یا از فرستنده بخواهید یک پیام بفرستد. بعد از آن، تایپ در همین موضوع مستقیماً ارسال می‌شود.',
   modeCleared: '{e.repeat} حالت پاک شد. پیام بعدی را بفرستید تا دوباره انتخاب کنید.',
   cancelled: 'لغو شد.',
   btnAnswer: '{e.answer} پاسخ',

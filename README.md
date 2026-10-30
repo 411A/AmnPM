@@ -226,5 +226,8 @@ identifiers, which are always link-, chat-, and thread-scoped and bound by encry
   `/start`.
 - Delivery is at-least-once. A crash between a successful send and the job acknowledgement can
   duplicate one message; a lost message is never preferred.
+- Per-sender topics created before the direct-reply migration have no encrypted sender chat id
+  yet. One Answer press or one new sender message stores it; then typing works directly. New
+  topics are immediate.
 - `closeForumTopic` is documented for supergroups only; in a bot chat the notice is posted and
   the topic may remain open.

@@ -226,6 +226,12 @@ export async function setConversationLastMessage(id, messageId) {
     WHERE id = ${id} AND last_message_id < ${messageId}`);
 }
 
+export async function markConversationSetupPrompted(id) {
+  const result = await db.run(sql`UPDATE conversations SET setup_prompted = 1
+    WHERE id = ${id} AND setup_prompted = 0`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
 export async function touchConversation(id, now) {
   await db.run(sql`UPDATE conversations SET last_at = ${now} WHERE id = ${id}`);
 }
