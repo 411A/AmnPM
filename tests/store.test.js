@@ -83,7 +83,7 @@ test('rate limit counts and resets after a minute', async () => {
   assert.equal(await store.bumpRate(1, 's', 161), 1);
 });
 
-test('jobs are claimed once and retried', async () => {
+test('jobs are claimed once, retried, and failed jobs leave no payload', async () => {
   const first = await store.enqueueJob({
     link_id: 1, kind: 'copy', payload_ct: 'a', payload_nonce: 'n', next_at: 0, created_at: 0,
   });
@@ -97,7 +97,8 @@ test('jobs are claimed once and retried', async () => {
   const again = await store.claimJob(10);
   assert.equal(again.id, first);
   assert.equal(again.attempts, 1);
-  await store.finishJob(first);
+  await store.failJob(first);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs WHERE id = ?').get(first).n, 0);
   await store.finishJob(second);
   assert.equal(await store.claimJob(20), undefined);
 });

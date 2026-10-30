@@ -306,8 +306,8 @@ export async function retryJob(id, nextAt) {
 }
 
 export async function failJob(id) {
-  await db.run(sql`UPDATE jobs SET state = 'failed', claim = NULL, attempts = attempts + 1
-    WHERE id = ${id}`);
+  // A failed job is never retried; delete it so the encrypted sender id is not retained.
+  await db.run(sql`DELETE FROM jobs WHERE id = ${id}`);
 }
 
 export async function bumpRate(linkId, senderKey, now) {
