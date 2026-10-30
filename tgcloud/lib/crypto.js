@@ -101,6 +101,23 @@ export async function hmacHex(key, text) {
   return hex(await hmacBytes(key, text));
 }
 
+// Slow lookup derivation: a DB dump plus the KEK still costs this much per guessed id.
+export async function pbkdf2Hex(secret, text, iterations) {
+  const base = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode(text), iterations, hash: 'SHA-256' },
+    base,
+    256,
+  );
+  return hex(new Uint8Array(bits));
+}
+
 export async function sha256Fp(text, bytes = 8) {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(text)));
   return hex(digest.slice(0, bytes));

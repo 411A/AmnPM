@@ -5,11 +5,11 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, senderKeyFor, linkMemo } from '../lib/keys.js';
+import { linkDek, ownerChatId, sealAction, linkMemo } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
-import { deepLink, userKeyFor } from '../lib/links.js';
+import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor } from '../lib/links.js';
 import { linksMenu } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -44,8 +44,6 @@ async function createLink(ownerKey, chatId, memo, now) {
       const dek = crypto.randomBytes(32);
       const wrapped = await crypto.encrypt(KEYS[CURRENT_KEK_VERSION], dek, `link:${token}:dek:v1`);
       const chat = await crypto.encrypt(dek, String(chatId), `link:${token}:owner_chat:v1`);
-      const salt = ids.newSalt();
-      const sealedSalt = await crypto.encrypt(dek, salt, `link:${token}:sender_salt:v1`);
       const memoText = ids.sanitizeMemo(memo);
       const sealedMemo = await crypto.encrypt(dek, memoText, `link:${token}:memo:v1`);
       try {
@@ -56,7 +54,7 @@ async function createLink(ownerKey, chatId, memo, now) {
           owner_key: ownerKey,
           owner_chat_ct: chat.ct,
           owner_chat_nonce: chat.nonce,
-          salt: `enc:${sealedSalt.nonce}:${sealedSalt.ct}`,
+          salt: ids.newSalt(),
           dek_wrapped: wrapped.ct,
           dek_nonce: wrapped.nonce,
           kek_version: CURRENT_KEK_VERSION,
@@ -133,8 +131,9 @@ async function openLink(msg, token, lang, now) {
   if (link.state !== 'active') return send(chatId, t(lang, 'linkInactive'));
   if (link.owner_key === ownerKey) return send(chatId, t(lang, 'ownLink'));
 
-  await store.upsertSession(ownerKey, link.id, now);
-  const senderKey = await senderKeyFor(link, chatId);
+  const base = await chatKeyFor(chatId);
+  await store.upsertSession(await sessionKeyFrom(base), link.id, now);
+  const senderKey = await senderKeyFrom(base, link.id);
   const talk = await ensureSenderTopic(link, chatId, senderKey, now);
   if (talk.created && talk.thread) {
     await send(chatId, t(lang, 'senderTopicHint', { token: link.token }));
@@ -174,7 +173,7 @@ async function command(msg, lang, now) {
   if (head === '/links') return listLinks(msg, lang, now);
   if (head === '/about') return send(chatId, render.about(lang));
   if (head === '/mode') {
-    const session = await store.getSession(await userKeyFor(chatId));
+    const session = await store.getSession(await sessionKeyFor(chatId));
     if (!session) return send(chatId, t(lang, 'startFromLink'));
     await store.setSessionMode(session.user_key, null, now);
     return send(chatId, t(lang, 'modeCleared'));
@@ -242,7 +241,9 @@ async function plain(msg, lang, now) {
   const window = await store.getReplyWindow(ownerKey, now);
   if (window) return replyToWindow(msg, window, lang, now);
 
-  const session = await store.getSession(ownerKey);
+  const base = await chatKeyFor(chatId);
+  const sessionKey = await sessionKeyFrom(base);
+  const session = await store.getSession(sessionKey);
   if (!session) {
     const owner = await store.getOwner(ownerKey);
     return send(chatId, t(lang, owner ? 'answerOnly' : 'startFromLink'));
@@ -250,11 +251,11 @@ async function plain(msg, lang, now) {
 
   const link = await store.getLink(session.link_id);
   if (!link || link.state !== 'active') {
-    await store.deleteSession(ownerKey);
+    await store.deleteSession(sessionKey);
     return send(chatId, t(lang, 'linkInactive'));
   }
 
-  const senderKey = await senderKeyFor(link, chatId);
+  const senderKey = await senderKeyFrom(base, link.id);
   if (await store.isBlocked(link.owner_key, link.id, senderKey)) {
     return send(chatId, t(lang, 'blockedNotice'));
   }
@@ -266,7 +267,7 @@ async function plain(msg, lang, now) {
 
   const groupKey = msg.media_group_id ? String(msg.media_group_id) : `s${msg.message_id}`;
   const added = await store.addPending({
-    user_key: ownerKey,
+    user_key: sessionKey,
     link_id: link.id,
     group_key: groupKey,
     message_id: msg.message_id,
@@ -275,14 +276,14 @@ async function plain(msg, lang, now) {
 
   if (!added) return undefined;
   if (msg.media_group_id) {
-    const pending = await store.listPending(ownerKey, groupKey);
+    const pending = await store.listPending(sessionKey, groupKey);
     if (pending.length > 1) return undefined;
   }
 
   const firstName = msg.from?.first_name ?? '';
   // shortcut: every message asks once; the last mode is marked, and the tap is
   // also the completion barrier for albums (no timers on the platform).
-  return askMode(link, chatId, ownerKey, senderKey, groupKey, firstName, lang,
+  return askMode(link, chatId, sessionKey, senderKey, groupKey, firstName, lang,
     msg.message_id, msg.message_thread_id ?? 0, session.mode, now);
 }
 

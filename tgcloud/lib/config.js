@@ -9,6 +9,8 @@ export const CONFIG = {
   modeTtlSeconds: 86_400,
   tokenLength: 10,
   tokenAlphabet: '23456789abcdefghjkmnopqrstuvwxyz',
+  // Changing this invalidates every stored session and sender key.
+  kdfIterations: 100_000,
   defaultMemo: 'main',
   repoUrl: 'https://github.com/411A/AmnPM',
   contactUrl: 'https://t.me/AmnPMBot',

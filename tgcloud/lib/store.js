@@ -12,10 +12,6 @@ export async function setMeta(key, value) {
     ON CONFLICT(k) DO UPDATE SET v = excluded.v`);
 }
 
-export async function setLinkSalt(id, salt) {
-  await db.run(sql`UPDATE links SET salt = ${salt} WHERE id = ${id}`);
-}
-
 export async function ensureOwner(ownerKey, now, lang = 'en') {
   let created = false;
   try {

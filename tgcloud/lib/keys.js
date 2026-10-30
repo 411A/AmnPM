@@ -14,22 +14,6 @@ export async function linkDek(link) {
   );
 }
 
-export async function senderSalt(link) {
-  const dek = await linkDek(link);
-  if (link.salt?.startsWith('enc:')) {
-    const [, nonce, ct] = link.salt.split(':');
-    return c.decrypt(dek, ct, nonce, `link:${link.token}:sender_salt:v1`);
-  }
-  if (!link.salt) return '';
-  const sealed = await c.encrypt(dek, link.salt, `link:${link.token}:sender_salt:v1`);
-  await store.setLinkSalt(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
-  return link.salt;
-}
-
-export async function senderKeyFor(link, chatId) {
-  return c.hmacHex(await senderSalt(link), String(chatId));
-}
-
 export async function linkMemo(link) {
   if (!link.memo?.startsWith('enc:')) {
     if (!link.memo) return '';

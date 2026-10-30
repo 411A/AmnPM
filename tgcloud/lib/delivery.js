@@ -3,14 +3,14 @@ import * as store from './store.js';
 import * as ids from './ids.js';
 import * as render from './render.js';
 import { t } from './i18n.js';
-import { ownerChatId, sealJob, senderSalt, linkMemo, sealConversationLabel, conversationLabel } from './keys.js';
+import { ownerChatId, sealJob, linkMemo, sealConversationLabel, conversationLabel } from './keys.js';
 import { ensureTopic } from './topics.js';
 
 async function conversationFor(link, senderKey, mode, firstName, now) {
   const existing = await store.getConversation(link.id, senderKey, mode);
   if (existing) return existing;
   const label = mode === 'history'
-    ? await ids.makeIndicator(await senderSalt(link), firstName)
+    ? await ids.makeIndicator(senderKey, firstName)
     : ids.cleanLabel(firstName, 30);
   const indicator = await sealConversationLabel(link, label, senderKey, mode);
   await store.createConversation({

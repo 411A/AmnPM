@@ -59,6 +59,15 @@ tgcloud status
 losing it makes every stored link undecryptable. Rotating a key means adding a new version and
 changing `CURRENT_KEK_VERSION`; older versions must stay in the ring while old links exist.
 
+### Upgrading from an older revision
+
+This revision derives session and sender keys with PBKDF2. Sessions, sender topics,
+conversations, and blocks written by an older revision are keyed differently and are not
+reused. Start from a fresh database (delete and recreate the bot or drop its database) and
+create new links. If the old database is kept, existing owner links still open, but senders
+must reopen the link and old history/blocks are ignored. The schema itself is unchanged, so
+`tgcloud migrate` does not clear those rows.
+
 The token is read by the CLI from `TGCLOUD_TOKEN` or `.tgcloud/credentials`. It is never placed
 in this repository. `tgcloud push` deploys code; `migrate` applies the schema. A crash after
 `push` still deploys — run `tgcloud fetch` before the next push.
@@ -68,20 +77,23 @@ falls back to unthreaded messages in the owner's chat.
 
 ## Security
 
-- **No plaintext identifiers.** Lookups use HMAC-SHA256 with a per-link salt. Chat ids and
-  message ids that must be recovered are AES-256-GCM ciphertext under a per-link data key.
+- **No plaintext identifiers.** Session and sender lookups use PBKDF2-HMAC-SHA256
+  (100,000 rounds) over a deployment salt; per-link sender keys are HMACs of that base. Chat ids
+  and message ids that must be recovered are AES-256-GCM ciphertext under a per-link data key.
   Memos, sender labels, and the install salt are encrypted too. Message content is never stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
   backup, not the platform operator who can read deployed code.
-- **No DB-only brute force.** Sender and owner keys are HMACs over a random salt that is itself
-  encrypted at rest, so a database dump alone cannot test guessed chat ids. With the deployment
-  key, the salt is recoverable and the HMAC is testable.
+- **Expensive DB brute force.** Session and sender keys are PBKDF2-derived. A database dump
+  alone cannot test guessed chat ids; with the deployment key, candidates are testable, but
+  each candidate costs a full PBKDF2 derivation. That raises the cost of bulk enumeration; it
+  does not make it impossible. Changing `CONFIG.kdfIterations` invalidates stored sessions and
+  sender keys.
 - **What the operator can still do.** The deployment holds the KEK and receives every update,
   so the operator can decrypt stored fields and, because Telegram ids are numeric, test
-  candidate ids against the stored HMACs. Anonymity is from link owners and other users, not
-  from the bot operator or Telegram.
+  candidate ids against the stored KDF outputs. The per-candidate KDF is the barrier, not a
+  proof. Anonymity is from link owners and other users, not from the bot operator or Telegram.
 - **Split action records.** Values needed only to answer a button are stored partly in the
   database and partly in `callback_data`; the database alone cannot reconstruct them.
 - **Crypto-shredding (live data).** Revoking a link deletes the link row and every link-scoped
