@@ -5,6 +5,7 @@ import * as store from './store.js';
 import { ownerKeyboard } from './render.js';
 import { t } from './i18n.js';
 import { userKeyFor } from './links.js';
+import { CALLBACK } from './constants.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -75,10 +76,10 @@ async function sendControls(link, payload, sent, now) {
       read: t(lang, 'btnRead'),
       blockLink: blockedLink ? t(lang, 'btnUnblockLink') : t(lang, 'btnBlockLink'),
       blockAll: blockedAll ? t(lang, 'btnUnblockAll') : t(lang, 'btnBlockAll'),
-      answerData: `A|${answer.prefix}|${answer.suffix}`,
-      readData: `R|${read.prefix}|${read.suffix}`,
-      blockLinkData: `B|${blockLink.prefix}|${blockLink.suffix}`,
-      blockAllData: `B|${blockAll.prefix}|${blockAll.suffix}`,
+      answerData: `${CALLBACK.ANSWER}${CALLBACK.SEP}${answer.prefix}${CALLBACK.SEP}${answer.suffix}`,
+      readData: `${CALLBACK.READ}${CALLBACK.SEP}${read.prefix}${CALLBACK.SEP}${read.suffix}`,
+      blockLinkData: `${CALLBACK.BLOCK}${CALLBACK.SEP}${blockLink.prefix}${CALLBACK.SEP}${blockLink.suffix}`,
+      blockAllData: `${CALLBACK.BLOCK}${CALLBACK.SEP}${blockAll.prefix}${CALLBACK.SEP}${blockAll.suffix}`,
     }),
   };
   if (sent.length) message.reply_to_message_id = sent[sent.length - 1].message_id;

@@ -16,6 +16,7 @@ tgcloud/
     callback_query.js  mode, answer, read, block, revoke, memo
   lib/
     config.js          limits, repo/contact
+    constants.js       user-facing emojis and callback tokens
     bot-config.js      one-time bot name, commands, descriptions, photo
     secret.js          KEK ring (deploy-only, never committed)
     secret.example.js  template for secret.js
@@ -45,6 +46,10 @@ node --import ./tests/register.mjs --test tests/crypto.test.js tests/ids.test.js
 
 `tests/loader.mjs` maps `sdk` and `sdk/db` onto `tests/stub-*.mjs`, so the suite runs offline.
 `package.json` is development-only and is never deployed.
+
+All user-facing emojis and callback tokens live in `tgcloud/lib/constants.js`. Translation
+strings use `{e.name}` placeholders resolved by `t()`, so changing an emoji is one edit in one
+file; feature code imports `EMOJI` and `CALLBACK` directly.
 
 ## Deploy
 

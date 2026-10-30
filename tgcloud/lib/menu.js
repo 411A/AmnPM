@@ -5,15 +5,16 @@ import { t } from './i18n.js';
 import { sealAction, linkMemo, linkToken } from './keys.js';
 import { deepLink } from './links.js';
 import { shareUrl } from './render.js';
+import { EMOJI, CALLBACK } from './constants.js';
 
 export function homeMenu(lang) {
   return {
     text: t(lang, 'homeTitle'),
     keyboard: {
       inline_keyboard: [
-        [{ text: t(lang, 'homeLinks'), callback_data: 'm:links' }],
-        [{ text: t(lang, 'homeHelp'), callback_data: 'm:help' }],
-        [{ text: t(lang, 'homeAbout'), callback_data: 'm:about' }],
+        [{ text: t(lang, 'homeLinks'), callback_data: CALLBACK.LINKS }],
+        [{ text: t(lang, 'homeHelp'), callback_data: CALLBACK.HELP }],
+        [{ text: t(lang, 'homeAbout'), callback_data: CALLBACK.ABOUT }],
       ],
     },
   };
@@ -21,7 +22,7 @@ export function homeMenu(lang) {
 
 export async function linksMenu(lang, ownerKey, now) {
   const links = await store.listLinks(ownerKey);
-  const rows = [[{ text: t(lang, 'back'), callback_data: 'm:home' }]];
+  const rows = [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]];
 
   if (!links.length) {
     return { text: t(lang, 'noLinks'), keyboard: { inline_keyboard: rows } };
@@ -32,8 +33,8 @@ export async function linksMenu(lang, ownerKey, now) {
     const menu = await sealAction(link, 'menu', { link_id: link.id }, now);
     const label = await linkMemo(link);
     rows.push([{
-      text: `🔗 ${ids.cleanLabel(label, 30)}`,
-      callback_data: `D|${menu.prefix}|${menu.suffix}`,
+      text: `${EMOJI.link} ${ids.cleanLabel(label, 30)}`,
+      callback_data: `${CALLBACK.MENU_LINK}${CALLBACK.SEP}${menu.prefix}${CALLBACK.SEP}${menu.suffix}`,
     }]);
   }
   return { text: t(lang, 'linksTitle'), keyboard: { inline_keyboard: rows } };
@@ -55,17 +56,20 @@ export async function linkMenu(lang, link, now) {
     }),
     keyboard: {
       inline_keyboard: [
-        [{ text: t(lang, 'back'), callback_data: 'm:links' }],
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
         [
           { text: t(lang, 'open'), url },
           { text: t(lang, 'share'), url: shareUrl(url) },
         ],
         [
           {
-            text: `✏️ ${ids.cleanLabel(memoText, 20)}`,
-            callback_data: `E|${memo.prefix}|${memo.suffix}`,
+            text: `${EMOJI.memo} ${ids.cleanLabel(memoText, 20)}`,
+            callback_data: `${CALLBACK.MEMO}${CALLBACK.SEP}${memo.prefix}${CALLBACK.SEP}${memo.suffix}`,
           },
-          { text: t(lang, 'revoke'), callback_data: `V|${revoke.prefix}|${revoke.suffix}` },
+          {
+            text: t(lang, 'revoke'),
+            callback_data: `${CALLBACK.REVOKE}${CALLBACK.SEP}${revoke.prefix}${CALLBACK.SEP}${revoke.suffix}`,
+          },
         ],
       ],
     },

@@ -5,6 +5,7 @@ import * as render from './render.js';
 import { t } from './i18n.js';
 import { ownerChatId, sealJob, linkMemo, sealConversationLabel, conversationLabel } from './keys.js';
 import { ensureTopic } from './topics.js';
+import { EMOJI } from './constants.js';
 
 async function conversationFor(link, senderKey, mode, firstName, now) {
   const existing = await store.getConversation(link.id, senderKey, mode);
@@ -36,7 +37,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
     if (created && !thread) {
       await api.sendMessage({ chat_id: ownerChat, text: t(lang, 'topicsDisabled') });
     }
-    return { kind: 'copy', thread, indicator: null, header: `🥷 Anonymous · ${memo}` };
+    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.ninja} Anonymous · ${memo}` };
   }
 
   const conversation = await conversationFor(link, senderKey, mode, firstName, now);
@@ -58,8 +59,8 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
     thread,
     indicator: label,
     header: mode === 'history'
-      ? `💬 ${label} · ${memo}`
-      : `👤 ${ids.escapeHtml(label)} · ${memo}`,
+      ? `${EMOJI.chat} ${label} · ${memo}`
+      : `${EMOJI.user} ${ids.escapeHtml(label)} · ${memo}`,
   };
 }
 

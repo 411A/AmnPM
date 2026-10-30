@@ -11,16 +11,27 @@ import { homeMenu, linksMenu, linkMenu, editMenu } from '../lib/menu.js';
 import { deepLink, userKeyFor } from '../lib/links.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
+import { CALLBACK, EMOJI } from '../lib/constants.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 const KINDS = {
-  M: 'mode', H: 'mode', F: 'mode',
-  A: 'answer', R: 'read', B: 'block',
-  V: 'revoke', K: 'revoke_ok', E: 'memo', D: 'menu',
+  [CALLBACK.MODE_ANON]: 'mode',
+  [CALLBACK.MODE_HISTORY]: 'mode',
+  [CALLBACK.MODE_FORWARD]: 'mode',
+  [CALLBACK.ANSWER]: 'answer',
+  [CALLBACK.READ]: 'read',
+  [CALLBACK.BLOCK]: 'block',
+  [CALLBACK.REVOKE]: 'revoke',
+  [CALLBACK.REVOKE_OK]: 'revoke_ok',
+  [CALLBACK.MEMO]: 'memo',
+  [CALLBACK.MENU_LINK]: 'menu',
 };
-const SENDER_KINDS = new Set(['M', 'H', 'F']);
-const OWNER_KINDS = new Set(['A', 'R', 'B', 'V', 'K', 'E', 'D']);
+const SENDER_KINDS = new Set([CALLBACK.MODE_ANON, CALLBACK.MODE_HISTORY, CALLBACK.MODE_FORWARD]);
+const OWNER_KINDS = new Set([
+  CALLBACK.ANSWER, CALLBACK.READ, CALLBACK.BLOCK,
+  CALLBACK.REVOKE, CALLBACK.REVOKE_OK, CALLBACK.MEMO, CALLBACK.MENU_LINK,
+]);
 
 function answer(q, text, alert = false) {
   return api.answerCallbackQuery({
@@ -33,7 +44,7 @@ function answer(q, text, alert = false) {
 async function removeReadButton(q) {
   if (!q.message?.reply_markup?.inline_keyboard) return;
   const keyboard = q.message.reply_markup.inline_keyboard
-    .map((row) => row.filter((button) => !String(button.callback_data).startsWith('R|')))
+    .map((row) => row.filter((button) => !String(button.callback_data).startsWith(`${CALLBACK.READ}${CALLBACK.SEP}`)))
     .filter((row) => row.length);
   await api.editMessageReplyMarkup({
     chat_id: q.message.chat.id,
@@ -74,7 +85,7 @@ async function mode(q, k, opened, lang, now) {
   const pending = await store.listPending(p.user_key, p.group_key);
   if (!pending.length) return answer(q, t(lang, 'answerExpired'));
 
-  const chosen = k === 'M' ? 'anon' : k === 'H' ? 'history' : 'forward';
+  const chosen = k === CALLBACK.MODE_ANON ? 'anon' : k === CALLBACK.MODE_HISTORY ? 'history' : 'forward';
   const session = await store.getSession(p.user_key);
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
@@ -135,7 +146,7 @@ async function read(q, opened, lang) {
     await api.setMessageReaction({
       chat_id: p.sender_chat_id,
       message_id: p.message_id,
-      reaction: [{ type: 'emoji', emoji: '👀' }],
+      reaction: [{ type: 'emoji', emoji: EMOJI.eyes }],
     });
     await removeReadButton(q);
     return answer(q);
@@ -174,10 +185,10 @@ async function revokePrompt(q, opened, lang, now) {
     text: t(lang, 'revokeConfirm', { memo: ids.escapeHtml(memoText) }),
     keyboard: {
       inline_keyboard: [
-        [{ text: t(lang, 'back'), callback_data: 'm:links' }],
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
         [{
           text: t(lang, 'confirm'),
-          callback_data: `K|${confirm.prefix}|${confirm.suffix}`,
+          callback_data: `${CALLBACK.REVOKE_OK}${CALLBACK.SEP}${confirm.prefix}${CALLBACK.SEP}${confirm.suffix}`,
           style: 'danger',
         }],
       ],
@@ -236,25 +247,25 @@ async function memoPrompt(q, opened, lang) {
 async function menu(q, data, lang, now) {
   if (!q.message?.chat?.id || !q.message?.message_id) return answer(q);
 
-  if (data === 'm:home') {
+  if (data === CALLBACK.HOME) {
     await editMenu(q, homeMenu(lang));
     return answer(q);
   }
-  if (data === 'm:links') {
+  if (data === CALLBACK.LINKS) {
     await editMenu(q, await linksMenu(lang, await userKeyFor(q.from.id), now));
     return answer(q);
   }
-  if (data === 'm:help') {
+  if (data === CALLBACK.HELP) {
     await editMenu(q, {
       text: t(lang, 'help'),
-      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: 'm:home' }]] },
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
     });
     return answer(q);
   }
-  if (data === 'm:about') {
+  if (data === CALLBACK.ABOUT) {
     await editMenu(q, {
       text: render.about(lang),
-      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: 'm:home' }]] },
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
     });
     return answer(q);
   }
@@ -267,10 +278,10 @@ export default async function onCallback(update) {
     if (!q?.data || !q.from) return;
     const now = nowSec();
     const lang = normalizeLang(q.from.language_code);
-    const [k, prefix, suffix] = String(q.data).split('|');
+    const [k, prefix, suffix] = String(q.data).split(CALLBACK.SEP);
 
-    if (k.startsWith('m:')) return await menu(q, k, lang, now);
-    if (k === 'X') return await answer(q, t(lang, 'cancelled'));
+    if (k.startsWith(CALLBACK.MENU_PREFIX)) return await menu(q, k, lang, now);
+    if (k === CALLBACK.CANCEL) return await answer(q, t(lang, 'cancelled'));
 
     const opened = await openAction(prefix, suffix);
     const expected = KINDS[k];
@@ -289,14 +300,16 @@ export default async function onCallback(update) {
       }
     }
 
-    if (k === 'M' || k === 'H' || k === 'F') return await mode(q, k, opened, lang, now);
-    if (k === 'A') return await replyWindow(q, opened, lang, now);
-    if (k === 'R') return await read(q, opened, lang);
-    if (k === 'B') return await block(q, opened, lang, now);
-    if (k === 'V') return await revokePrompt(q, opened, lang, now);
-    if (k === 'K') return await revoke(q, opened, lang, now);
-    if (k === 'E') return await memoPrompt(q, opened, lang);
-    if (k === 'D') {
+    if (k === CALLBACK.MODE_ANON || k === CALLBACK.MODE_HISTORY || k === CALLBACK.MODE_FORWARD) {
+      return await mode(q, k, opened, lang, now);
+    }
+    if (k === CALLBACK.ANSWER) return await replyWindow(q, opened, lang, now);
+    if (k === CALLBACK.READ) return await read(q, opened, lang);
+    if (k === CALLBACK.BLOCK) return await block(q, opened, lang, now);
+    if (k === CALLBACK.REVOKE) return await revokePrompt(q, opened, lang, now);
+    if (k === CALLBACK.REVOKE_OK) return await revoke(q, opened, lang, now);
+    if (k === CALLBACK.MEMO) return await memoPrompt(q, opened, lang);
+    if (k === CALLBACK.MENU_LINK) {
       await editMenu(q, await linkMenu(lang, opened.link, now));
       return await answer(q);
     }

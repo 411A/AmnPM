@@ -1,173 +1,171 @@
+import { EMOJI } from './constants.js';
+
 const en = {
   welcome:
-    '🕊️ <b>AmnPM</b> — a private inbox, one link away.\n' +
-    '➕ /newlink   🔗 /links   🛠 /help   ℹ️ /about\n' +
+    '{e.brand} <b>AmnPM</b> — a private inbox, one link away.\n' +
+    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about\n' +
     '{verify} · <a href="{repo}">source</a>',
   help:
-    '🛠 <b>Help</b>\n' +
+    '{e.tool} <b>Help</b>\n' +
     '/newlink [memo] · /links · /about\n' +
     '/rename &lt;name&gt; inside a topic — the direction/mode emoji stays at the front.\n' +
     'Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.',
   linkIntro:
-    '🔗 <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
+    '{e.link} <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
     'Share it. Anyone with it can write to you without seeing your identity.\n' +
     'Rename a topic with /rename &lt;name&gt; inside it.',
-  linkInactive: '⚠️ This link is no longer active.',
-  linkNotFound: '⚠️ Link not found.',
-  ownLink: '🙃 This is your own link. Share it instead.',
-  startFromLink: '🔗 Open a link first, then send your message.',
+  linkInactive: '{e.warn} This link is no longer active.',
+  linkNotFound: '{e.warn} Link not found.',
+  ownLink: '{e.upside} This is your own link. Share it instead.',
+  startFromLink: '{e.link} Open a link first, then send your message.',
   prompt:
-    '✍️ Send your message. The bot will wait for it as long as needed.\n' +
+    '{e.write} Send your message. The bot will wait for it as long as needed.\n' +
     'Rename this topic with /rename &lt;name&gt;.',
-  senderTopicHint: '📥 Your messages for this link are in the "⬆️ {token}" topic. Open it and write there.',
-  chooseMode: '📨 How should this reach the owner?',
-  modeAnon: '😶‍🌫️ Anonymous',
-  modeHistory: '😶‍🌫️💬 With history',
-  modeForward: '😎 Forward',
-  sentAnon: '😶‍🌫️ Sent anonymously.',
-  sentHistory: '😶‍🌫️💬 Sent with history as {indicator}.',
-  sentForward: '😎 Forwarded.',
-  capReached: '⚠️ Link limit reached ({cap}). Revoke one with /links.',
+  senderTopicHint: '{e.inbox} Your messages for this link are in the "{e.up} {token}" topic. Open it and write there.',
+  chooseMode: '{e.send} How should this reach the owner?',
+  modeAnon: '{e.anon} Anonymous',
+  modeHistory: '{e.history} With history',
+  modeForward: '{e.forward} Forward',
+  sentAnon: '{e.anon} Sent anonymously.',
+  sentHistory: '{e.history} Sent with history as {indicator}.',
+  sentForward: '{e.forward} Forwarded.',
+  capReached: '{e.warn} Link limit reached ({cap}). Revoke one with /links.',
   about:
-    '🛠 <b>AmnPM</b>\n' +
+    '{e.tool} <b>AmnPM</b>\n' +
     '<a href="{contact}">Bot</a> · <a href="{repo}">Source</a>\n' +
     '{verify}\n' +
     'No message content is stored.',
-  linksTitle: '🔗 <b>Your links</b>\nPick one to manage.',
-  noLinks: '🪶 No links yet. /newlink creates your first one.',
-  linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
-  homeTitle: '🏠 <b>AmnPM</b>\nChoose an option.',
-  homeLinks: '🔗 My links',
-  homeHelp: '🛠 Help',
-  homeAbout: 'ℹ️ About',
-  back: '⬅️ Back',
-  open: '🔗 Open',
-  share: '📤 Share',
-  revoke: '🗑 Revoke',
-  changeMemo: '✏️ Memo',
-  confirm: '✅ Confirm',
-  revokeConfirm: '⚠️ Revoke <b>{memo}</b>? Stored data is deleted; Telegram history stays.',
-  revoked: '🗑 <s>{link}</s>\nLink revoked. Data cleared.',
+  linksTitle: '{e.link} <b>Your links</b>\nPick one to manage.',
+  noLinks: '{e.feather} No links yet. /newlink creates your first one.',
+  linkMenuTitle: '{e.link} <b>{memo}</b>\n<code>{token}</code>',
+  homeTitle: '{e.home} <b>AmnPM</b>\nChoose an option.',
+  homeLinks: '{e.link} My links',
+  homeHelp: '{e.tool} Help',
+  homeAbout: '{e.info} About',
+  back: '{e.back} Back',
+  open: '{e.link} Open',
+  share: '{e.share} Share',
+  revoke: '{e.trash} Revoke',
+  changeMemo: '{e.memo} Memo',
+  confirm: '{e.check} Confirm',
+  revokeConfirm: '{e.warn} Revoke <b>{memo}</b>? Stored data is deleted; Telegram history stays.',
+  revoked: '{e.trash} <s>{link}</s>\nLink revoked. Data cleared.',
   revokedShort: 'Revoked.',
-  memoPrompt: '✏️ Send the new memo (max {max} characters).',
-  memoChanged: '✏️ Memo updated.',
-  renameUsage: '✏️ Send /rename &lt;name&gt; inside the topic you want to rename.',
-  renamed: '✏️ Topic renamed to {name}.',
-  renameNoTopic: '⚠️ Use /rename inside a topic.',
-  renameFailed: '⚠️ Could not rename this topic.',
-  answerWindow: '✍️ Reply within {seconds}s. Send your message now.',
-  answerSent: '✅ Reply sent.',
-  answerExpired: '⌛ The reply window closed. Press Answer again.',
-  answerOnly: 'ℹ️ Press Answer on a message to reply.',
-  modeCleared: '🔁 Mode cleared. Send your next message to choose again.',
+  memoPrompt: '{e.memo} Send the new memo (max {max} characters).',
+  memoChanged: '{e.memo} Memo updated.',
+  renameUsage: '{e.memo} Send /rename &lt;name&gt; inside the topic you want to rename.',
+  renamed: '{e.memo} Topic renamed to {name}.',
+  renameNoTopic: '{e.warn} Use /rename inside a topic.',
+  renameFailed: '{e.warn} Could not rename this topic.',
+  answerWindow: '{e.write} Reply within {seconds}s. Send your message now.',
+  answerSent: '{e.check} Reply sent.',
+  answerExpired: '{e.hourglass} The reply window closed. Press Answer again.',
+  answerOnly: '{e.info} Press Answer on a message to reply.',
+  modeCleared: '{e.repeat} Mode cleared. Send your next message to choose again.',
   cancelled: 'Cancelled.',
-  btnAnswer: '👋 Answer',
-  btnRead: '👀 Read',
-  btnBlockLink: '🚫 Block here',
-  btnBlockAll: '🌐 Block everywhere',
-  btnUnblockLink: '🕊️ Unblock here',
-  btnUnblockAll: '🕊️ Unblock everywhere',
-  blockedLink: '🚫 Blocked on this link.',
-  blockedAll: '🚫 Blocked on all your links.',
-  unblockedLink: '🕊️ Unblocked on this link.',
-  unblockedAll: '🕊️ Unblocked on all links.',
-  readFailed: '⚠️ Sender deleted the message; the read receipt could not be delivered.',
-  blockedLink: '🚫 Blocked on this link.',
-  blockedAll: '🚫 Blocked on all your links.',
-  unblockedLink: '🕊️ Unblocked on this link.',
-  unblockedAll: '🕊️ Unblocked on all links.',
-  blockedNotice: '🚫 You are blocked by the owner.',
-  throttle: '⏳ Too fast — wait a moment.',
-  albumPartial: '⚠️ Part of the album was deleted; the rest was delivered.',
-  deleteNotice: '🗑 Stored data deleted. Only this chat history remains.',
-  topicClosed: '🗑 This topic is closed because the link was revoked.',
-  topicsDisabled: 'ℹ️ Enable Topics for this bot in @BotFather to get separate threads.',
-  failed: '⚠️ Delivery failed. Try again.',
+  btnAnswer: '{e.answer} Answer',
+  btnRead: '{e.eyes} Read',
+  btnBlockLink: '{e.block} Block here',
+  btnBlockAll: '{e.globe} Block everywhere',
+  btnUnblockLink: '{e.dove} Unblock here',
+  btnUnblockAll: '{e.dove} Unblock everywhere',
+  blockedLink: '{e.block} Blocked on this link.',
+  blockedAll: '{e.block} Blocked on all your links.',
+  unblockedLink: '{e.dove} Unblocked on this link.',
+  unblockedAll: '{e.dove} Unblocked on all links.',
+  readFailed: '{e.warn} Sender deleted the message; the read receipt could not be delivered.',
+  blockedNotice: '{e.block} You are blocked by the owner.',
+  throttle: '{e.hourglass} Too fast — wait a moment.',
+  albumPartial: '{e.warn} Part of the album was deleted; the rest was delivered.',
+  deleteNotice: '{e.trash} Stored data deleted. Only this chat history remains.',
+  topicClosed: '{e.trash} This topic is closed because the link was revoked.',
+  topicsDisabled: '{e.info} Enable Topics for this bot in @BotFather to get separate threads.',
+  failed: '{e.warn} Delivery failed. Try again.',
 };
 
 const fa = {
   welcome:
-    '🕊️ <b>AmnPM</b> — صندوق خصوصی، فقط با یک لینک.\n' +
-    '➕ /newlink   🔗 /links   🛠 /help   ℹ️ /about\n' +
+    '{e.brand} <b>AmnPM</b> — صندوق خصوصی، فقط با یک لینک.\n' +
+    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about\n' +
     '{verify} · <a href="{repo}">منبع</a>',
   help:
-    '🛠 <b>راهنما</b>\n' +
+    '{e.tool} <b>راهنما</b>\n' +
     '/newlink [یادداشت] · /links · /about\n' +
     '/rename &lt;نام&gt; داخل موضوع — ایموجی جهت/حالت همیشه در ابتدا می‌ماند.\n' +
     'تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.',
   linkIntro:
-    '🔗 <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
+    '{e.link} <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
     'آن را به اشتراک بگذارید؛ هر کسی با آن می‌تواند بدون دیدن هویت شما پیام بدهد.\n' +
     'نام موضوع را با /rename &lt;نام&gt; داخل آن تغییر دهید.',
-  linkInactive: '⚠️ این لینک دیگر فعال نیست.',
-  linkNotFound: '⚠️ لینک پیدا نشد.',
-  ownLink: '🙃 این لینک خودتان است. آن را به اشتراک بگذارید.',
-  startFromLink: '🔗 اول یک لینک باز کنید، بعد پیام بفرستید.',
+  linkInactive: '{e.warn} این لینک دیگر فعال نیست.',
+  linkNotFound: '{e.warn} لینک پیدا نشد.',
+  ownLink: '{e.upside} این لینک خودتان است. آن را به اشتراک بگذارید.',
+  startFromLink: '{e.link} اول یک لینک باز کنید، بعد پیام بفرستید.',
   prompt:
-    '✍️ پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.\n' +
+    '{e.write} پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.\n' +
     'نام این موضوع را با /rename &lt;نام&gt; تغییر دهید.',
-  senderTopicHint: '📥 پیام‌های این لینک در موضوع «⬆️ {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
-  chooseMode: '📨 این پیام چطور به صاحب لینک برسد؟',
-  modeAnon: '😶‍🌫️ ناشناس',
-  modeHistory: '😶‍🌫️💬 با سابقه',
-  modeForward: '😎 هدایت',
-  sentAnon: '😶‍🌫️ ناشناس ارسال شد.',
-  sentHistory: '😶‍🌫️💬 با سابقه به‌عنوان {indicator} ارسال شد.',
-  sentForward: '😎 هدایت شد.',
-  capReached: '⚠️ سقف لینک ({cap}) پر است. با /links یکی را حذف کنید.',
+  senderTopicHint: '{e.inbox} پیام‌های این لینک در موضوع «{e.up} {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
+  chooseMode: '{e.send} این پیام چطور به صاحب لینک برسد؟',
+  modeAnon: '{e.anon} ناشناس',
+  modeHistory: '{e.history} با سابقه',
+  modeForward: '{e.forward} هدایت',
+  sentAnon: '{e.anon} ناشناس ارسال شد.',
+  sentHistory: '{e.history} با سابقه به‌عنوان {indicator} ارسال شد.',
+  sentForward: '{e.forward} هدایت شد.',
+  capReached: '{e.warn} سقف لینک ({cap}) پر است. با /links یکی را حذف کنید.',
   about:
-    '🛠 <b>AmnPM</b>\n' +
+    '{e.tool} <b>AmnPM</b>\n' +
     '<a href="{contact}">ربات</a> · <a href="{repo}">منبع</a>\n' +
     '{verify}\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
-  linksTitle: '🔗 <b>لینک‌های شما</b>\nیکی را برای مدیریت انتخاب کنید.',
-  noLinks: '🪶 هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
-  linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
-  homeTitle: '🏠 <b>AmnPM</b>\nیک گزینه را انتخاب کنید.',
-  homeLinks: '🔗 لینک‌های من',
-  homeHelp: '🛠 راهنما',
-  homeAbout: 'ℹ️ درباره',
-  back: '⬅️ بازگشت',
-  open: '🔗 باز کردن',
-  share: '📤 اشتراک',
-  revoke: '🗑 حذف',
-  changeMemo: '✏️ یادداشت',
-  confirm: '✅ تأیید',
-  revokeConfirm: '⚠️ لینک <b>{memo}</b> حذف شود؟ داده‌های ذخیره‌شده پاک می‌شوند؛ تاریخچه تلگرام می‌ماند.',
-  revoked: '🗑 <s>{link}</s>\nلینک حذف شد. داده‌ها پاک شد.',
+  linksTitle: '{e.link} <b>لینک‌های شما</b>\nیکی را برای مدیریت انتخاب کنید.',
+  noLinks: '{e.feather} هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
+  linkMenuTitle: '{e.link} <b>{memo}</b>\n<code>{token}</code>',
+  homeTitle: '{e.home} <b>AmnPM</b>\nیک گزینه را انتخاب کنید.',
+  homeLinks: '{e.link} لینک‌های من',
+  homeHelp: '{e.tool} راهنما',
+  homeAbout: '{e.info} درباره',
+  back: '{e.back} بازگشت',
+  open: '{e.link} باز کردن',
+  share: '{e.share} اشتراک',
+  revoke: '{e.trash} حذف',
+  changeMemo: '{e.memo} یادداشت',
+  confirm: '{e.check} تأیید',
+  revokeConfirm: '{e.warn} لینک <b>{memo}</b> حذف شود؟ داده‌های ذخیره‌شده پاک می‌شوند؛ تاریخچه تلگرام می‌ماند.',
+  revoked: '{e.trash} <s>{link}</s>\nلینک حذف شد. داده‌ها پاک شد.',
   revokedShort: 'حذف شد.',
-  memoPrompt: '✏️ یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
-  memoChanged: '✏️ یادداشت به‌روز شد.',
-  renameUsage: '✏️ داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: /rename &lt;نام&gt;',
-  renamed: '✏️ نام موضوع به {name} تغییر کرد.',
-  renameNoTopic: '⚠️ دستور /rename را داخل یک موضوع بفرستید.',
-  renameFailed: '⚠️ تغییر نام این موضوع ممکن نشد.',
-  answerWindow: '✍️ تا {seconds} ثانیه پاسخ دهید. پیامتان را بفرستید.',
-  answerSent: '✅ پاسخ ارسال شد.',
-  answerExpired: '⌛ پنجره پاسخ بسته شد. دوباره Answer را بزنید.',
-  answerOnly: 'ℹ️ برای پاسخ، روی پیام Answer را بزنید.',
-  modeCleared: '🔁 حالت پاک شد. پیام بعدی را بفرستید تا دوباره انتخاب کنید.',
+  memoPrompt: '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
+  memoChanged: '{e.memo} یادداشت به‌روز شد.',
+  renameUsage: '{e.memo} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: /rename &lt;نام&gt;',
+  renamed: '{e.memo} نام موضوع به {name} تغییر کرد.',
+  renameNoTopic: '{e.warn} دستور /rename را داخل یک موضوع بفرستید.',
+  renameFailed: '{e.warn} تغییر نام این موضوع ممکن نشد.',
+  answerWindow: '{e.write} تا {seconds} ثانیه پاسخ دهید. پیامتان را بفرستید.',
+  answerSent: '{e.check} پاسخ ارسال شد.',
+  answerExpired: '{e.hourglass} پنجره پاسخ بسته شد. دوباره Answer را بزنید.',
+  answerOnly: '{e.info} برای پاسخ، روی پیام Answer را بزنید.',
+  modeCleared: '{e.repeat} حالت پاک شد. پیام بعدی را بفرستید تا دوباره انتخاب کنید.',
   cancelled: 'لغو شد.',
-  btnAnswer: '👋 پاسخ',
-  btnRead: '👀 خواندن',
-  btnBlockLink: '🚫 مسدود در این لینک',
-  btnBlockAll: '🌐 مسدود در همه لینک‌ها',
-  btnUnblockLink: '🕊️ رفع در این لینک',
-  btnUnblockAll: '🕊️ رفع در همه لینک‌ها',
-  readFailed: '⚠️ فرستنده پیام را حذف کرده؛ رسید خواندن قابل ارسال نیست.',
-  blockedLink: '🚫 در این لینک مسدود شد.',
-  blockedAll: '🚫 در همه لینک‌ها مسدود شد.',
-  unblockedLink: '🕊️ در این لینک رفع مسدودی شد.',
-  unblockedAll: '🕊️ در همه لینک‌ها رفع مسدودی شد.',
-  blockedNotice: '🚫 شما توسط صاحب لینک مسدود شده‌اید.',
-  throttle: '⏳ خیلی سریع — کمی صبر کنید.',
-  albumPartial: '⚠️ بخشی از آلبوم حذف شده بود؛ بقیه ارسال شد.',
-  deleteNotice: '🗑 داده‌های ذخیره‌شده پاک شد. فقط تاریخچه همین گفتگو می‌ماند.',
-  topicClosed: '🗑 این موضوع بسته شد چون لینک حذف شده است.',
-  topicsDisabled: 'ℹ️ برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
-  failed: '⚠️ ارسال نشد. دوباره تلاش کنید.',
+  btnAnswer: '{e.answer} پاسخ',
+  btnRead: '{e.eyes} خواندن',
+  btnBlockLink: '{e.block} مسدود در این لینک',
+  btnBlockAll: '{e.globe} مسدود در همه لینک‌ها',
+  btnUnblockLink: '{e.dove} رفع در این لینک',
+  btnUnblockAll: '{e.dove} رفع در همه لینک‌ها',
+  readFailed: '{e.warn} فرستنده پیام را حذف کرده؛ رسید خواندن قابل ارسال نیست.',
+  blockedLink: '{e.block} در این لینک مسدود شد.',
+  blockedAll: '{e.block} در همه لینک‌ها مسدود شد.',
+  unblockedLink: '{e.dove} در این لینک رفع مسدودی شد.',
+  unblockedAll: '{e.dove} در همه لینک‌ها رفع مسدودی شد.',
+  blockedNotice: '{e.block} شما توسط صاحب لینک مسدود شده‌اید.',
+  throttle: '{e.hourglass} خیلی سریع — کمی صبر کنید.',
+  albumPartial: '{e.warn} بخشی از آلبوم حذف شده بود؛ بقیه ارسال شد.',
+  deleteNotice: '{e.trash} داده‌های ذخیره‌شده پاک شد. فقط تاریخچه همین گفتگو می‌ماند.',
+  topicClosed: '{e.trash} این موضوع بسته شد چون لینک حذف شده است.',
+  topicsDisabled: '{e.info} برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
+  failed: '{e.warn} ارسال نشد. دوباره تلاش کنید.',
 };
 
 const STRINGS = { en, fa };
@@ -179,6 +177,7 @@ export function normalizeLang(code) {
 export function t(lang, key, vars = {}) {
   const table = STRINGS[lang] ?? STRINGS.en;
   let text = table[key] ?? STRINGS.en[key] ?? key;
+  text = text.replace(/\{e\.([a-z]+)\}/g, (_, name) => EMOJI[name] ?? '');
   for (const [name, value] of Object.entries(vars)) {
     text = text.replaceAll(`{${name}}`, String(value));
   }

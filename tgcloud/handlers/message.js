@@ -11,6 +11,7 @@ import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
+import { EMOJI, CALLBACK } from '../lib/constants.js';
 import { linksMenu } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -100,9 +101,9 @@ async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, 
   ]);
   await send(senderId, t(lang, 'chooseMode'), {
     reply_markup: render.modeKeyboard(lang, {
-      anon: `M|${anon.prefix}|${anon.suffix}`,
-      history: `H|${history.prefix}|${history.suffix}`,
-      forward: `F|${forward.prefix}|${forward.suffix}`,
+      anon: `${CALLBACK.MODE_ANON}${CALLBACK.SEP}${anon.prefix}${CALLBACK.SEP}${anon.suffix}`,
+      history: `${CALLBACK.MODE_HISTORY}${CALLBACK.SEP}${history.prefix}${CALLBACK.SEP}${history.suffix}`,
+      forward: `${CALLBACK.MODE_FORWARD}${CALLBACK.SEP}${forward.prefix}${CALLBACK.SEP}${forward.suffix}`,
     }, current),
     reply_to_message_id: messageId,
     ...(threadId ? { message_thread_id: threadId } : {}),
@@ -173,10 +174,9 @@ async function listLinks(msg, lang, now) {
 }
 
 function stripTopicPrefix(text) {
-  return String(text)
-    .replace(/^[⬇️⬆️]\s*/, '')
-    .replace(/^(😶‍🌫️💬|😶‍🌫️|😎)\s*/, '')
-    .trim();
+  const direction = new RegExp(`^(${EMOJI.down}|${EMOJI.up})\\s*`);
+  const mode = new RegExp(`^(${EMOJI.history}|${EMOJI.anon}|${EMOJI.forward})\\s*`);
+  return String(text).replace(direction, '').replace(mode, '').trim();
 }
 
 async function renameTopic(msg, arg, lang) {

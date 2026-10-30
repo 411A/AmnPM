@@ -2,12 +2,13 @@ import { CONFIG } from './config.js';
 import { BUILD } from './build.js';
 import { t } from './i18n.js';
 import { escapeHtml, cleanLabel } from './ids.js';
+import { EMOJI } from './constants.js';
 
 export function verifyLine() {
   const manifest = escapeHtml(CONFIG.manifestUrl);
   return BUILD.verified
-    ? `✅ <a href="${manifest}">verified · ${escapeHtml(BUILD.release)}</a>`
-    : `⚪️ <a href="${manifest}">unverified release</a>`;
+    ? `${EMOJI.check} <a href="${manifest}">verified · ${escapeHtml(BUILD.release)}</a>`
+    : `${EMOJI.unverified} <a href="${manifest}">unverified release</a>`;
 }
 
 export function shareUrl(link) {
@@ -17,8 +18,8 @@ export function shareUrl(link) {
 export function linkButtons(link) {
   return {
     inline_keyboard: [[
-      { text: '🔗 Open', url: link },
-      { text: '📤 Share', url: shareUrl(link) },
+      { text: `${EMOJI.link} Open`, url: link },
+      { text: `${EMOJI.share} Share`, url: shareUrl(link) },
     ]],
   };
 }
@@ -40,9 +41,9 @@ export function about(lang) {
 }
 
 export function topicPrefix(kind) {
-  if (kind === 'anon') return '⬇️ 😶‍🌫️ ';
-  if (kind === 'history') return '⬇️ 😶‍🌫️💬 ';
-  return '⬇️ 😎 ';
+  if (kind === 'anon') return `${EMOJI.down} ${EMOJI.anon} `;
+  if (kind === 'history') return `${EMOJI.down} ${EMOJI.history} `;
+  return `${EMOJI.down} ${EMOJI.forward} `;
 }
 
 export function customTopicName(kind, custom) {
@@ -50,22 +51,22 @@ export function customTopicName(kind, custom) {
 }
 
 export function customSenderTopicName(custom) {
-  return `⬆️ ${cleanLabel(custom, 60)}`;
+  return `${EMOJI.up} ${cleanLabel(custom, 60)}`;
 }
 
 export function topicName(kind, memo, label) {
   const tail = cleanLabel(memo, 40);
-  if (kind === 'anon') return `⬇️ 😶‍🌫️ Anonymous · ${tail}`;
-  if (kind === 'history') return `⬇️ 😶‍🌫️💬 ${cleanLabel(label, 30)} · ${tail}`;
-  return `⬇️ 😎 ${cleanLabel(label, 30)} · ${tail}`;
+  if (kind === 'anon') return `${EMOJI.down} ${EMOJI.anon} Anonymous · ${tail}`;
+  if (kind === 'history') return `${EMOJI.down} ${EMOJI.history} ${cleanLabel(label, 30)} · ${tail}`;
+  return `${EMOJI.down} ${EMOJI.forward} ${cleanLabel(label, 30)} · ${tail}`;
 }
 
 export function senderTopicName(token) {
-  return `⬆️ ${cleanLabel(token, 40)}`;
+  return `${EMOJI.up} ${cleanLabel(token, 40)}`;
 }
 
 export function modeKeyboard(lang, callbacks, current) {
-  const mark = (mode, label) => (current === mode ? `${label} ✓` : label);
+  const mark = (mode, label) => (current === mode ? `${label} ${EMOJI.selected}` : label);
   return {
     inline_keyboard: [
       [{ text: mark('anon', t(lang, 'modeAnon')), callback_data: callbacks.anon }],
