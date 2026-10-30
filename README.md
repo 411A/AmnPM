@@ -48,10 +48,16 @@ node --import ./tests/register.mjs --test tests/crypto.test.js tests/ids.test.js
 ## Deploy
 
 ```bash
+cp tools/secret.example.js tgcloud/lib/secret.js   # fill in real keys; never commit it
+node tools/gen-build.mjs --commit "$(git rev-parse --short HEAD)" --verified false
 tgcloud push
 tgcloud migrate --yes
 tgcloud status
 ```
+
+`tgcloud/lib/secret.js` is gitignored and deployed as code. Generate it once per deployment;
+losing it makes every stored link undecryptable. Rotating a key means adding a new version and
+changing `CURRENT_KEK_VERSION`; older versions must stay in the ring while old links exist.
 
 The token is read by the CLI from `TGCLOUD_TOKEN` or `.tgcloud/credentials`. It is never placed
 in this repository. `tgcloud push` deploys code; `migrate` applies the schema. A crash after
