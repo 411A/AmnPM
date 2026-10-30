@@ -107,7 +107,7 @@ export async function closeLinkTopics(link, chatId, lang) {
       await api.sendMessage({
         chat_id: chatId,
         message_thread_id: topic.thread_id,
-        text: t(lang, 'deleteNotice'),
+        text: t(lang, 'topicClosed'),
       });
     } catch {
       // best effort

@@ -265,6 +265,34 @@ test('block all refuses the next message on another link', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
 });
 
+test('a sender topic message is routed to its own link', async () => {
+  await setupLink();
+  const thread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: thread }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  await onCallback({
+    id: 'cb-topic',
+    from: { id: 200, first_name: 'V', language_code: 'en' },
+    message: { message_id: 999, chat: { id: 200 }, message_thread_id: thread },
+    data,
+  });
+
+  const copies = callsOf('copyMessages');
+  assert.equal(copies.length, 1);
+  assert.equal(copies[0].args.chat_id, 100);
+});
+
+test('owner topic text stays in the topic and does not become a sender message', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('plain', 100, { message_thread_id: thread }));
+
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Press Answer/);
+  assert.equal(sent.args.message_thread_id, thread);
+});
+
 test('a failed read receipt shows a popup', async () => {
   await setupLink();
   const controls = await deliverAnonymous();
@@ -375,5 +403,27 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
   assert.equal(callsOf('closeForumTopic').length, 1);
 
   await onMessage(message(`/start ${token}`, 300));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /no longer active/);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Stored data deleted/);
+});
+
+test('topic commands answer in the same thread', async () => {
+  await onMessage(message('/help', 100, { message_thread_id: 42 }));
+  const sent = callsOf('sendMessage').at(-1);
+  assert.equal(sent.args.message_thread_id, 42);
+});
+
+test('a sender is told about deletion when returning to a revoked topic', async () => {
+  const token = await setupLink();
+  await deliverAnonymous();
+  const senderThread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
+
+  await onMessage(message('/links', 100));
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('V|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('K|')), 100);
+
+  await onMessage(message('after', 200, { message_thread_id: senderThread }));
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Stored data deleted/);
+  assert.equal(sent.args.message_thread_id, senderThread);
 });

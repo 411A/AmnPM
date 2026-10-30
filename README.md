@@ -154,7 +154,9 @@ link, kept so a token can never be issued twice. At 10,000 new links per day tha
 
 Revocation deletes every link-scoped row (jobs, actions, rates, blocks, topics, conversations,
 pending messages, sessions, reply windows, the link itself). Telegram history is retained by
-design; the topics receive a deletion notice and are closed where the API permits.
+design; the owner topics receive a “topic closed” notice and are closed where the API permits,
+and the sender is told “Stored data deleted” when they next open the link or write in that
+sender topic.
 
 Global **Block all** rows are owner-level and are not link-scoped; they survive revocation and
 apply to other links. Link-scope blocks are deleted with the link. A global block stores a fast
@@ -169,6 +171,12 @@ direction/mode marker: `⬇️ 😶‍🌫️` (anonymous), `⬇️ 😶‍🌫�
 names stay only in Telegram. The Bot API has no read-topic-name method, so a rename made in the
 Telegram UI cannot be observed or repaired; only `/rename` is enforced. A later memo change
 reapplies the stored custom name to owner topics.
+
+Replies and status messages sent from inside a topic carry `message_thread_id`, so they stay in
+that topic instead of leaking into the All/General chat. On revoke, owner topics receive a
+“topic closed” notice, and the sender is told “Stored data deleted” the next time they open the
+link or write in that sender topic. Immediate push notification would require storing the
+sender chat id; the bot does not store it.
 
 ## Known limits
 

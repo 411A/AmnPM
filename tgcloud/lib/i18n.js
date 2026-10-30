@@ -48,7 +48,7 @@ const en = {
   changeMemo: '✏️ Memo',
   confirm: '✅ Confirm',
   revokeConfirm: '⚠️ Revoke <b>{memo}</b>? Stored data is deleted; Telegram history stays.',
-  revoked: '🗑 <s>{link}</s>\nLink revoked.\nAll stored data deleted.',
+  revoked: '🗑 <s>{link}</s>\nLink revoked. Data cleared.',
   revokedShort: 'Revoked.',
   memoPrompt: '✏️ Send the new memo (max {max} characters).',
   memoChanged: '✏️ Memo updated.',
@@ -81,6 +81,7 @@ const en = {
   throttle: '⏳ Too fast — wait a moment.',
   albumPartial: '⚠️ Part of the album was deleted; the rest was delivered.',
   deleteNotice: '🗑 Stored data deleted. Only this chat history remains.',
+  topicClosed: '🗑 This topic is closed because the link was revoked.',
   topicsDisabled: 'ℹ️ Enable Topics for this bot in @BotFather to get separate threads.',
   failed: '⚠️ Delivery failed. Try again.',
 };
@@ -135,7 +136,7 @@ const fa = {
   changeMemo: '✏️ یادداشت',
   confirm: '✅ تأیید',
   revokeConfirm: '⚠️ لینک <b>{memo}</b> حذف شود؟ داده‌های ذخیره‌شده پاک می‌شوند؛ تاریخچه تلگرام می‌ماند.',
-  revoked: '🗑 <s>{link}</s>\nلینک حذف شد.\nهمه داده‌های ذخیره‌شده پاک شد.',
+  revoked: '🗑 <s>{link}</s>\nلینک حذف شد. داده‌ها پاک شد.',
   revokedShort: 'حذف شد.',
   memoPrompt: '✏️ یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
   memoChanged: '✏️ یادداشت به‌روز شد.',
@@ -164,6 +165,7 @@ const fa = {
   throttle: '⏳ خیلی سریع — کمی صبر کنید.',
   albumPartial: '⚠️ بخشی از آلبوم حذف شده بود؛ بقیه ارسال شد.',
   deleteNotice: '🗑 داده‌های ذخیره‌شده پاک شد. فقط تاریخچه همین گفتگو می‌ماند.',
+  topicClosed: '🗑 این موضوع بسته شد چون لینک حذف شده است.',
   topicsDisabled: 'ℹ️ برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
   failed: '⚠️ ارسال نشد. دوباره تلاش کنید.',
 };

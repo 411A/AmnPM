@@ -210,7 +210,12 @@ async function revoke(q, opened, lang, now) {
       reply_markup: { inline_keyboard: [] },
     });
   } catch {
-    await api.sendMessage({ chat_id: chat, text, parse_mode: 'HTML' });
+    await api.sendMessage({
+      chat_id: chat,
+      ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
+      text,
+      parse_mode: 'HTML',
+    });
   }
   return answer(q, t(lang, 'revokedShort'));
 }

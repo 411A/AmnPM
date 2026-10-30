@@ -25,6 +25,13 @@ function send(chatId, text, extra = {}) {
   });
 }
 
+function sendHere(msg, text, extra = {}) {
+  return send(msg.chat.id, text, {
+    ...(msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {}),
+    ...extra,
+  });
+}
+
 async function nextToken() {
   for (let i = 0; i < 6; i += 1) {
     const token = ids.makeToken();
@@ -107,20 +114,20 @@ async function startOwner(msg, lang, now) {
   void configureBotOnce();
   const ownerKey = await userKeyFor(chatId);
   const created = await store.ensureOwner(ownerKey, now, lang);
-  await send(chatId, render.welcome(lang));
+  await sendHere(msg, render.welcome(lang));
   if (!created) {
     const links = await store.listLinks(ownerKey);
-    if (!links.length) await send(chatId, t(lang, 'noLinks'));
+    if (!links.length) await sendHere(msg, t(lang, 'noLinks'));
     return;
   }
 
   const link = await createLink(ownerKey, chatId, CONFIG.defaultMemo, now);
   if (!link) {
-    await send(chatId, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
+    await sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
     return;
   }
   const url = await deepLink(await linkToken(link));
-  await send(chatId, render.linkIntro(lang, url, await linkMemo(link)), {
+  await sendHere(msg, render.linkIntro(lang, url, await linkMemo(link)), {
     reply_markup: render.linkButtons(url),
   });
 }
@@ -131,10 +138,10 @@ async function openLink(msg, token, lang, now) {
   const link = await store.findLinkByLookup(await tokenLookupFor(token.trim().toLowerCase()));
   if (!link) {
     const retired = await store.isRetired(await ids.tokenFp(token));
-    return send(chatId, t(lang, retired ? 'linkInactive' : 'linkNotFound'));
+    return sendHere(msg, t(lang, retired ? 'deleteNotice' : 'linkNotFound'));
   }
-  if (link.state !== 'active') return send(chatId, t(lang, 'linkInactive'));
-  if (link.owner_key === ownerKey) return send(chatId, t(lang, 'ownLink'));
+  if (link.state !== 'active') return sendHere(msg, t(lang, 'linkInactive'));
+  if (link.owner_key === ownerKey) return sendHere(msg, t(lang, 'ownLink'));
 
   const base = await chatKeyFor(chatId);
   await store.upsertSession(await sessionKeyFrom(base), link.id, now);
@@ -151,9 +158,9 @@ async function newLink(msg, arg, lang, now) {
   const ownerKey = await userKeyFor(chatId);
   await store.ensureOwner(ownerKey, now, lang);
   const link = await createLink(ownerKey, chatId, arg, now);
-  if (!link) return send(chatId, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
+  if (!link) return sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
   const url = await deepLink(await linkToken(link));
-  return send(chatId, render.linkIntro(lang, url, await linkMemo(link)), {
+  return sendHere(msg, render.linkIntro(lang, url, await linkMemo(link)), {
     reply_markup: render.linkButtons(url),
   });
 }
@@ -162,7 +169,7 @@ async function listLinks(msg, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
   const menu = await linksMenu(lang, ownerKey, now);
-  await send(chatId, menu.text, { reply_markup: menu.keyboard });
+  await sendHere(msg, menu.text, { reply_markup: menu.keyboard });
 }
 
 function stripTopicPrefix(text) {
@@ -222,14 +229,14 @@ async function command(msg, lang, now) {
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/links') return listLinks(msg, lang, now);
-  if (head === '/help') return send(chatId, t(lang, 'help'));
-  if (head === '/about') return send(chatId, render.about(lang));
+  if (head === '/help') return sendHere(msg, t(lang, 'help'));
+  if (head === '/about') return sendHere(msg, render.about(lang));
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
     const session = await store.getSession(await sessionKeyFor(chatId));
-    if (!session) return send(chatId, t(lang, 'startFromLink'));
+    if (!session) return sendHere(msg, t(lang, 'startFromLink'));
     await store.setSessionMode(session.user_key, null, now);
-    return send(chatId, t(lang, 'modeCleared'));
+    return sendHere(msg, t(lang, 'modeCleared'));
   }
   return undefined;
 }
@@ -239,7 +246,7 @@ async function replyToWindow(msg, window, lang, now) {
   const link = await store.getLink(window.link_id);
   if (!link) {
     await store.closeReplyWindow(window.owner_key);
-    return send(chatId, t(lang, 'answerExpired'));
+    return sendHere(msg, t(lang, 'answerExpired'));
   }
   const dek = await linkDek(link);
   const target = Number(await crypto.decrypt(
@@ -262,11 +269,19 @@ async function replyToWindow(msg, window, lang, now) {
     try {
       await api.copyMessage({ chat_id: target, from_chat_id: chatId, message_id: msg.message_id });
     } catch {
-      return send(chatId, t(lang, 'failed'));
+      return sendHere(msg, t(lang, 'failed'));
     }
   }
   await store.closeReplyWindow(window.owner_key);
-  return send(chatId, t(lang, 'answerSent'));
+  return sendHere(msg, t(lang, 'answerSent'));
+}
+
+async function senderTopicFor(base, threadId) {
+  for (const row of await store.getSenderTopicsByThread(threadId)) {
+    if (await senderKeyFrom(base, row.link_id) !== row.sender_key) continue;
+    return { link: await store.getLink(row.link_id), senderKey: row.sender_key };
+  }
+  return null;
 }
 
 async function plain(msg, lang, now) {
@@ -276,7 +291,7 @@ async function plain(msg, lang, now) {
   const memoLink = await store.getMemoState(ownerKey);
   if (memoLink) {
     if (typeof msg.text !== 'string') {
-      return send(chatId, t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }));
+      return sendHere(msg, t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }));
     }
     const link = await store.getLink(memoLink);
     if (link) {
@@ -288,7 +303,7 @@ async function plain(msg, lang, now) {
       await renameTopics(updated, await ownerChatId(updated));
     }
     await store.clearMemoState(ownerKey);
-    return send(chatId, t(lang, 'memoChanged'));
+    return sendHere(msg, t(lang, 'memoChanged'));
   }
 
   const window = await store.getReplyWindow(ownerKey, now);
@@ -296,28 +311,46 @@ async function plain(msg, lang, now) {
 
   const base = await chatKeyFor(chatId);
   const sessionKey = await sessionKeyFrom(base);
-  const session = await store.getSession(sessionKey);
-  if (!session) {
-    const owner = await store.getOwner(ownerKey);
-    return send(chatId, t(lang, owner ? 'answerOnly' : 'startFromLink'));
+  let link;
+  let senderKey;
+  let current = null;
+
+  if (msg.message_thread_id) {
+    const owned = await store.getOwnedTopicByThread(ownerKey, msg.message_thread_id);
+    if (owned) return sendHere(msg, t(lang, 'answerOnly'));
+
+    const talk = await senderTopicFor(base, msg.message_thread_id);
+    if (!talk?.link || talk.link.state !== 'active') {
+      return sendHere(msg, t(lang, 'deleteNotice'));
+    }
+    link = talk.link;
+    senderKey = talk.senderKey;
+    const session = await store.getSession(sessionKey);
+    if (session?.link_id === link.id) current = session.mode;
+  } else {
+    const session = await store.getSession(sessionKey);
+    if (!session) {
+      const owner = await store.getOwner(ownerKey);
+      return sendHere(msg, t(lang, owner ? 'answerOnly' : 'startFromLink'));
+    }
+    link = await store.getLink(session.link_id);
+    if (!link || link.state !== 'active') {
+      await store.deleteSession(sessionKey);
+      return sendHere(msg, t(lang, 'linkInactive'));
+    }
+    senderKey = await senderKeyFrom(base, link.id);
+    current = session.mode;
   }
 
-  const link = await store.getLink(session.link_id);
-  if (!link || link.state !== 'active') {
-    await store.deleteSession(sessionKey);
-    return send(chatId, t(lang, 'linkInactive'));
-  }
-
-  const senderKey = await senderKeyFrom(base, link.id);
   const globalKey = await userKeyFor(chatId);
   if (await store.hasBlock(link.owner_key, link.id, senderKey)
       || await store.hasBlock(link.owner_key, 0, globalKey)) {
-    return send(chatId, t(lang, 'blockedNotice'));
+    return sendHere(msg, t(lang, 'blockedNotice'));
   }
 
   if (CONFIG.throttlePerMinute > 0) {
     const count = await store.bumpRate(link.id, senderKey, now);
-    if (count > CONFIG.throttlePerMinute) return send(chatId, t(lang, 'throttle'));
+    if (count > CONFIG.throttlePerMinute) return sendHere(msg, t(lang, 'throttle'));
   }
 
   const groupKey = msg.media_group_id ? String(msg.media_group_id) : `s${msg.message_id}`;
@@ -339,7 +372,7 @@ async function plain(msg, lang, now) {
   // shortcut: every message asks once; the last mode is marked, and the tap is
   // also the completion barrier for albums (no timers on the platform).
   return askMode(link, chatId, sessionKey, senderKey, groupKey, firstName, lang,
-    msg.message_id, msg.message_thread_id ?? 0, session.mode, now);
+    msg.message_id, msg.message_thread_id ?? 0, current, now);
 }
 
 export default async function onMessage(update) {
