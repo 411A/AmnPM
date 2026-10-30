@@ -396,7 +396,8 @@ export async function deleteLinkScoped(linkId) {
 }
 
 export async function deleteLinkRow(linkId) {
-  return (await db.run(sql`DELETE FROM links WHERE id = ${linkId}`)).changes;
+  const result = await db.run(sql`DELETE FROM links WHERE id = ${linkId}`);
+  return result.rowsAffected ?? result.changes;
 }
 
 export async function countLinkRows(linkId) {

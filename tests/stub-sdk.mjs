@@ -20,7 +20,7 @@ export const db = {
   async run(query) {
     const { text, params } = wrap(query);
     const result = database.prepare(text).run(...params);
-    return { changes: Number(result.changes), lastInsertRowid: Number(result.lastInsertRowid) };
+    return { rowsAffected: Number(result.changes), lastInsertRowid: Number(result.lastInsertRowid), rows: [] };
   },
   async get(query) {
     const { text, params } = wrap(query);
