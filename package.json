@@ -1,0 +1,9 @@
+{
+  "name": "amn",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import ./tests/register.mjs --test",
+    "build": "node tools/gen-build.mjs"
+  }
+}

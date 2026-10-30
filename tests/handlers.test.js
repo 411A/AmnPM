@@ -1,0 +1,281 @@
+import { beforeEach, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { resetDb, rawDb, callsOf, failNext } from './stub-sdk.mjs';
+import { applySchema } from './stub-db.mjs';
+import * as schema from '../tgcloud/schema.js';
+import onMessage from '../tgcloud/handlers/message.js';
+import onCallback from '../tgcloud/handlers/callback_query.js';
+import { linkMemo } from '../tgcloud/lib/keys.js';
+
+beforeEach(() => {
+  resetDb();
+  applySchema(Object.values(schema), (text) => rawDb().prepare(text).run());
+});
+
+let seq = 1;
+
+function message(text, chatId, extra = {}) {
+  return {
+    message_id: extra.message_id ?? seq++,
+    date: 0,
+    chat: { id: chatId, type: 'private' },
+    from: { id: chatId, first_name: extra.first_name ?? 'T', language_code: 'en', is_bot: false },
+    ...(text === undefined ? {} : { text }),
+    ...extra,
+  };
+}
+
+function buttons() {
+  return ['sendMessage', 'editMessageText']
+    .flatMap((method) => callsOf(method))
+    .flatMap((call) => call.args.reply_markup?.inline_keyboard?.flat() ?? [])
+    .map((button) => button.callback_data)
+    .filter(Boolean);
+}
+
+function tokenOfFirstLink() {
+  return rawDb().prepare('SELECT token FROM links ORDER BY id LIMIT 1').get().token;
+}
+
+async function setupLink() {
+  await onMessage(message('/start', 100));
+  const token = tokenOfFirstLink();
+  await onMessage(message(`/start ${token}`, 200));
+  return token;
+}
+
+async function deliverAnonymous() {
+  await onMessage(message('hello', 200, { first_name: 'V' }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  await onCallback({
+    id: 'cb-mode',
+    from: { id: 200, first_name: 'V', language_code: 'en' },
+    message: { message_id: 999, chat: { id: 200 }, reply_to_message: { message_id: 3 } },
+    data,
+  });
+  return callsOf('sendMessage').filter((call) => call.args.reply_markup).at(-1);
+}
+
+async function click(data, userId = 200, replyMarkup) {
+  await onCallback({
+    id: `cb-${data}`,
+    from: { id: userId, first_name: 'V', language_code: 'en' },
+    message: {
+      message_id: 999,
+      chat: { id: userId },
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    },
+    data,
+  });
+}
+
+test('owner start creates a link and repeats only the welcome', async () => {
+  await onMessage(message('/start', 100));
+  const sent = callsOf('sendMessage');
+  assert.equal(sent.length, 2);
+  assert.match(sent[1].args.text, /t\.me\/test_bot\?start=/);
+
+  const link = rawDb().prepare('SELECT * FROM links').get();
+  assert.equal(await linkMemo(link), 'main');
+  assert.match(link.memo, /^enc:/);
+  assert.equal(link.state, 'active');
+
+  await onMessage(message('/start', 100));
+  assert.equal(callsOf('sendMessage').length, 3);
+});
+
+test('a stranger reaches the owner anonymously', async () => {
+  const token = await setupLink();
+  const senderTopic = callsOf('createForumTopic').find((call) => call.args.name.startsWith('⬆️'));
+  assert.equal(senderTopic.args.name, `⬆️ ${token}`);
+  assert.ok(callsOf('sendMessage').at(-1).args.message_thread_id);
+
+  const controls = await deliverAnonymous();
+
+  const copies = callsOf('copyMessages');
+  assert.equal(copies.length, 1);
+  assert.equal(copies[0].args.chat_id, 100);
+  assert.equal(copies[0].args.from_chat_id, 200);
+  assert.equal(copies[0].args.message_ids.length, 1);
+
+  const ownerTopic = callsOf('createForumTopic').find((call) => call.args.name.includes('Anonymous'));
+  assert.equal(ownerTopic.args.name, '⬇️ 😶‍🌫️ Anonymous · main');
+  assert.ok(controls.args.reply_markup.inline_keyboard.flat().some((b) => b.callback_data.startsWith('A|')));
+
+  const sent = callsOf('sendMessage').find((call) => call.args.text?.startsWith('😶‍🌫️'));
+  assert.ok(sent);
+  assert.equal(sent.args.reply_to_message_id, 3);
+  assert.equal(callsOf('deleteMessage').length, 1);
+
+  const answerData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  const [, prefix, suffix] = answerData.split('|');
+  const row = rawDb().prepare('SELECT body FROM action_tokens WHERE prefix = ?').get(prefix);
+  assert.ok(row);
+  assert.notEqual(row.body.slice(-suffix.length), suffix);
+});
+
+test('an album is copied in one call', async () => {
+  await setupLink();
+  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 10, caption: 'one', first_name: 'V' }));
+  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 11, caption: 'two', first_name: 'V' }));
+
+  const modeKeyboards = callsOf('sendMessage').filter((call) =>
+    call.args.reply_markup?.inline_keyboard?.flat()
+      .some((button) => String(button.callback_data).startsWith('M|')));
+  assert.equal(modeKeyboards.length, 1);
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  await onCallback({
+    id: 'cb-album',
+    from: { id: 200, first_name: 'V', language_code: 'en' },
+    message: { message_id: 999, chat: { id: 200 } },
+    data,
+  });
+
+  const copies = callsOf('copyMessages');
+  assert.equal(copies.length, 1);
+  assert.deepEqual(copies[0].args.message_ids, [10, 11]);
+});
+
+test('history mode keeps one topic and a stable indicator', async () => {
+  await setupLink();
+  await onMessage(message('one', 200, { first_name: 'V' }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+  await onMessage(message('two', 200, { first_name: 'V' }));
+  await click(buttons().filter((entry) => entry.startsWith('H|')).at(-1));
+
+  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('⬇️'));
+  assert.equal(ownerTopics.length, 1);
+  assert.match(ownerTopics[0].args.name, /^⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main$/);
+  assert.equal(callsOf('copyMessages').length, 2);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM conversations').get().n, 1);
+});
+
+test('forward mode forwards the profile into its own topic', async () => {
+  await setupLink();
+  await onMessage(message('hi', 200, { first_name: 'V' }));
+  await click(buttons().find((entry) => entry.startsWith('F|')));
+
+  assert.equal(callsOf('forwardMessages').length, 1);
+  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('⬇️'));
+  assert.match(ownerTopics[0].args.name, /^⬇️ 😎 V · main$/);
+});
+
+test('answer copies the owner reply back to the sender', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+
+  await onCallback({
+    id: 'cb-answer',
+    from: { id: 100, language_code: 'en' },
+    message: {
+      message_id: 999,
+      chat: { id: 100 },
+      message_thread_id: 104,
+      reply_markup: controls.args.reply_markup,
+    },
+    data,
+  });
+  const windowMsg = callsOf('sendMessage').find((call) => call.args.text?.includes('Reply within'));
+  assert.equal(windowMsg.args.message_thread_id, 104);
+  await onMessage(message('reply text', 100));
+
+  const copies = callsOf('copyMessage');
+  assert.equal(copies.length, 1);
+  assert.equal(copies[0].args.chat_id, 200);
+  assert.equal(copies[0].args.from_chat_id, 100);
+  assert.ok(copies[0].args.message_thread_id);
+});
+
+test('block refuses the next message', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+
+  await click(data, 100, controls.args.reply_markup);
+  await onMessage(message('again', 200));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
+});
+
+test('a failed read receipt shows a popup', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const readData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('R|')).callback_data;
+
+  failNext('setMessageReaction', { errorCode: 400, description: 'message to react not found' });
+  await onCallback({
+    id: 'cb-read',
+    from: { id: 100, language_code: 'en' },
+    message: { message_id: 500, chat: { id: 100 }, reply_markup: controls.args.reply_markup },
+    data: readData,
+  });
+
+  const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
+  assert.equal(alerts.length, 1);
+  assert.match(alerts[0].args.text, /deleted/);
+});
+
+test('changing a memo renames the topics', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await onMessage(message('/links', 100));
+  const menuData = buttons().find((entry) => entry.startsWith('D|'));
+  await click(menuData, 100);
+  const memoData = buttons().find((entry) => entry.startsWith('E|'));
+  await click(memoData, 100);
+  await onMessage(message('newmemo', 100));
+
+  const edits = callsOf('editForumTopic');
+  assert.equal(edits.length, 1);
+  assert.match(edits[0].args.name, /newmemo/);
+});
+
+test('no plaintext chat identifiers or message text are stored', async () => {
+  const owner = 987654321;
+  const visitor = 123456789;
+  await onMessage(message('/start', owner));
+  const token = tokenOfFirstLink();
+  await onMessage(message(`/start ${token}`, visitor));
+  await onMessage(message('secret text', visitor, { first_name: 'V' }));
+
+  const tables = rawDb()
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .all();
+  for (const { name } of tables) {
+    const dump = JSON.stringify(rawDb().prepare(`SELECT * FROM ${name}`).all());
+    assert.equal(dump.includes(String(owner)), false, `owner id in ${name}`);
+    assert.equal(dump.includes(String(visitor)), false, `visitor id in ${name}`);
+    assert.equal(dump.includes('secret text'), false, `message text in ${name}`);
+  }
+});
+
+test('revoke deletes every link-scoped row and retires the token', async () => {
+  const token = await setupLink();
+  await deliverAnonymous();
+
+  await onMessage(message('/links', 100));
+  const menuData = buttons().find((entry) => entry.startsWith('D|'));
+  await click(menuData, 100);
+  const revokeData = buttons().find((entry) => entry.startsWith('V|'));
+  await click(revokeData, 100);
+  const confirmData = buttons().find((entry) => entry.startsWith('K|'));
+  await click(confirmData, 100);
+
+  const finalEdit = callsOf('editMessageText').at(-1);
+  assert.match(finalEdit.args.text, /🗑 <s>https:\/\/t\.me\/test_bot\?start=/);
+  assert.equal(finalEdit.args.reply_markup.inline_keyboard.length, 0);
+
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM retired_tokens').get().n, 1);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM topics').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM link_slots').get().n, 0);
+  assert.equal(callsOf('closeForumTopic').length, 1);
+
+  await onMessage(message(`/start ${token}`, 300));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /no longer active/);
+});

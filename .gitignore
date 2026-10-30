@@ -1,0 +1,17 @@
+# Runtime secrets and state
+.tgcloud/
+tgcloud/lib/secret.js
+.env
+.env.*
+!.env.example
+node_modules/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
