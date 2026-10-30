@@ -93,15 +93,65 @@ test('jobs are claimed once, retried, and failed jobs leave no payload', async (
   });
   const claimed = await store.claimJob(1);
   assert.equal(claimed.id, first);
+  assert.equal(claimed.sent_ids, null);
+  await store.setJobSent(first, JSON.stringify([77]));
   assert.equal((await store.claimJob(1)).id, second);
   await store.retryJob(first, 5);
   const again = await store.claimJob(10);
   assert.equal(again.id, first);
   assert.equal(again.attempts, 1);
+  assert.equal(again.sent_ids, JSON.stringify([77]));
   await store.failJob(first);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs WHERE id = ?').get(first).n, 0);
   await store.finishJob(second);
   assert.equal(await store.claimJob(20), undefined);
+});
+
+test('a pending group is claimed by exactly one caller', async () => {
+  await store.addPending({
+    user_key: 'u', link_id: 1, group_key: 'g', message_id: 1, created_at: 1,
+  });
+  assert.equal(await store.claimPending('u', 'g'), true);
+  assert.equal(await store.claimPending('u', 'g'), false);
+  await store.releasePending('u', 'g');
+  assert.equal(await store.claimPending('u', 'g'), true);
+});
+
+test('only one live reply window can exist per owner', async () => {
+  const row = {
+    owner_key: 'o', link_id: 1, target_ct: 'c', target_nonce: 'n',
+    thread_id: 104, original_id: 1, expires_at: 100, now: 50,
+  };
+  assert.equal(await store.openReplyWindow(row), true);
+  assert.equal(await store.openReplyWindow({ ...row, thread_id: 205, expires_at: 200, now: 60 }), false);
+  assert.equal(
+    rawDb().prepare('SELECT thread_id FROM reply_windows WHERE owner_key = ?').get('o').thread_id,
+    104,
+  );
+  assert.equal(await store.openReplyWindow({ ...row, thread_id: 205, expires_at: 300, now: 200 }), true);
+  assert.equal(
+    rawDb().prepare('SELECT thread_id FROM reply_windows WHERE owner_key = ?').get('o').thread_id,
+    205,
+  );
+});
+
+test('a memo prompt and a reply window exclude each other', async () => {
+  await store.ensureOwner('o2', 1);
+  const row = {
+    owner_key: 'o2', link_id: 1, target_ct: 'c', target_nonce: 'n',
+    thread_id: 104, original_id: 1, expires_at: 100, now: 50,
+  };
+  assert.equal(await store.claimMemo('o2', 1), true);
+  assert.equal(await store.openReplyWindow(row), false);
+  await store.clearMemoState('o2');
+  assert.equal(await store.openReplyWindow(row), true);
+  assert.equal(await store.claimMemo('o2', 1), false);
+});
+
+test('the first installation salt write wins', async () => {
+  assert.equal(await store.insertMetaIfAbsent('race_key', 'a'), true);
+  assert.equal(await store.insertMetaIfAbsent('race_key', 'b'), false);
+  assert.equal(await store.getMeta('race_key'), 'a');
 });
 
 test('revocation leaves no link-scoped rows', async () => {

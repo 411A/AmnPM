@@ -18,10 +18,13 @@ async function ownerSalt() {
   if (saltCache) return saltCache;
   const stored = await store.getMeta('install_salt');
   if (!stored) {
+    // The first writer wins; every isolate must use the same installation salt.
     const salt = crypto.randomHex(32);
-    await store.setMeta('install_salt', await sealOwnerSalt(salt));
-    saltCache = salt;
-    return salt;
+    await store.insertMetaIfAbsent('install_salt', await sealOwnerSalt(salt));
+    const winner = await store.getMeta('install_salt');
+    const [, version, nonce, ct] = winner.split(':');
+    saltCache = await crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
+    return saltCache;
   }
   if (stored.startsWith('enc:')) {
     const [, version, nonce, ct] = stored.split(':');

@@ -66,13 +66,14 @@ async function deliverAnonymous() {
   return callsOf('sendMessage').filter((call) => call.args.reply_markup).at(-1);
 }
 
-async function click(data, userId = 200, replyMarkup) {
+async function click(data, userId = 200, replyMarkup, threadId = 0) {
   await onCallback({
     id: `cb-${data}`,
     from: { id: userId, first_name: 'V', language_code: 'en' },
     message: {
       message_id: 999,
       chat: { id: userId },
+      ...(threadId ? { message_thread_id: threadId } : {}),
       ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     },
     data,
@@ -212,7 +213,7 @@ test('answer copies the owner reply back to the sender topic', async () => {
   });
   const windowMsg = callsOf('sendMessage').find((call) => call.args.text?.includes('Reply within'));
   assert.equal(windowMsg.args.message_thread_id, 104);
-  await onMessage(message('reply text', 100));
+  await onMessage(message('reply text', 100, { message_thread_id: 104 }));
 
   const copies = callsOf('copyMessage');
   assert.equal(copies.length, 1);
@@ -232,13 +233,16 @@ test('a sender with a link topic cannot send from All', async () => {
   assert.equal(sent.args.message_thread_id, undefined);
 });
 
-test('All still works when the sender topic is unavailable', async () => {
+test('All is rejected when the sender topic is unavailable', async () => {
   failNext('createForumTopic', { errorCode: 400, description: 'not a forum' });
   await setupLink();
   assert.equal(firstSenderThread(), 0);
 
   await onMessage(message('in all', 200, { first_name: 'V' }));
-  assert.ok(buttons().some((entry) => entry.startsWith('M|')));
+  assert.equal(buttons().filter((entry) => entry.startsWith('M|')).length, 0);
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Open your link again/);
+  assert.ok(sent.args.reply_markup.inline_keyboard.flat().some((button) => String(button.url).includes('?start=')));
 });
 
 test('an answer follows the original thread even if the row is stale', async () => {
@@ -249,8 +253,8 @@ test('an answer follows the original thread even if the row is stale', async () 
 
   const data = controls.args.reply_markup.inline_keyboard.flat()
     .find((button) => button.callback_data.startsWith('A|')).callback_data;
-  await click(data, 100, controls.args.reply_markup);
-  await onMessage(message('reply text', 100));
+  await click(data, 100, controls.args.reply_markup, 104);
+  await onMessage(message('reply text', 100, { message_thread_id: 104 }));
 
   assert.equal(callsOf('copyMessage').at(-1).args.message_thread_id, senderTopic);
 });
@@ -261,10 +265,10 @@ test('an answer recreates a missing sender topic instead of leaking to All', asy
   const controls = await deliverAnonymous();
   const data = controls.args.reply_markup.inline_keyboard.flat()
     .find((button) => button.callback_data.startsWith('A|')).callback_data;
-  await click(data, 100, controls.args.reply_markup);
+  await click(data, 100, controls.args.reply_markup, 104);
 
   failNext('copyMessage', { errorCode: 400, description: 'Bad Request: message thread not found' });
-  await onMessage(message('reply text', 100));
+  await onMessage(message('reply text', 100, { message_thread_id: 104 }));
 
   const topic = callsOf('createForumTopic').at(-1);
   assert.match(topic.args.name, /^\u200E⬆️ /);
@@ -276,6 +280,72 @@ test('an answer recreates a missing sender topic instead of leaking to All', asy
     senderTopic,
   );
   assert.match(callsOf('sendMessage').at(-1).args.text, /Reply sent/);
+});
+
+test('a second answer window is rejected while one is live', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  const update = (id) => ({
+    id,
+    from: { id: 100, language_code: 'en' },
+    message: {
+      message_id: 999,
+      chat: { id: 100 },
+      message_thread_id: 104,
+      reply_markup: controls.args.reply_markup,
+    },
+    data,
+  });
+
+  await onCallback(update('cb-answer-1'));
+  await onCallback(update('cb-answer-2'));
+
+  assert.equal(callsOf('sendMessage').filter((call) => /Reply within/.test(call.args.text)).length, 1);
+  const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
+  assert.equal(alerts.length, 1);
+  assert.match(alerts[0].args.text, /already waiting/);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 1);
+});
+
+test('an owner message in another thread is not sent as the answer', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  await onCallback({
+    id: 'cb-answer',
+    from: { id: 100, language_code: 'en' },
+    message: {
+      message_id: 999,
+      chat: { id: 100 },
+      message_thread_id: 104,
+      reply_markup: controls.args.reply_markup,
+    },
+    data,
+  });
+
+  await onMessage(message('not the answer', 100, { message_thread_id: 205 }));
+
+  assert.equal(callsOf('copyMessage').length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 1);
+});
+
+test('double mode taps deliver exactly one copy', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  const update = (id) => ({
+    id,
+    from: { id: 200, first_name: 'V', language_code: 'en' },
+    message: { message_id: 999, chat: { id: 200 }, reply_to_message: { message_id: 3 } },
+    data,
+  });
+
+  await Promise.all([onCallback(update('cb-mode-1')), onCallback(update('cb-mode-2'))]);
+
+  assert.equal(callsOf('copyMessages').length, 1);
 });
 
 test('block refuses the next message', async () => {
@@ -357,6 +427,26 @@ test('owner topic text stays in the topic and does not become a sender message',
   const sent = callsOf('sendMessage').at(-1);
   assert.match(sent.args.text, /Press Answer/);
   assert.equal(sent.args.message_thread_id, thread);
+});
+
+test('double block taps apply once and refresh the button', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const blockData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+
+  await click(blockData, 100, controls.args.reply_markup);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM blocks').get().n, 1);
+
+  const edited = callsOf('editMessageReplyMarkup').at(-1).args.reply_markup.inline_keyboard;
+  const nextData = edited[1][0].callback_data;
+  assert.notEqual(nextData, blockData);
+
+  await click(blockData, 100, controls.args.reply_markup);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM blocks').get().n, 1);
+
+  await click(nextData, 100, { inline_keyboard: edited });
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM blocks').get().n, 0);
 });
 
 test('a failed read receipt shows a popup', async () => {

@@ -99,6 +99,7 @@ export async function editMenu(q, menu) {
 export async function requestMemo(link, lang) {
   const chatId = await ownerChatId(link);
   const current = await store.getMemoState(link.owner_key);
+  if (!(await store.claimMemo(link.owner_key, link.id))) return false;
   if (current?.memo_message_id) {
     try {
       await api.deleteMessage({ chat_id: chatId, message_id: current.memo_message_id });
@@ -106,11 +107,17 @@ export async function requestMemo(link, lang) {
       // already gone
     }
   }
-  const sent = await api.sendMessage({
-    chat_id: chatId,
-    text: t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }),
-    parse_mode: 'HTML',
-    link_preview_options: { is_disabled: true },
-  });
-  await store.setMemoState(link.owner_key, link.id, sent.message_id);
+  try {
+    const sent = await api.sendMessage({
+      chat_id: chatId,
+      text: t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }),
+      parse_mode: 'HTML',
+      link_preview_options: { is_disabled: true },
+    });
+    await store.setMemoMessageId(link.owner_key, sent.message_id);
+    return true;
+  } catch {
+    await store.clearMemoState(link.owner_key);
+    return false;
+  }
 }

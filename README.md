@@ -79,8 +79,8 @@ The token is read by the CLI from `TGCLOUD_TOKEN` or `.tgcloud/credentials`. It 
 in this repository. `tgcloud push` deploys code; `migrate` applies the schema. A crash after
 `push` still deploys — run `tgcloud fetch` before the next push.
 
-Enable **Topics** for the bot in @BotFather. Without it, `createForumTopic` fails and delivery
-falls back to unthreaded messages in the owner's chat.
+Enable **Topics** for the bot in @BotFather. Without it, sender topic creation fails and senders
+are asked to reopen the link; owner delivery falls back to unthreaded messages with a notice.
 
 ## Security
 
@@ -180,8 +180,8 @@ Telegram. The Bot API has no read-topic-name method, so a rename made in the Tel
 be observed or repaired; only `/rename` is enforced.
 
 Replies and status messages sent from inside a topic carry `message_thread_id`, so they stay in
-that topic instead of leaking into the All/General chat. A sender who already has a link topic
-must write there: a message in All is answered with a pointer to that topic instead of being
+that topic instead of leaking into the All/General chat. Senders must write in their link topic:
+a message in All is answered with a pointer to that topic (or a fresh link button), never
 delivered. The owner's answer follows the thread of the sender's original message, so it lands in
 the same topic; if that topic was deleted, the bot recreates the link topic and retries instead of
 silently dropping the answer into All. On revoke, owner topics receive a “topic closed” notice,
@@ -189,12 +189,35 @@ and the sender is told “Stored data deleted” the next time they open the lin
 sender topic. Immediate push notification would require storing the sender chat id; the bot does
 not store it.
 
+## Concurrency and routing
+
+- A sender's link topic is the only routing authority. Messages in All are never delivered;
+  they get a pointer to the link topic (or a fresh link button if the topic is missing).
+- A pending mode group is claimed by exactly one callback. Double taps and two different mode
+  buttons deliver once.
+- Owner reply windows are single, atomic, and matched to the topic where Answer was pressed. A
+  second Answer waits instead of silently replacing the first; a reply from another thread is
+  not captured.
+- Memo prompts and reply windows exclude each other with atomic claims.
+- Topic creation reserves the unique `(link, kind, conversation)` slot before calling Telegram;
+  a concurrent delivery reuses the row or retries after the creator finishes.
+- Delivery jobs record the copied message ids, so a failed control send retries the controls
+  without copying the message a second time.
+- Revocation marks the link `revoked` before deleting; queued jobs check the state and drop.
+- Block buttons carry their target state, are consumed once, and are replaced with fresh tokens,
+  so a double tap cannot flip the block back.
+
+The platform has no transactions. A crash between a Telegram API call and its database
+acknowledgement can duplicate a message or leave an orphan topic; it cannot change the routing
+identifiers, which are always link-, chat-, and thread-scoped and bound by encryption AAD.
+
 ## Known limits
 
 - Albums always ask for a mode tap once, even after a mode is set, because the tap is the only
   barrier that proves the whole album arrived (the platform has no timers).
-- A failed topic creation is cached as unavailable until the link is revoked; enabling Topics in
-  @BotFather after the first failure needs a new link.
+- A failed owner-topic creation is cached as unavailable until the link is revoked; enabling
+  Topics in @BotFather after the first failure needs a new link. Sender topics are retried on
+  `/start`.
 - Delivery is at-least-once. A crash between a successful send and the job acknowledgement can
   duplicate one message; a lost message is never preferred.
 - `closeForumTopic` is documented for supergroups only; in a bot chat the notice is posted and

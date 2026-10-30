@@ -23,6 +23,11 @@ const en = {
     '{e.write} Send your message. The bot will wait for it as long as needed.\n' +
     'Rename this topic with /rename &lt;name&gt;.',
   senderTopicHint: '{e.inbox} Your messages for this link are in the "{e.up} {token}" topic. Open it and write there.',
+  senderTopicMissing:
+    'Open your link again to create your topic, then write there.\n' +
+    'Messages in All are not delivered.',
+  topicPreparing: '{e.hourglass} Your topic is being prepared — tap the link again in a moment.',
+  topicFailed: '{e.warn} Could not create your topic. Open the link again to retry.',
   chooseMode: '{e.send} How should this reach the owner?',
   modeAnon: '{e.anon} Anonymous',
   modeHistory: '{e.history} With history',
@@ -59,6 +64,8 @@ const en = {
   renameNoTopic: '{e.warn} Use /rename inside a topic.',
   renameFailed: '{e.warn} Could not rename this topic.',
   answerWindow: '{e.write} Reply within {seconds}s. Send your message now.',
+  replyBusy: 'A reply is already waiting. Send it first.',
+  memoBusy: 'Send the pending memo first.',
   answerSent: '{e.check} Reply sent.',
   answerExpired: '{e.hourglass} The reply window closed. Press Answer again.',
   answerOnly: '{e.info} Press Answer on a message to reply.',
@@ -81,6 +88,7 @@ const en = {
   deleteNotice: '{e.trash} Stored data deleted. Only this chat history remains.',
   topicClosed: '{e.trash} This topic is closed because the link was revoked.',
   topicsDisabled: '{e.info} Enable Topics for this bot in @BotFather to get separate threads.',
+  preparing: '{e.hourglass} Preparing your topic — tap the mode again in a moment.',
   failed: '{e.warn} Delivery failed. Try again.',
 };
 
@@ -107,6 +115,11 @@ const fa = {
     '{e.write} پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.\n' +
     'نام این موضوع را با /rename &lt;نام&gt; تغییر دهید.',
   senderTopicHint: '{e.inbox} پیام‌های این لینک در موضوع «{e.up} {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
+  senderTopicMissing:
+    'لینک را دوباره باز کنید تا موضوع شما ساخته شود، سپس همان‌جا بنویسید.\n' +
+    'پیام‌های بخش All ارسال نمی‌شوند.',
+  topicPreparing: '{e.hourglass} موضوع شما در حال آماده‌سازی است — لحظه‌ای بعد دوباره لینک را باز کنید.',
+  topicFailed: '{e.warn} ساخت موضوع ممکن نشد. لینک را دوباره باز کنید تا تلاش شود.',
   chooseMode: '{e.send} این پیام چطور به صاحب لینک برسد؟',
   modeAnon: '{e.anon} ناشناس',
   modeHistory: '{e.history} با سابقه',
@@ -143,6 +156,8 @@ const fa = {
   renameNoTopic: '{e.warn} دستور /rename را داخل یک موضوع بفرستید.',
   renameFailed: '{e.warn} تغییر نام این موضوع ممکن نشد.',
   answerWindow: '{e.write} تا {seconds} ثانیه پاسخ دهید. پیامتان را بفرستید.',
+  replyBusy: 'یک پاسخ در انتظار است. اول آن را بفرستید.',
+  memoBusy: 'اول یادداشت در انتظار را بفرستید.',
   answerSent: '{e.check} پاسخ ارسال شد.',
   answerExpired: '{e.hourglass} پنجره پاسخ بسته شد. دوباره Answer را بزنید.',
   answerOnly: '{e.info} برای پاسخ، روی پیام Answer را بزنید.',
@@ -165,6 +180,7 @@ const fa = {
   deleteNotice: '{e.trash} داده‌های ذخیره‌شده پاک شد. فقط تاریخچه همین گفتگو می‌ماند.',
   topicClosed: '{e.trash} این موضوع بسته شد چون لینک حذف شده است.',
   topicsDisabled: '{e.info} برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
+  preparing: '{e.hourglass} موضوع در حال آماده‌سازی است — لحظه‌ای بعد دوباره حالت را بزنید.',
   failed: '{e.warn} ارسال نشد. دوباره تلاش کنید.',
 };
 

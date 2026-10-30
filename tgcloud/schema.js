@@ -62,6 +62,7 @@ export const pending = table('pending', {
   link_id: integer('link_id').notNull(),
   group_key: text('group_key').notNull(),
   message_id: integer('message_id').notNull(),
+  claimed: integer('claimed').notNull().default(0),
   created_at: integer('created_at').notNull(),
 }, (t) => [
   uniqueIndex('idx_pending_unique').on(t.user_key, t.group_key, t.message_id),
@@ -90,8 +91,10 @@ export const topics = table('topics', {
   thread_id: integer('thread_id').notNull(),
   name: text('name').notNull(),
   state: text('state').notNull(),
+  created_at: integer('created_at').notNull().default(0),
 }, (t) => [
   uniqueIndex('idx_topics_unique').on(t.link_id, t.kind, t.conversation_id),
+  index('idx_topics_thread').on(t.thread_id),
 ]);
 
 export const sender_topics = table('sender_topics', {
@@ -105,6 +108,7 @@ export const sender_topics = table('sender_topics', {
 }, (t) => [
   uniqueIndex('idx_sender_topics_unique').on(t.link_id, t.sender_key),
   index('idx_sender_topics_link').on(t.link_id),
+  index('idx_sender_topics_thread').on(t.thread_id),
 ]);
 
 export const blocks = table('blocks', {
@@ -138,6 +142,7 @@ export const jobs = table('jobs', {
   state: text('state').notNull(),
   claim: text('claim'),
   attempts: integer('attempts').notNull().default(0),
+  sent_ids: text('sent_ids'),
   next_at: integer('next_at').notNull(),
   created_at: integer('created_at').notNull(),
 }, (t) => [
@@ -160,6 +165,7 @@ export const reply_windows = table('reply_windows', {
   link_id: integer('link_id').notNull(),
   target_ct: text('target_ct').notNull(),
   target_nonce: text('target_nonce').notNull(),
+  thread_id: integer('thread_id').notNull().default(0),
   original_id: integer('original_id').notNull(),
   expires_at: integer('expires_at').notNull(),
 }, (t) => [

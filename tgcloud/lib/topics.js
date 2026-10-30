@@ -4,37 +4,51 @@ import { t } from './i18n.js';
 import { topicName, senderTopicName, customTopicName } from './render.js';
 import { linkMemo, conversationLabel, linkToken, topicLabel } from './keys.js';
 
+const STALE_SECONDS = 60;
+
 export async function ensureTopic(link, chatId, kind, conversationId, name) {
-  const existing = await store.getTopic(link.id, kind, conversationId);
-  if (existing) {
+  const now = Math.floor(Date.now() / 1000);
+  let existing = await store.getTopic(link.id, kind, conversationId);
+
+  if (existing?.state === 'creating') {
+    if (existing.created_at > now - STALE_SECONDS) {
+      return { thread: 0, created: false, pending: true };
+    }
+    if (!(await store.takeStaleTopic(existing.id, now - STALE_SECONDS, now))) {
+      return { thread: 0, created: false, pending: true };
+    }
+  } else if (existing) {
     if (existing.name && !existing.name.startsWith('enc:')) {
       await store.updateTopic(existing.id, existing.thread_id, '', existing.state);
     }
     return { thread: existing.thread_id, created: false };
   }
 
-  try {
-    const topic = await api.createForumTopic({ chat_id: chatId, name });
-    await store.createTopic({
+  let topicId = existing?.id;
+  if (!topicId) {
+    const reserved = await store.reserveTopic({
       link_id: link.id,
       kind,
       conversation_id: conversationId,
-      thread_id: topic.message_thread_id,
-      name: '',
-      state: 'open',
+      created_at: now,
     });
+    if (!reserved) {
+      const row = await store.getTopic(link.id, kind, conversationId);
+      if (row?.state === 'creating') return { thread: 0, created: false, pending: true };
+      return { thread: row?.thread_id ?? 0, created: false };
+    }
+    const row = await store.getTopic(link.id, kind, conversationId);
+    topicId = row.id;
+  }
+
+  try {
+    const topic = await api.createForumTopic({ chat_id: chatId, name });
+    await store.updateTopicState(topicId, topic.message_thread_id, 'open');
     return { thread: topic.message_thread_id, created: true };
   } catch {
     // shortcut: a failed creation is cached as unavailable until the link is revoked;
     // retry would cost an API call on every message for owners without topics.
-    await store.createTopic({
-      link_id: link.id,
-      kind,
-      conversation_id: conversationId,
-      thread_id: 0,
-      name: '',
-      state: 'unavailable',
-    });
+    await store.updateTopicState(topicId, 0, 'unavailable');
     return { thread: 0, created: true };
   }
 }
@@ -70,41 +84,64 @@ export async function renameTopics(link, chatId) {
 }
 
 export async function ensureSenderTopic(link, chatId, senderKey, now) {
-  const existing = await store.getSenderTopic(link.id, senderKey);
+  let existing = await store.getSenderTopic(link.id, senderKey);
   const name = senderTopicName(await linkToken(link));
 
-  if (existing) return { thread: existing.thread_id, created: false };
+  if (existing?.state === 'creating') {
+    if (existing.created_at > now - STALE_SECONDS) {
+      return { thread: 0, created: false, pending: true };
+    }
+    if (!(await store.takeStaleSenderTopic(existing.id, now - STALE_SECONDS, now))) {
+      return { thread: 0, created: false, pending: true };
+    }
+  } else if (existing?.state === 'unavailable') {
+    if (!(await store.retrySenderTopic(existing.id, now))) {
+      const row = await store.getSenderTopic(link.id, senderKey);
+      if (row?.state === 'creating') return { thread: 0, created: false, pending: true };
+      return { thread: row?.thread_id ?? 0, created: false };
+    }
+  } else if (existing) {
+    return { thread: existing.thread_id, created: false };
+  }
+
+  let topicId = existing?.id;
+  if (!topicId) {
+    const reserved = await store.reserveSenderTopic({
+      link_id: link.id,
+      sender_key: senderKey,
+      created_at: now,
+    });
+    if (!reserved) {
+      const row = await store.getSenderTopic(link.id, senderKey);
+      if (row?.state === 'creating') return { thread: 0, created: false, pending: true };
+      return { thread: row?.thread_id ?? 0, created: false };
+    }
+    const row = await store.getSenderTopic(link.id, senderKey);
+    topicId = row.id;
+  }
 
   try {
     const topic = await api.createForumTopic({ chat_id: chatId, name });
-    await store.createSenderTopic({
-      link_id: link.id,
-      sender_key: senderKey,
-      thread_id: topic.message_thread_id,
-      name: '',
-      state: 'open',
-      created_at: now,
-    });
+    await store.updateSenderTopic(topicId, topic.message_thread_id, 'open');
     return { thread: topic.message_thread_id, created: true };
   } catch {
-    await store.createSenderTopic({
-      link_id: link.id,
-      sender_key: senderKey,
-      thread_id: 0,
-      name: '',
-      state: 'unavailable',
-      created_at: now,
-    });
+    await store.updateSenderTopic(topicId, 0, 'unavailable');
     return { thread: 0, created: true };
   }
 }
 
 // The stored topic is gone or closed: create a replacement and repoint the row.
 export async function recreateSenderTopic(link, chatId, senderKey, now) {
+  const existing = await store.getSenderTopic(link.id, senderKey);
+  if (existing) {
+    if (!(await store.beginSenderRecreate(existing.id, existing.thread_id, now))) {
+      const row = await store.getSenderTopic(link.id, senderKey);
+      return row?.state === 'open' ? row.thread_id : 0;
+    }
+  }
   try {
     const name = senderTopicName(await linkToken(link));
     const topic = await api.createForumTopic({ chat_id: chatId, name });
-    const existing = await store.getSenderTopic(link.id, senderKey);
     if (existing) {
       await store.updateSenderTopic(existing.id, topic.message_thread_id, 'open');
     } else {
@@ -119,6 +156,7 @@ export async function recreateSenderTopic(link, chatId, senderKey, now) {
     }
     return topic.message_thread_id;
   } catch {
+    if (existing) await store.updateSenderTopic(existing.id, 0, 'unavailable');
     return 0;
   }
 }

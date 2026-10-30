@@ -12,6 +12,12 @@ export async function setMeta(key, value) {
     ON CONFLICT(k) DO UPDATE SET v = excluded.v`);
 }
 
+export async function insertMetaIfAbsent(key, value) {
+  const result = await db.run(sql`INSERT INTO meta (k, v) VALUES (${key}, ${value})
+    ON CONFLICT(k) DO NOTHING`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
 export async function ensureOwner(ownerKey, now, lang = 'en') {
   let created = false;
   try {
@@ -32,7 +38,8 @@ export async function getOwner(ownerKey) {
 // One read covers the memo prompt, the reply window, and owner detection.
 export async function getOwnerState(ownerKey) {
   return db.get(sql`SELECT o.owner_key, o.memo_link_id, o.memo_message_id,
-      r.link_id AS reply_link_id, r.target_ct, r.target_nonce, r.original_id, r.expires_at
+      r.link_id AS reply_link_id, r.target_ct, r.target_nonce,
+      r.thread_id AS reply_thread_id, r.original_id, r.expires_at
     FROM owners o
     LEFT JOIN reply_windows r ON r.owner_key = o.owner_key
     WHERE o.owner_key = ${ownerKey}`);
@@ -89,6 +96,10 @@ export async function updateMemo(id, memo) {
   await db.run(sql`UPDATE links SET memo = ${memo} WHERE id = ${id}`);
 }
 
+export async function setLinkState(id, state) {
+  await db.run(sql`UPDATE links SET state = ${state} WHERE id = ${id}`);
+}
+
 export async function setLinkMemo(id, memo) {
   await db.run(sql`UPDATE links SET memo = ${memo} WHERE id = ${id}`);
 }
@@ -137,6 +148,18 @@ export async function addPending(row) {
   return !existing;
 }
 
+// First caller wins the group; a concurrent second tap gets no rows.
+export async function claimPending(userKey, groupKey) {
+  const result = await db.run(sql`UPDATE pending SET claimed = 1
+    WHERE user_key = ${userKey} AND group_key = ${groupKey} AND claimed = 0`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function releasePending(userKey, groupKey) {
+  await db.run(sql`UPDATE pending SET claimed = 0
+    WHERE user_key = ${userKey} AND group_key = ${groupKey}`);
+}
+
 export async function listPending(userKey, groupKey) {
   return db.all(sql`SELECT message_id FROM pending
     WHERE user_key = ${userKey} AND group_key = ${groupKey} ORDER BY message_id`);
@@ -150,9 +173,18 @@ export async function sweepPending(cutoff) {
   await db.run(sql`DELETE FROM pending WHERE created_at <= ${cutoff}`);
 }
 
-export async function setMemoState(ownerKey, linkId, messageId) {
-  await db.run(sql`UPDATE owners SET memo_link_id = ${linkId}, memo_message_id = ${messageId}
-    WHERE owner_key = ${ownerKey}`);
+// The memo prompt and the reply window are mutually exclusive. Each claim is a
+// single statement, so two concurrent owner actions cannot both win.
+export async function claimMemo(ownerKey, linkId) {
+  const result = await db.run(sql`UPDATE owners SET memo_link_id = ${linkId}, memo_message_id = 0
+    WHERE owner_key = ${ownerKey}
+      AND NOT EXISTS (SELECT 1 FROM reply_windows WHERE owner_key = ${ownerKey})`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function setMemoMessageId(ownerKey, messageId) {
+  await db.run(sql`UPDATE owners SET memo_message_id = ${messageId}
+    WHERE owner_key = ${ownerKey} AND memo_link_id IS NOT NULL`);
 }
 
 export async function getMemoState(ownerKey) {
@@ -176,7 +208,7 @@ export async function getConversation(linkId, senderKey, mode) {
 }
 
 export async function createConversation(row) {
-  const result = await db.run(sql`INSERT INTO conversations
+  const result = await db.run(sql`INSERT OR IGNORE INTO conversations
     (link_id, sender_key, mode, indicator, topic_id, created_at, last_at)
     VALUES (${row.link_id}, ${row.sender_key}, ${row.mode}, ${row.indicator ?? null},
       ${row.topic_id ?? 0}, ${row.created_at}, ${row.last_at})`);
@@ -207,10 +239,30 @@ export async function getOwnedTopicByThread(ownerKey, threadId) {
 
 export async function createTopic(row) {
   const result = await db.run(sql`INSERT INTO topics
-    (link_id, kind, conversation_id, thread_id, name, state)
+    (link_id, kind, conversation_id, thread_id, name, state, created_at)
     VALUES (${row.link_id}, ${row.kind}, ${row.conversation_id}, ${row.thread_id}, ${row.name},
-      ${row.state})`);
+      ${row.state}, ${row.created_at ?? 0})`);
   return result.lastInsertRowid;
+}
+
+// Reserve the unique (link, kind, conversation) slot before calling Telegram,
+// so two concurrent deliveries cannot create two topics for one conversation.
+export async function reserveTopic(row) {
+  const result = await db.run(sql`INSERT INTO topics
+    (link_id, kind, conversation_id, thread_id, name, state, created_at)
+    VALUES (${row.link_id}, ${row.kind}, ${row.conversation_id}, 0, '', 'creating', ${row.created_at})
+    ON CONFLICT(link_id, kind, conversation_id) DO NOTHING`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function updateTopicState(id, threadId, state) {
+  await db.run(sql`UPDATE topics SET thread_id = ${threadId}, state = ${state} WHERE id = ${id}`);
+}
+
+export async function takeStaleTopic(id, cutoff, now) {
+  const result = await db.run(sql`UPDATE topics SET created_at = ${now}
+    WHERE id = ${id} AND state = 'creating' AND created_at <= ${cutoff}`);
+  return (result.rowsAffected ?? result.changes) > 0;
 }
 
 export async function updateTopic(id, threadId, name, state) {
@@ -244,9 +296,36 @@ export async function createSenderTopic(row) {
   return getSenderTopic(row.link_id, row.sender_key);
 }
 
+export async function reserveSenderTopic(row) {
+  const result = await db.run(sql`INSERT INTO sender_topics
+    (link_id, sender_key, thread_id, name, state, created_at)
+    VALUES (${row.link_id}, ${row.sender_key}, 0, '', 'creating', ${row.created_at})
+    ON CONFLICT(link_id, sender_key) DO NOTHING`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
 export async function updateSenderTopic(id, threadId, state) {
   await db.run(sql`UPDATE sender_topics SET thread_id = ${threadId}, state = ${state}
     WHERE id = ${id}`);
+}
+
+export async function beginSenderRecreate(id, threadId, now) {
+  const result = await db.run(sql`UPDATE sender_topics
+    SET thread_id = 0, state = 'creating', created_at = ${now}
+    WHERE id = ${id} AND thread_id = ${threadId} AND state = 'open'`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function takeStaleSenderTopic(id, cutoff, now) {
+  const result = await db.run(sql`UPDATE sender_topics SET created_at = ${now}
+    WHERE id = ${id} AND state = 'creating' AND created_at <= ${cutoff}`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function retrySenderTopic(id, now) {
+  const result = await db.run(sql`UPDATE sender_topics SET state = 'creating', created_at = ${now}
+    WHERE id = ${id} AND state = 'unavailable'`);
+  return (result.rowsAffected ?? result.changes) > 0;
 }
 
 export async function hasBlock(ownerKey, linkId, senderKey) {
@@ -291,7 +370,8 @@ export async function getActionToken(prefix) {
 }
 
 export async function deleteActionToken(prefix) {
-  await db.run(sql`DELETE FROM action_tokens WHERE prefix = ${prefix}`);
+  const result = await db.run(sql`DELETE FROM action_tokens WHERE prefix = ${prefix}`);
+  return (result.rowsAffected ?? result.changes) > 0;
 }
 
 export async function deleteActionTokens(linkId, kind) {
@@ -318,11 +398,15 @@ export async function claimJob(now) {
     const claim = randomHex(8);
     await db.run(sql`UPDATE jobs SET state = 'sending', claim = ${claim}
       WHERE id = ${row.id} AND state = 'pending'`);
-    const claimed = await db.get(sql`SELECT id, link_id, kind, payload_ct, payload_nonce, attempts
+    const claimed = await db.get(sql`SELECT id, link_id, kind, payload_ct, payload_nonce, attempts, sent_ids
       FROM jobs WHERE id = ${row.id} AND state = 'sending' AND claim = ${claim}`);
     if (claimed) return claimed;
   }
   return undefined;
+}
+
+export async function setJobSent(id, sentIds) {
+  await db.run(sql`UPDATE jobs SET sent_ids = ${sentIds} WHERE id = ${id}`);
 }
 
 export async function finishJob(id) {
@@ -353,14 +437,20 @@ export async function bumpRate(linkId, senderKey, now) {
 }
 
 export async function openReplyWindow(row) {
-  await db.run(sql`INSERT INTO reply_windows
-    (owner_key, link_id, target_ct, target_nonce, original_id, expires_at)
-    VALUES (${row.owner_key}, ${row.link_id}, ${row.target_ct}, ${row.target_nonce},
-      ${row.original_id}, ${row.expires_at})
+  const result = await db.run(sql`INSERT INTO reply_windows
+    (owner_key, link_id, target_ct, target_nonce, thread_id, original_id, expires_at)
+    SELECT ${row.owner_key}, ${row.link_id}, ${row.target_ct}, ${row.target_nonce},
+      ${row.thread_id ?? 0}, ${row.original_id}, ${row.expires_at}
+    WHERE NOT EXISTS (SELECT 1 FROM owners
+      WHERE owner_key = ${row.owner_key} AND memo_link_id IS NOT NULL)
     ON CONFLICT(owner_key) DO UPDATE SET
       link_id = excluded.link_id, target_ct = excluded.target_ct,
-      target_nonce = excluded.target_nonce, original_id = excluded.original_id,
-      expires_at = excluded.expires_at`);
+      target_nonce = excluded.target_nonce, thread_id = excluded.thread_id,
+      original_id = excluded.original_id, expires_at = excluded.expires_at
+    WHERE reply_windows.expires_at <= ${row.now ?? 0}
+      AND NOT EXISTS (SELECT 1 FROM owners
+        WHERE owner_key = ${row.owner_key} AND memo_link_id IS NOT NULL)`);
+  return (result.rowsAffected ?? result.changes) > 0;
 }
 
 export async function getReplyWindow(ownerKey, now) {

@@ -33,7 +33,14 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
   const lang = owner?.lang ?? 'en';
 
   if (mode === 'anon') {
-    const { thread, created } = await ensureTopic(link, ownerChat, 'anon', 0, render.topicName('anon', memoText));
+    const { thread, created, pending } = await ensureTopic(
+      link,
+      ownerChat,
+      'anon',
+      0,
+      render.topicName('anon', memoText),
+    );
+    if (pending) return { pending: true };
     if (created && !thread) {
       await api.sendMessage({ chat_id: ownerChat, text: t(lang, 'topicsDisabled') });
     }
@@ -42,13 +49,14 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
 
   const conversation = await conversationFor(link, senderKey, mode, firstName, now);
   const label = await conversationLabel(link, conversation);
-  const { thread } = await ensureTopic(
+  const { thread, pending } = await ensureTopic(
     link,
     ownerChat,
     mode,
     conversation.id,
     render.topicName(mode, memoText, label),
   );
+  if (pending) return { pending: true };
   if (thread && conversation.topic_id !== thread) {
     await store.setConversationTopic(conversation.id, thread);
   }
@@ -67,6 +75,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
 export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0) {
   const ownerChat = await ownerChatId(link);
   const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, now);
+  if (target.pending) return target;
   await sealJob(link, target.kind, {
     chat_id: ownerChat,
     thread_id: target.thread,

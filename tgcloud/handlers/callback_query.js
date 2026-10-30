@@ -53,14 +53,22 @@ async function removeReadButton(q) {
   });
 }
 
-async function toggleBlockButton(q, blockedLink, blockedAll, lang) {
+async function toggleBlockButton(q, blockedLink, blockedAll, lang, nextLink, nextAll) {
   const keyboard = q.message?.reply_markup?.inline_keyboard;
   if (!keyboard) return;
   if (keyboard[1]?.[0]) {
     keyboard[1][0].text = blockedLink ? t(lang, 'btnUnblockLink') : t(lang, 'btnBlockLink');
+    if (nextLink) {
+      keyboard[1][0].callback_data =
+        `${CALLBACK.BLOCK}${CALLBACK.SEP}${nextLink.prefix}${CALLBACK.SEP}${nextLink.suffix}`;
+    }
   }
   if (keyboard[1]?.[1]) {
     keyboard[1][1].text = blockedAll ? t(lang, 'btnUnblockAll') : t(lang, 'btnBlockAll');
+    if (nextAll) {
+      keyboard[1][1].callback_data =
+        `${CALLBACK.BLOCK}${CALLBACK.SEP}${nextAll.prefix}${CALLBACK.SEP}${nextAll.suffix}`;
+    }
   }
   await api.editMessageReplyMarkup({
     chat_id: q.message.chat.id,
@@ -80,8 +88,14 @@ async function mode(q, k, opened, lang, now) {
     return answer(q, t(lang, 'blockedNotice'));
   }
 
+  const claimed = await store.claimPending(p.user_key, p.group_key);
+  if (!claimed) return answer(q, t(lang, 'answerExpired'));
+
   const pending = await store.listPending(p.user_key, p.group_key);
-  if (!pending.length) return answer(q, t(lang, 'answerExpired'));
+  if (!pending.length) {
+    await store.releasePending(p.user_key, p.group_key);
+    return answer(q, t(lang, 'answerExpired'));
+  }
 
   // Stop the button spinner now; delivery and cleanup continue behind it.
   await answer(q);
@@ -90,8 +104,29 @@ async function mode(q, k, opened, lang, now) {
   const session = await store.getSession(p.user_key);
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
-  const target = await deliver(link, p.sender_id, p.sender_key, chosen,
-    pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0);
+  let target;
+  try {
+    target = await deliver(link, p.sender_id, p.sender_key, chosen,
+      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0);
+  } catch {
+    await store.releasePending(p.user_key, p.group_key);
+    await api.sendMessage({
+      chat_id: p.sender_id,
+      ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
+      text: t(lang, 'failed'),
+    });
+    return undefined;
+  }
+
+  if (target.pending) {
+    await store.releasePending(p.user_key, p.group_key);
+    await api.sendMessage({
+      chat_id: p.sender_id,
+      ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
+      text: t(lang, 'preparing'),
+    });
+    return undefined;
+  }
 
   const text = chosen === 'anon'
     ? t(lang, 'sentAnon')
@@ -119,22 +154,28 @@ async function mode(q, k, opened, lang, now) {
 async function replyWindow(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
+  if (await store.getMemoState(link.owner_key)) {
+    return answer(q, t(lang, 'memoBusy'), true);
+  }
   const dek = await linkDek(link);
   const target = JSON.stringify({
     chat_id: p.sender_chat_id,
     thread_id: p.sender_thread_id ?? 0,
   });
   const sealed = await crypto.encrypt(dek, target, `link:${link.id}:reply:v1`);
-  await store.openReplyWindow({
+  const thread = q.message?.message_thread_id ?? p.owner_thread_id ?? 0;
+  const openedWindow = await store.openReplyWindow({
     owner_key: link.owner_key,
     link_id: link.id,
     target_ct: sealed.ct,
     target_nonce: sealed.nonce,
+    thread_id: thread,
     original_id: p.original_id,
     expires_at: now + CONFIG.replyWindowSeconds,
+    now,
   });
+  if (!openedWindow) return answer(q, t(lang, 'replyBusy'), true);
   const chatId = q.message?.chat?.id ?? (await ownerChatId(link));
-  const thread = q.message?.message_thread_id;
   await api.sendMessage({
     chat_id: chatId,
     ...(thread ? { message_thread_id: thread } : {}),
@@ -161,22 +202,38 @@ async function read(q, opened, lang) {
 async function block(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
+  if (!(await store.deleteActionToken(opened.row.prefix))) {
+    return answer(q, t(lang, 'linkNotFound'));
+  }
   const globalKey = await userKeyFor(p.sender_chat_id);
   const scope = p.scope === 'all' ? 0 : link.id;
   const key = p.scope === 'all' ? globalKey : p.sender_key;
   const blocked = await store.hasBlock(link.owner_key, scope, key);
+  const desired = p.blocked === undefined ? !blocked : Boolean(p.blocked);
 
-  if (blocked) await store.clearBlock(link.owner_key, scope, key);
-  else await store.setBlock(link.owner_key, scope, key, now);
+  if (desired) await store.setBlock(link.owner_key, scope, key, now);
+  else await store.clearBlock(link.owner_key, scope, key);
 
   const blockedLink = await store.hasBlock(link.owner_key, link.id, p.sender_key);
   const blockedAll = await store.hasBlock(link.owner_key, 0, globalKey);
-  await toggleBlockButton(q, blockedLink, blockedAll, lang);
 
-  const nowBlocked = !blocked;
+  const dek = await linkDek(link);
+  const base = {
+    link_id: link.id,
+    sender_key: p.sender_key,
+    sender_chat_id: p.sender_chat_id,
+  };
+  const [nextLink, nextAll] = await Promise.all([
+    sealAction(link, 'block', { ...base, scope: 'link', blocked: !blockedLink },
+      now, CONFIG.actionTtlSeconds, dek),
+    sealAction(link, 'block', { ...base, scope: 'all', blocked: !blockedAll },
+      now, CONFIG.actionTtlSeconds, dek),
+  ]);
+  await toggleBlockButton(q, blockedLink, blockedAll, lang, nextLink, nextAll);
+
   const labelKey = p.scope === 'all'
-    ? (nowBlocked ? 'blockedAll' : 'unblockedAll')
-    : (nowBlocked ? 'blockedLink' : 'unblockedLink');
+    ? (desired ? 'blockedAll' : 'unblockedAll')
+    : (desired ? 'blockedLink' : 'unblockedLink');
   return answer(q, t(lang, labelKey));
 }
 
@@ -215,6 +272,7 @@ async function revoke(q, opened, lang, now) {
       // already gone
     }
   }
+  await store.setLinkState(link.id, 'revoked');
   await closeLinkTopics(link, chat, owner?.lang ?? lang);
   await store.insertRetired(await ids.tokenFp(token), now);
   await store.deleteLinkScoped(link.id);
@@ -242,8 +300,12 @@ async function revoke(q, opened, lang, now) {
   return answer(q, t(lang, 'revokedShort'));
 }
 
-async function memoPrompt(q, opened, lang) {
-  await requestMemo(opened.link, lang);
+async function memoPrompt(q, opened, lang, now) {
+  if (await store.getReplyWindow(opened.link.owner_key, now)) {
+    return answer(q, t(lang, 'replyBusy'), true);
+  }
+  const openedMemo = await requestMemo(opened.link, lang);
+  if (!openedMemo) return answer(q, t(lang, 'replyBusy'), true);
   return answer(q);
 }
 
@@ -255,7 +317,7 @@ async function menu(q, data, lang, now) {
     return answer(q);
   }
   if (data === CALLBACK.LINKS) {
-    await editMenu(q, await linksMenu(lang, await userKeyFor(q.from.id), now));
+    await editMenu(q, await linksMenu(lang, await userKeyFor(q.message.chat.id), now));
     return answer(q);
   }
   if (data === CALLBACK.HELP) {
@@ -311,7 +373,7 @@ export default async function onCallback(update) {
     if (k === CALLBACK.BLOCK) return await block(q, opened, lang, now);
     if (k === CALLBACK.REVOKE) return await revokePrompt(q, opened, lang, now);
     if (k === CALLBACK.REVOKE_OK) return await revoke(q, opened, lang, now);
-    if (k === CALLBACK.MEMO) return await memoPrompt(q, opened, lang);
+    if (k === CALLBACK.MEMO) return await memoPrompt(q, opened, lang, now);
     if (k === CALLBACK.MENU_LINK) {
       await editMenu(q, await linkMenu(lang, opened.link, now));
       return await answer(q);

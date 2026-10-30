@@ -147,10 +147,23 @@ async function openLink(msg, token, lang, now) {
   await store.upsertSession(await sessionKeyFrom(base), link.id, now);
   const senderKey = await senderKeyFrom(base, link.id);
   const talk = await ensureSenderTopic(link, chatId, senderKey, now);
-  if (talk.created && talk.thread) {
-    await send(chatId, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
+  if (talk.pending) return send(chatId, t(lang, 'topicPreparing'));
+  if (!talk.thread) return send(chatId, t(lang, 'topicFailed'));
+  if (talk.created) {
+    try {
+      await send(chatId, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
+    } catch {
+      // the prompt below is the important message
+    }
   }
-  return send(chatId, t(lang, 'prompt'), talk.thread ? { message_thread_id: talk.thread } : {});
+  try {
+    return await send(chatId, t(lang, 'prompt'), { message_thread_id: talk.thread });
+  } catch (err) {
+    if (!/thread|topic/i.test(String(err?.description ?? err))) throw err;
+    const fresh = await recreateSenderTopic(link, chatId, senderKey, now);
+    if (!fresh) return send(chatId, t(lang, 'topicFailed'));
+    return send(chatId, t(lang, 'prompt'), { message_thread_id: fresh });
+  }
 }
 
 async function newLink(msg, arg, lang, now) {
@@ -269,7 +282,11 @@ async function replyToWindow(msg, window, lang, now) {
 
   const senderKey = await senderKeyFor(link, target.chatId);
   let thread = target.threadId;
-  if (!thread) thread = (await ensureSenderTopic(link, target.chatId, senderKey, now)).thread;
+  if (!thread) {
+    const talk = await ensureSenderTopic(link, target.chatId, senderKey, now);
+    if (talk.pending) return sendHere(msg, t(lang, 'failed'));
+    thread = talk.thread;
+  }
 
   const base = { chat_id: target.chatId, from_chat_id: chatId, message_id: msg.message_id };
   if (thread) base.message_thread_id = thread;
@@ -356,9 +373,13 @@ async function plain(msg, lang, now) {
 
   if (state?.reply_link_id) {
     if (state.expires_at > now) {
-      return replyToWindow(msg, { ...state, link_id: state.reply_link_id }, lang, now);
+      if (state.reply_thread_id === (msg.message_thread_id ?? 0)) {
+        return replyToWindow(msg, { ...state, link_id: state.reply_link_id }, lang, now);
+      }
+      // Another thread: leave the window for the thread that opened it.
+    } else {
+      await store.closeReplyWindow(ownerKey);
     }
-    await store.closeReplyWindow(ownerKey);
   }
 
   const base = await chatKeyFor(chatId);
@@ -366,7 +387,6 @@ async function plain(msg, lang, now) {
   let link;
   let senderKey;
   let current = null;
-  let senderTopicThread = 0;
 
   if (msg.message_thread_id) {
     const owned = await store.getOwnedTopicByThread(ownerKey, msg.message_thread_id);
@@ -391,18 +411,26 @@ async function plain(msg, lang, now) {
       return sendHere(msg, t(lang, 'linkInactive'));
     }
     senderKey = await senderKeyFrom(base, link.id);
-    current = session.session_mode;
-    senderTopicThread = (await store.getSenderTopic(link.id, senderKey))?.thread_id ?? 0;
+
+    // Senders never deliver from All: the session is a convenience, not a
+    // routing authority. A link topic keeps every message bound to one link.
+    const topic = await store.getSenderTopic(link.id, senderKey);
+    if (topic?.state === 'open' && topic.thread_id) {
+      const token = await linkToken(link);
+      const url = await deepLink(token);
+      return sendHere(msg, t(lang, 'senderTopicHint', { token }), {
+        reply_markup: { inline_keyboard: [[{ text: t(lang, 'open'), url }]] },
+      });
+    }
+    const url = await deepLink(await linkToken(link));
+    const key = topic?.state === 'creating' ? 'topicPreparing' : 'senderTopicMissing';
+    return sendHere(msg, t(lang, key), {
+      reply_markup: { inline_keyboard: [[{ text: t(lang, 'open'), url }]] },
+    });
   }
 
   if (await store.isBlockedBy(link.owner_key, link.id, senderKey, ownerKey)) {
     return sendHere(msg, t(lang, 'blockedNotice'));
-  }
-
-  // A sender with a link topic must write there; All is only for owners and
-  // for chats where topics are unavailable.
-  if (senderTopicThread) {
-    return sendHere(msg, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
   }
 
   if (CONFIG.throttlePerMinute > 0) {

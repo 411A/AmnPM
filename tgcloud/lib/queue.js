@@ -35,7 +35,7 @@ async function send(job, payload) {
   });
 }
 
-async function sendControls(link, payload, sent, now) {
+async function sendControls(link, payload, sentIds, now) {
   const globalKey = await userKeyFor(payload.from_chat_id);
   const [owner, blockedLink, blockedAll] = await Promise.all([
     store.getOwner(link.owner_key),
@@ -51,6 +51,7 @@ async function sendControls(link, payload, sent, now) {
       sender_chat_id: payload.from_chat_id,
       sender_key: payload.sender_key,
       sender_thread_id: payload.sender_thread_id ?? 0,
+      owner_thread_id: payload.thread_id ?? 0,
       original_id: payload.message_ids[0],
     }, now, CONFIG.actionTtlSeconds, dek),
     sealAction(link, 'read', {
@@ -63,12 +64,14 @@ async function sendControls(link, payload, sent, now) {
       sender_key: payload.sender_key,
       sender_chat_id: payload.from_chat_id,
       scope: 'link',
+      blocked: !blockedLink,
     }, now, CONFIG.actionTtlSeconds, dek),
     sealAction(link, 'block', {
       link_id: link.id,
       sender_key: payload.sender_key,
       sender_chat_id: payload.from_chat_id,
       scope: 'all',
+      blocked: !blockedAll,
     }, now, CONFIG.actionTtlSeconds, dek),
   ]);
 
@@ -88,7 +91,7 @@ async function sendControls(link, payload, sent, now) {
       blockAllData: `${CALLBACK.BLOCK}${CALLBACK.SEP}${blockAll.prefix}${CALLBACK.SEP}${blockAll.suffix}`,
     }),
   };
-  if (sent.length) message.reply_to_message_id = sent[sent.length - 1].message_id;
+  if (sentIds.length) message.reply_to_message_id = sentIds[sentIds.length - 1];
   await api.sendMessage(message);
 }
 
@@ -114,21 +117,32 @@ export async function drain() {
 
     try {
       const opened = await openJob(job);
-      if (!opened) {
+      if (!opened || opened.link.state !== 'active') {
         await store.finishJob(job.id);
         continue;
       }
-      const result = await send(job, opened.payload);
-      if (Array.isArray(result) && result.length < opened.payload.message_ids.length) {
-        const owner = await store.getOwner(opened.link.owner_key);
-        await api.sendMessage({
-          chat_id: opened.payload.chat_id,
-          ...(opened.payload.thread_id ? { message_thread_id: opened.payload.thread_id } : {}),
-          text: t(owner?.lang ?? 'en', 'albumPartial'),
-        });
+
+      let sentIds = job.sent_ids ? JSON.parse(job.sent_ids) : null;
+      if (!sentIds) {
+        const result = await send(job, opened.payload);
+        sentIds = Array.isArray(result)
+          ? result.map((message) => message.message_id)
+          : (result?.message_id ? [result.message_id] : []);
+        if (job.kind === 'copy' || job.kind === 'forward') {
+          await store.setJobSent(job.id, JSON.stringify(sentIds));
+        }
+        if (Array.isArray(result) && result.length < opened.payload.message_ids.length) {
+          const owner = await store.getOwner(opened.link.owner_key);
+          await api.sendMessage({
+            chat_id: opened.payload.chat_id,
+            ...(opened.payload.thread_id ? { message_thread_id: opened.payload.thread_id } : {}),
+            text: t(owner?.lang ?? 'en', 'albumPartial'),
+          });
+        }
       }
-      if ((job.kind === 'copy' || job.kind === 'forward') && Array.isArray(result) && result.length) {
-        await sendControls(opened.link, opened.payload, result, nowSec());
+
+      if ((job.kind === 'copy' || job.kind === 'forward') && sentIds.length) {
+        await sendControls(opened.link, opened.payload, sentIds, nowSec());
       }
       await store.finishJob(job.id);
       sent += 1;
