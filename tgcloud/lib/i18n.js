@@ -1,6 +1,6 @@
 const en = {
   welcome:
-    '🕊️ <b>AnonymOSS</b> — a private inbox, one link away.\n' +
+    '🕊️ <b>AmnPM</b> — a private inbox, one link away.\n' +
     '➕ /newlink   🔗 /links   ℹ️ /about\n' +
     '{verify} · <a href="{repo}">source</a>',
   linkIntro:
@@ -22,14 +22,14 @@ const en = {
   sentForward: '😎 Forwarded.',
   capReached: '⚠️ Link limit reached ({cap}). Revoke one with /links.',
   about:
-    '🛠 <b>AnonymOSS</b>\n' +
-    '<a href="{contact}">Developer</a> · <a href="{repo}">Source</a>\n' +
+    '🛠 <b>AmnPM</b>\n' +
+    '<a href="{contact}">Bot</a> · <a href="{repo}">Source</a>\n' +
     '{verify}\n' +
     'No message content is stored.',
   linksTitle: '🔗 <b>Your links</b>\nPick one to manage.',
   noLinks: '🪶 No links yet. /newlink creates your first one.',
   linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
-  homeTitle: '🏠 <b>AnonymOSS</b>\nChoose an option.',
+  homeTitle: '🏠 <b>AmnPM</b>\nChoose an option.',
   homeLinks: '🔗 My links',
   homeAbout: 'ℹ️ About',
   back: '⬅️ Back',
@@ -74,7 +74,7 @@ const en = {
 
 const fa = {
   welcome:
-    '🕊️ <b>AnonymOSS</b> — صندوق خصوصی، فقط با یک لینک.\n' +
+    '🕊️ <b>AmnPM</b> — صندوق خصوصی، فقط با یک لینک.\n' +
     '➕ /newlink   🔗 /links   ℹ️ /about\n' +
     '{verify} · <a href="{repo}">منبع</a>',
   linkIntro:
@@ -96,14 +96,14 @@ const fa = {
   sentForward: '😎 هدایت شد.',
   capReached: '⚠️ سقف لینک ({cap}) پر است. با /links یکی را حذف کنید.',
   about:
-    '🛠 <b>AnonymOSS</b>\n' +
-    '<a href="{contact}">توسعه‌دهنده</a> · <a href="{repo}">منبع</a>\n' +
+    '🛠 <b>AmnPM</b>\n' +
+    '<a href="{contact}">ربات</a> · <a href="{repo}">منبع</a>\n' +
     '{verify}\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
   linksTitle: '🔗 <b>لینک‌های شما</b>\nیکی را برای مدیریت انتخاب کنید.',
   noLinks: '🪶 هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
   linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
-  homeTitle: '🏠 <b>AnonymOSS</b>\nیک گزینه را انتخاب کنید.',
+  homeTitle: '🏠 <b>AmnPM</b>\nیک گزینه را انتخاب کنید.',
   homeLinks: '🔗 لینک‌های من',
   homeAbout: 'ℹ️ درباره',
   back: '⬅️ بازگشت',

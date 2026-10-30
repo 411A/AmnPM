@@ -11,6 +11,6 @@ export const CONFIG = {
   tokenAlphabet: '23456789abcdefghjkmnopqrstuvwxyz',
   defaultMemo: 'main',
   repoUrl: 'https://github.com/411A/AmnPM',
-  contactUrl: 'https://t.me/ContactHydraBot',
+  contactUrl: 'https://t.me/AmnPMBot',
   manifestUrl: 'https://github.com/411A/AmnPM/releases/latest/download/manifest.json',
 };

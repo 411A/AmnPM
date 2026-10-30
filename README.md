@@ -1,4 +1,4 @@
-# AnonymOSS Bot
+# AmnPM
 
 One centralized Telegram bot for anonymous, link-scoped messaging on **Telegram Serverless**
 (tgcloud). Owners create short links; visitors message them anonymously, anonymously with
@@ -16,7 +16,7 @@ tgcloud/
     callback_query.js  mode, answer, read, block, revoke, memo
   lib/
     config.js          limits, repo/contact
-    secret.js          KEK ring (generated at deploy, never committed)
+    secret.js          KEK ring (deploy-only, never committed)
     secret.example.js  template for secret.js
     build.js           generated at deploy: release, commit, bundle hash, verified
     crypto.js          AES-256-GCM, HMAC, split records
@@ -72,7 +72,7 @@ falls back to unthreaded messages in the owner's chat.
   message ids that must be recovered are AES-256-GCM ciphertext under a per-link data key.
   Memos, sender labels, and the install salt are encrypted too. Message content is never stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
-  gitignored and generated at deploy time. The KEK ring is versioned so a rotation keeps old
+  gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
   backup, not the platform operator who can read deployed code.
 - **No brute-forceable identifiers.** Sender and owner keys are HMACs over a random salt that is
