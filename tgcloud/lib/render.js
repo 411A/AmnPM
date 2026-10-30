@@ -7,10 +7,15 @@ import { EMOJI, LTR_MARK } from './constants.js';
 const ltr = (name) => `${LTR_MARK}${name}`;
 
 export function verifyLine() {
-  const manifest = escapeHtml(CONFIG.manifestUrl);
-  return BUILD.verified
-    ? `${EMOJI.check} <a href="${manifest}">verified · ${escapeHtml(BUILD.release)}</a>`
-    : `${EMOJI.unverified} <a href="${manifest}">unverified release</a>`;
+  const base = CONFIG.repoUrl;
+  const page = BUILD.release && BUILD.release !== 'dev'
+    ? `${base}/releases/tag/${encodeURIComponent(BUILD.release)}`
+    : `${base}/releases`;
+  const link = escapeHtml(page);
+  const label = BUILD.verified
+    ? `${EMOJI.check} <a href="${link}">verified · ${escapeHtml(BUILD.release)}</a>`
+    : `${EMOJI.unverified} <a href="${link}">unverified release</a>`;
+  return `${label}\n<code>${escapeHtml(BUILD.bundleHash)}</code>`;
 }
 
 export function shareUrl(link) {

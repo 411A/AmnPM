@@ -25,14 +25,26 @@ test('link intro stays within five lines', () => {
   }
 });
 
-test('verification renders both states', () => {
-  const previous = BUILD.verified;
-  const release = BUILD.release;
+test('verification renders both states with the release page and hash', () => {
+  const previousVerified = BUILD.verified;
+  const previousRelease = BUILD.release;
+  const hash = BUILD.bundleHash;
+  assert.ok(hash);
+
   BUILD.verified = false;
-  assert.match(render.verifyLine(), /unverified/);
+  BUILD.release = 'dev';
+  let text = render.verifyLine();
+  assert.match(text, /unverified/);
+  assert.match(text, /https:\/\/github\.com\/411A\/AmnPM\/releases"/);
+  assert.match(text, new RegExp(`<code>${hash}</code>`));
+
   BUILD.verified = true;
   BUILD.release = 'v1.0.0';
-  assert.match(render.verifyLine(), /verified · v1\.0\.0/);
-  BUILD.verified = previous;
-  BUILD.release = release;
+  text = render.verifyLine();
+  assert.match(text, /verified/);
+  assert.match(text, /releases\/tag\/v1\.0\.0/);
+  assert.match(text, new RegExp(`<code>${hash}</code>`));
+
+  BUILD.verified = previousVerified;
+  BUILD.release = previousRelease;
 });

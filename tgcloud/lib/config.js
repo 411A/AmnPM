@@ -13,5 +13,4 @@ export const CONFIG = {
   defaultMemo: 'main',
   repoUrl: 'https://github.com/411A/AmnPM',
   contactUrl: 'https://t.me/AmnPMBot',
-  manifestUrl: 'https://github.com/411A/AmnPM/releases/latest/download/manifest.json',
 };
