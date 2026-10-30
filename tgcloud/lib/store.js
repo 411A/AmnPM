@@ -128,10 +128,13 @@ export async function setSessionMode(userKey, mode, now) {
 }
 
 export async function addPending(row) {
-  const result = await db.run(sql`INSERT OR IGNORE INTO pending
+  const existing = await db.get(sql`SELECT 1 AS hit FROM pending
+    WHERE user_key = ${row.user_key} AND group_key = ${row.group_key}
+      AND message_id = ${row.message_id}`);
+  await db.run(sql`INSERT OR IGNORE INTO pending
     (user_key, link_id, group_key, message_id, created_at)
     VALUES (${row.user_key}, ${row.link_id}, ${row.group_key}, ${row.message_id}, ${row.created_at})`);
-  return result.changes > 0;
+  return !existing;
 }
 
 export async function listPending(userKey, groupKey) {
@@ -333,13 +336,14 @@ export async function failJob(id) {
 
 export async function bumpRate(linkId, senderKey, now) {
   const cutoff = now - 60;
-  const row = await db.get(sql`INSERT INTO rate_limits (link_id, sender_key, window_start, count)
+  await db.run(sql`INSERT INTO rate_limits (link_id, sender_key, window_start, count)
     VALUES (${linkId}, ${senderKey}, ${now}, 1)
     ON CONFLICT(link_id, sender_key) DO UPDATE SET
       count = CASE WHEN rate_limits.window_start <= ${cutoff} THEN 1 ELSE rate_limits.count + 1 END,
       window_start = CASE WHEN rate_limits.window_start <= ${cutoff} THEN ${now}
-        ELSE rate_limits.window_start END
-    RETURNING count`);
+        ELSE rate_limits.window_start END`);
+  const row = await db.get(sql`SELECT count FROM rate_limits
+    WHERE link_id = ${linkId} AND sender_key = ${senderKey}`);
   return Number(row?.count ?? 0);
 }
 

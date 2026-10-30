@@ -11,7 +11,6 @@ function wrap(query) {
 }
 
 function assertRead(text) {
-  if (/\breturning\b/i.test(text)) return;
   if (/^\s*(insert|update|delete|replace|create|alter|drop|vacuum|pragma)\b/i.test(text)) {
     throw new Error('Read query looks like a write one');
   }
