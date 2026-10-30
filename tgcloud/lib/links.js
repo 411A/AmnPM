@@ -9,13 +9,11 @@ async function sealOwnerSalt(salt) {
   return `enc:${CURRENT_KEK_VERSION}:${sealed.nonce}:${sealed.ct}`;
 }
 
-// Isolate-local cache: the salt is stable and read on nearly every update.
-// shortcut: cached for the isolate lifetime, so a restored database needs an isolate restart.
-let saltCache = null;
+// Read from the database on every derivation: a restored or reset database must
+// never reuse a salt cached in a surviving isolate.
 let usernameCache = null;
 
 async function ownerSalt() {
-  if (saltCache) return saltCache;
   const stored = await store.getMeta('install_salt');
   if (!stored) {
     // The first writer wins; every isolate must use the same installation salt.
@@ -23,17 +21,14 @@ async function ownerSalt() {
     await store.insertMetaIfAbsent('install_salt', await sealOwnerSalt(salt));
     const winner = await store.getMeta('install_salt');
     const [, version, nonce, ct] = winner.split(':');
-    saltCache = await crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
-    return saltCache;
+    return crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
   }
   if (stored.startsWith('enc:')) {
     const [, version, nonce, ct] = stored.split(':');
-    saltCache = await crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
-    return saltCache;
+    return crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
   }
   await store.setMeta('install_salt', await sealOwnerSalt(stored));
-  saltCache = stored;
-  return saltCache;
+  return stored;
 }
 
 export async function userKeyFor(chatId) {
