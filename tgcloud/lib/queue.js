@@ -50,6 +50,7 @@ async function sendControls(link, payload, sent, now) {
       link_id: link.id,
       sender_chat_id: payload.from_chat_id,
       sender_key: payload.sender_key,
+      sender_thread_id: payload.sender_thread_id ?? 0,
       original_id: payload.message_ids[0],
     }, now, CONFIG.actionTtlSeconds, dek),
     sealAction(link, 'read', {

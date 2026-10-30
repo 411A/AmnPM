@@ -91,7 +91,7 @@ async function mode(q, k, opened, lang, now) {
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
   const target = await deliver(link, p.sender_id, p.sender_key, chosen,
-    pending.map((row) => row.message_id), p.first_name, now);
+    pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0);
 
   const text = chosen === 'anon'
     ? t(lang, 'sentAnon')
@@ -120,7 +120,11 @@ async function replyWindow(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
   const dek = await linkDek(link);
-  const sealed = await crypto.encrypt(dek, String(p.sender_chat_id), `link:${link.id}:reply:v1`);
+  const target = JSON.stringify({
+    chat_id: p.sender_chat_id,
+    thread_id: p.sender_thread_id ?? 0,
+  });
+  const sealed = await crypto.encrypt(dek, target, `link:${link.id}:reply:v1`);
   await store.openReplyWindow({
     owner_key: link.owner_key,
     link_id: link.id,

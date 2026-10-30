@@ -64,7 +64,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
   };
 }
 
-export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now) {
+export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0) {
   const ownerChat = await ownerChatId(link);
   const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, now);
   await sealJob(link, target.kind, {
@@ -73,6 +73,7 @@ export async function deliver(link, senderId, senderKey, mode, messageIds, first
     from_chat_id: senderId,
     message_ids: messageIds,
     sender_key: senderKey,
+    sender_thread_id: senderThread,
     header: target.header,
   }, now);
   return target;

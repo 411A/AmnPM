@@ -244,6 +244,11 @@ export async function createSenderTopic(row) {
   return getSenderTopic(row.link_id, row.sender_key);
 }
 
+export async function updateSenderTopic(id, threadId, state) {
+  await db.run(sql`UPDATE sender_topics SET thread_id = ${threadId}, state = ${state}
+    WHERE id = ${id}`);
+}
+
 export async function hasBlock(ownerKey, linkId, senderKey) {
   const row = await db.get(sql`SELECT 1 AS hit FROM blocks
     WHERE owner_key = ${ownerKey} AND link_id = ${linkId} AND sender_key = ${senderKey}`);

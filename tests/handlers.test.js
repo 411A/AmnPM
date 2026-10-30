@@ -39,6 +39,14 @@ function tokenOfFirstLink() {
   return sent.at(-1)?.args.text.match(/\?start=([0-9a-z]+)/)?.[1];
 }
 
+function firstSenderThread() {
+  return rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get()?.thread_id ?? 0;
+}
+
+function lastSenderThread() {
+  return rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id DESC LIMIT 1').get()?.thread_id ?? 0;
+}
+
 async function setupLink() {
   await onMessage(message('/start', 100));
   const token = tokenOfFirstLink();
@@ -47,7 +55,7 @@ async function setupLink() {
 }
 
 async function deliverAnonymous() {
-  await onMessage(message('hello', 200, { first_name: 'V' }));
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   const data = buttons().find((entry) => entry.startsWith('M|'));
   await onCallback({
     id: 'cb-mode',
@@ -140,8 +148,8 @@ test('a stranger reaches the owner anonymously', async () => {
 
 test('an album is copied in one call', async () => {
   await setupLink();
-  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 10, caption: 'one', first_name: 'V' }));
-  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 11, caption: 'two', first_name: 'V' }));
+  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 10, caption: 'one', first_name: 'V', message_thread_id: firstSenderThread() }));
+  await onMessage(message(undefined, 200, { media_group_id: 'g1', message_id: 11, caption: 'two', first_name: 'V', message_thread_id: firstSenderThread() }));
 
   const modeKeyboards = callsOf('sendMessage').filter((call) =>
     call.args.reply_markup?.inline_keyboard?.flat()
@@ -162,9 +170,9 @@ test('an album is copied in one call', async () => {
 
 test('history mode keeps one topic and a stable indicator', async () => {
   await setupLink();
-  await onMessage(message('one', 200, { first_name: 'V' }));
+  await onMessage(message('one', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().find((entry) => entry.startsWith('H|')));
-  await onMessage(message('two', 200, { first_name: 'V' }));
+  await onMessage(message('two', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().filter((entry) => entry.startsWith('H|')).at(-1));
 
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
@@ -176,7 +184,7 @@ test('history mode keeps one topic and a stable indicator', async () => {
 
 test('forward mode forwards the profile into its own topic', async () => {
   await setupLink();
-  await onMessage(message('hi', 200, { first_name: 'V' }));
+  await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().find((entry) => entry.startsWith('F|')));
 
   assert.equal(callsOf('forwardMessages').length, 1);
@@ -184,8 +192,9 @@ test('forward mode forwards the profile into its own topic', async () => {
   assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😎 V · main$/);
 });
 
-test('answer copies the owner reply back to the sender', async () => {
+test('answer copies the owner reply back to the sender topic', async () => {
   await setupLink();
+  const senderTopic = firstSenderThread();
   const controls = await deliverAnonymous();
   const data = controls.args.reply_markup.inline_keyboard.flat()
     .find((button) => button.callback_data.startsWith('A|')).callback_data;
@@ -209,7 +218,64 @@ test('answer copies the owner reply back to the sender', async () => {
   assert.equal(copies.length, 1);
   assert.equal(copies[0].args.chat_id, 200);
   assert.equal(copies[0].args.from_chat_id, 100);
-  assert.ok(copies[0].args.message_thread_id);
+  assert.equal(copies[0].args.message_thread_id, senderTopic);
+});
+
+test('a sender with a link topic cannot send from All', async () => {
+  await setupLink();
+  await onMessage(message('in all', 200, { first_name: 'V' }));
+
+  assert.equal(buttons().filter((entry) => entry.startsWith('M|')).length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 0);
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /topic/i);
+  assert.equal(sent.args.message_thread_id, undefined);
+});
+
+test('All still works when the sender topic is unavailable', async () => {
+  failNext('createForumTopic', { errorCode: 400, description: 'not a forum' });
+  await setupLink();
+  assert.equal(firstSenderThread(), 0);
+
+  await onMessage(message('in all', 200, { first_name: 'V' }));
+  assert.ok(buttons().some((entry) => entry.startsWith('M|')));
+});
+
+test('an answer follows the original thread even if the row is stale', async () => {
+  await setupLink();
+  const senderTopic = firstSenderThread();
+  const controls = await deliverAnonymous();
+  rawDb().prepare('UPDATE sender_topics SET thread_id = 999999').run();
+
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  await click(data, 100, controls.args.reply_markup);
+  await onMessage(message('reply text', 100));
+
+  assert.equal(callsOf('copyMessage').at(-1).args.message_thread_id, senderTopic);
+});
+
+test('an answer recreates a missing sender topic instead of leaking to All', async () => {
+  await setupLink();
+  const senderTopic = firstSenderThread();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  await click(data, 100, controls.args.reply_markup);
+
+  failNext('copyMessage', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  await onMessage(message('reply text', 100));
+
+  const topic = callsOf('createForumTopic').at(-1);
+  assert.match(topic.args.name, /^\u200E⬆️ /);
+  const copies = callsOf('copyMessage');
+  assert.equal(copies.length, 1);
+  assert.notEqual(copies[0].args.message_thread_id, senderTopic);
+  assert.notEqual(
+    rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id,
+    senderTopic,
+  );
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Reply sent/);
 });
 
 test('block refuses the next message', async () => {
@@ -219,14 +285,14 @@ test('block refuses the next message', async () => {
     .find((button) => button.callback_data.startsWith('B|')).callback_data;
 
   await click(data, 100, controls.args.reply_markup);
-  await onMessage(message('again', 200));
+  await onMessage(message('again', 200, { message_thread_id: firstSenderThread() }));
 
   assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
 });
 
 test('a forwarded mode keyboard does not deliver for another user', async () => {
   await setupLink();
-  await onMessage(message('hi', 200, { first_name: 'V' }));
+  await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   const data = buttons().find((entry) => entry.startsWith('M|'));
   await click(data, 300);
   assert.equal(callsOf('copyMessages').length, 0);
@@ -260,7 +326,7 @@ test('block all refuses the next message on another link', async () => {
   await onMessage(message('/newlink', 100));
   const token = tokenOfFirstLink();
   await onMessage(message(`/start ${token}`, 200));
-  await onMessage(message('again', 200));
+  await onMessage(message('again', 200, { message_thread_id: lastSenderThread() }));
 
   assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
 });
@@ -355,7 +421,7 @@ test('a renamed topic keeps its custom name after a memo change', async () => {
 
 test('a renamed forward topic keeps its memo and follows memo changes', async () => {
   await setupLink();
-  await onMessage(message('hi', 200, { first_name: 'V' }));
+  await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().find((entry) => entry.startsWith('F|')));
   const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'forward'").get().thread_id;
   assert.ok(thread);
@@ -403,7 +469,7 @@ test('no plaintext chat identifiers or message text are stored', async () => {
   await onMessage(message('/start', owner));
   const token = tokenOfFirstLink();
   await onMessage(message(`/start ${token}`, visitor));
-  await onMessage(message('secret text', visitor, { first_name: 'V' }));
+  await onMessage(message('secret text', visitor, { first_name: 'V', message_thread_id: firstSenderThread() }));
 
   const tables = rawDb()
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")

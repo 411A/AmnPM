@@ -99,6 +99,30 @@ export async function ensureSenderTopic(link, chatId, senderKey, now) {
   }
 }
 
+// The stored topic is gone or closed: create a replacement and repoint the row.
+export async function recreateSenderTopic(link, chatId, senderKey, now) {
+  try {
+    const name = senderTopicName(await linkToken(link));
+    const topic = await api.createForumTopic({ chat_id: chatId, name });
+    const existing = await store.getSenderTopic(link.id, senderKey);
+    if (existing) {
+      await store.updateSenderTopic(existing.id, topic.message_thread_id, 'open');
+    } else {
+      await store.createSenderTopic({
+        link_id: link.id,
+        sender_key: senderKey,
+        thread_id: topic.message_thread_id,
+        name: '',
+        state: 'open',
+        created_at: now,
+      });
+    }
+    return topic.message_thread_id;
+  } catch {
+    return 0;
+  }
+}
+
 export async function closeLinkTopics(link, chatId, lang) {
   const topics = await store.listTopics(link.id);
   for (const topic of topics) {

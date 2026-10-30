@@ -180,10 +180,14 @@ Telegram. The Bot API has no read-topic-name method, so a rename made in the Tel
 be observed or repaired; only `/rename` is enforced.
 
 Replies and status messages sent from inside a topic carry `message_thread_id`, so they stay in
-that topic instead of leaking into the All/General chat. On revoke, owner topics receive a
-“topic closed” notice, and the sender is told “Stored data deleted” the next time they open the
-link or write in that sender topic. Immediate push notification would require storing the
-sender chat id; the bot does not store it.
+that topic instead of leaking into the All/General chat. A sender who already has a link topic
+must write there: a message in All is answered with a pointer to that topic instead of being
+delivered. The owner's answer follows the thread of the sender's original message, so it lands in
+the same topic; if that topic was deleted, the bot recreates the link topic and retries instead of
+silently dropping the answer into All. On revoke, owner topics receive a “topic closed” notice,
+and the sender is told “Stored data deleted” the next time they open the link or write in that
+sender topic. Immediate push notification would require storing the sender chat id; the bot does
+not store it.
 
 ## Known limits
 

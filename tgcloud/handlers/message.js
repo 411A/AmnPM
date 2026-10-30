@@ -7,7 +7,7 @@ import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
-import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
+import { renameTopics, ensureSenderTopic, recreateSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
@@ -93,6 +93,7 @@ async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, 
     sender_key: senderKey,
     group_key: groupKey,
     first_name: firstName,
+    thread_id: threadId,
   };
   // One sealed token backs all three buttons; the mode letter is the only difference.
   const sealed = await sealAction(link, 'mode', payload, now, CONFIG.modeTtlSeconds);
@@ -239,6 +240,18 @@ async function command(msg, lang, now) {
   return undefined;
 }
 
+function replyTarget(text) {
+  if (String(text).startsWith('{')) {
+    try {
+      const value = JSON.parse(text);
+      return { chatId: Number(value.chat_id), threadId: Number(value.thread_id) || 0 };
+    } catch {
+      // old plain format below
+    }
+  }
+  return { chatId: Number(text), threadId: 0 };
+}
+
 async function replyToWindow(msg, window, lang, now) {
   const chatId = msg.chat.id;
   const link = await store.getLink(window.link_id);
@@ -247,29 +260,50 @@ async function replyToWindow(msg, window, lang, now) {
     return sendHere(msg, t(lang, 'answerExpired'));
   }
   const dek = await linkDek(link);
-  const target = Number(await crypto.decrypt(
+  const target = replyTarget(await crypto.decrypt(
     dek,
     window.target_ct,
     window.target_nonce,
     `link:${link.id}:reply:v1`,
   ));
 
-  const senderKey = await senderKeyFor(link, target);
-  const talk = await ensureSenderTopic(link, target, senderKey, now);
-  const thread = talk.thread;
-  const base = { chat_id: target, from_chat_id: chatId, message_id: msg.message_id };
+  const senderKey = await senderKeyFor(link, target.chatId);
+  let thread = target.threadId;
+  if (!thread) thread = (await ensureSenderTopic(link, target.chatId, senderKey, now)).thread;
+
+  const base = { chat_id: target.chatId, from_chat_id: chatId, message_id: msg.message_id };
   if (thread) base.message_thread_id = thread;
   else base.reply_to_message_id = window.original_id;
 
   try {
     await api.copyMessage(base);
-  } catch {
-    try {
-      await api.copyMessage({ chat_id: target, from_chat_id: chatId, message_id: msg.message_id });
-    } catch {
-      return sendHere(msg, t(lang, 'failed'));
+  } catch (err) {
+    if (!thread) return sendHere(msg, t(lang, 'failed'));
+    const description = String(err?.description ?? err).toLowerCase();
+    if (!/thread|topic/.test(description)) return sendHere(msg, t(lang, 'failed'));
+
+    let copied = false;
+    if (/closed/.test(description)) {
+      try {
+        await api.reopenForumTopic({ chat_id: target.chatId, message_thread_id: thread });
+        await api.copyMessage(base);
+        copied = true;
+      } catch {
+        // fall through to a fresh topic
+      }
+    }
+    if (!copied) {
+      const fresh = await recreateSenderTopic(link, target.chatId, senderKey, now);
+      if (!fresh) return sendHere(msg, t(lang, 'failed'));
+      base.message_thread_id = fresh;
+      try {
+        await api.copyMessage(base);
+      } catch {
+        return sendHere(msg, t(lang, 'failed'));
+      }
     }
   }
+
   await store.closeReplyWindow(window.owner_key);
   return sendHere(msg, t(lang, 'answerSent'));
 }
@@ -332,6 +366,7 @@ async function plain(msg, lang, now) {
   let link;
   let senderKey;
   let current = null;
+  let senderTopicThread = 0;
 
   if (msg.message_thread_id) {
     const owned = await store.getOwnedTopicByThread(ownerKey, msg.message_thread_id);
@@ -357,10 +392,17 @@ async function plain(msg, lang, now) {
     }
     senderKey = await senderKeyFrom(base, link.id);
     current = session.session_mode;
+    senderTopicThread = (await store.getSenderTopic(link.id, senderKey))?.thread_id ?? 0;
   }
 
   if (await store.isBlockedBy(link.owner_key, link.id, senderKey, ownerKey)) {
     return sendHere(msg, t(lang, 'blockedNotice'));
+  }
+
+  // A sender with a link topic must write there; All is only for owners and
+  // for chats where topics are unavailable.
+  if (senderTopicThread) {
+    return sendHere(msg, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
   }
 
   if (CONFIG.throttlePerMinute > 0) {
