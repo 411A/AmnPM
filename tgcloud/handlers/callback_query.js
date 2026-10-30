@@ -163,7 +163,10 @@ async function replyWindow(q, opened, lang, now) {
     thread_id: p.sender_thread_id ?? 0,
   });
   const sealed = await crypto.encrypt(dek, target, `link:${link.id}:reply:v1`);
-  const thread = q.message?.message_thread_id ?? p.owner_thread_id ?? 0;
+  const ownerChat = await ownerChatId(link);
+  const thread = q.message?.chat?.id === ownerChat
+    ? (q.message?.message_thread_id ?? p.owner_thread_id ?? 0)
+    : (p.owner_thread_id ?? 0);
   const openedWindow = await store.openReplyWindow({
     owner_key: link.owner_key,
     link_id: link.id,
@@ -175,9 +178,8 @@ async function replyWindow(q, opened, lang, now) {
     now,
   });
   if (!openedWindow) return answer(q, t(lang, 'replyBusy'), true);
-  const chatId = q.message?.chat?.id ?? (await ownerChatId(link));
   await api.sendMessage({
-    chat_id: chatId,
+    chat_id: ownerChat,
     ...(thread ? { message_thread_id: thread } : {}),
     text: t(lang, 'answerWindow', { seconds: CONFIG.replyWindowSeconds }),
   });
