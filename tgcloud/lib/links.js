@@ -28,9 +28,11 @@ export async function userKeyFor(chatId) {
   return crypto.hmacHex(await ownerSalt(), String(chatId));
 }
 
-// One PBKDF2 call per incoming message; session and per-link sender keys are fast HMACs of it.
+// One lookup per incoming message; HMAC by default, optional PBKDF2 cost barrier.
 export async function chatKeyFor(chatId) {
-  return crypto.pbkdf2Hex(await ownerSalt(), `chat:${chatId}`, CONFIG.kdfIterations);
+  const salt = await ownerSalt();
+  if (CONFIG.kdfIterations <= 0) return crypto.hmacHex(salt, `chat:${chatId}`);
+  return crypto.pbkdf2Hex(salt, `chat:${chatId}`, CONFIG.kdfIterations);
 }
 
 export function sessionKeyFrom(base) {

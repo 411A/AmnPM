@@ -61,13 +61,13 @@ changing `CURRENT_KEK_VERSION`; older versions must stay in the ring while old l
 
 ### Upgrading from an older revision
 
-This revision derives session and sender keys with PBKDF2 and stores link tokens as an HMAC
-lookup plus AES-GCM ciphertext. Sessions, sender topics, conversations, blocks, and links
-written by an older revision are keyed or shaped differently and are not reused. Start from a
-fresh database (delete and recreate the bot or drop its database) and create new links. The
-schema changed, so an old database cannot be migrated in place; `tgcloud migrate` only creates
-the new schema. If the old database is kept, the bot will not find old links and senders must
-start over.
+This revision uses a new session/sender key derivation (fast HMAC by default; optional PBKDF2)
+and stores link tokens as an HMAC lookup plus AES-GCM ciphertext. Sessions, sender topics,
+conversations, blocks, and links written by an older revision are keyed or shaped differently
+and are not reused. Start from a fresh database (delete and recreate the bot or drop its
+database) and create new links. The schema changed, so an old database cannot be migrated in
+place; `tgcloud migrate` only creates the new schema. If the old database is kept, the bot will
+not find old links and senders must start over.
 
 The token is read by the CLI from `TGCLOUD_TOKEN` or `.tgcloud/credentials`. It is never placed
 in this repository. `tgcloud push` deploys code; `migrate` applies the schema. A crash after
@@ -78,26 +78,26 @@ falls back to unthreaded messages in the owner's chat.
 
 ## Security
 
-- **No plaintext identifiers.** Session and sender lookups use PBKDF2-HMAC-SHA256
-  (100,000 rounds) over a deployment salt; per-link sender keys are HMACs of that base. Chat ids
-  and message ids that must be recovered are AES-256-GCM ciphertext under a per-link data key.
-  Link tokens are stored only as an HMAC lookup plus AES-GCM ciphertext; sender topic names are
-  blank in the database. Memos, sender labels, and the install salt are encrypted too. Message
-  content is never stored.
+- **No plaintext identifiers.** Session and sender lookups use HMAC-SHA256 over a deployment
+  salt by default. Setting `CONFIG.kdfIterations` above zero switches the lookup to PBKDF2; that
+  is a deliberate speed/security tradeoff. Chat ids and message ids that must be recovered are
+  AES-256-GCM ciphertext under a per-link data key. Link tokens are stored only as an HMAC
+  lookup plus AES-GCM ciphertext; sender topic names are blank in the database. Memos, sender
+  labels, and the install salt are encrypted too. Message content is never stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
   backup, not the platform operator who can read deployed code.
-- **Expensive DB brute force.** Session and sender keys are PBKDF2-derived. A database dump
-  alone cannot test guessed chat ids; with the deployment key, candidates are testable, but
-  each candidate costs a full PBKDF2 derivation. That raises the cost of bulk enumeration; it
-  does not make it impossible. Changing `CONFIG.kdfIterations` invalidates stored sessions and
-  sender keys.
+- **Optional DB brute-force cost.** By default a database dump alone cannot test guessed chat
+  ids because the install salt is encrypted under the KEK. With the deployment key, candidates
+  are testable at HMAC speed. Setting `CONFIG.kdfIterations` above zero makes each candidate cost
+  a full PBKDF2 derivation; that raises the cost of bulk enumeration but does not make it
+  impossible. Changing it invalidates stored sessions and sender keys.
 - **What the operator can still do.** The deployment holds the KEK and receives every update,
   so the operator can decrypt stored fields, including link tokens, and, because Telegram ids
-  are numeric, test candidate ids against the stored KDF outputs. The per-candidate KDF is the
-  barrier, not a proof. Anonymity is from link owners and other users, not from the bot operator
-  or Telegram.
+  are numeric, test candidate ids against the stored HMAC/KDF outputs. A configured KDF is a
+  cost barrier, not a proof. Anonymity is from link owners and other users, not from the bot
+  operator or Telegram.
 - **Split action records.** Values needed only to answer a button are stored partly in the
   database and partly in `callback_data`; the database alone cannot reconstruct them. A callback
   is accepted only from the link owner for owner actions, or from the original sender for mode
@@ -127,11 +127,11 @@ latency or change the Telegram flow and are not implemented.
 
 ## Performance
 
-One PBKDF2 derivation is computed per incoming message (~12 ms on a development machine); the
-per-link session/sender keys are then fast HMACs. At 1,000 messages/s that is roughly 12 CPU
-cores just for the KDF. A single Telegram bot cannot deliver thousands of messages per second
-anyway: the Bot API limits sends per bot and per chat. Scale-out means multiple bots, not a
-bigger handler.
+The default path uses one fast HMAC per incoming message; there is no PBKDF2 cost. Setting
+`CONFIG.kdfIterations` above zero adds one PBKDF2 derivation per incoming message (~12 ms at
+100,000 rounds on a development machine), so 1,000 messages/s needs roughly 12 CPU cores just
+for the KDF. A single Telegram bot cannot deliver thousands of messages per second anyway: the
+Bot API limits sends per bot and per chat. Scale-out means multiple bots, not a bigger handler.
 
 ## Retention
 
