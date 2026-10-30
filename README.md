@@ -75,12 +75,19 @@ falls back to unthreaded messages in the owner's chat.
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
   backup, not the platform operator who can read deployed code.
-- **No brute-forceable identifiers.** Sender and owner keys are HMACs over a random salt that is
-  itself encrypted at rest, so a database dump alone cannot test guessed chat ids.
+- **No DB-only brute force.** Sender and owner keys are HMACs over a random salt that is itself
+  encrypted at rest, so a database dump alone cannot test guessed chat ids. With the deployment
+  key, the salt is recoverable and the HMAC is testable.
+- **What the operator can still do.** The deployment holds the KEK and receives every update,
+  so the operator can decrypt stored fields and, because Telegram ids are numeric, test
+  candidate ids against the stored HMACs. Anonymity is from link owners and other users, not
+  from the bot operator or Telegram.
 - **Split action records.** Values needed only to answer a button are stored partly in the
   database and partly in `callback_data`; the database alone cannot reconstruct them.
-- **Crypto-shredding.** Revoking a link deletes the wrapped data key, so any ciphertext left in
-  a backup is permanently unreadable.
+- **Crypto-shredding (live data).** Revoking a link deletes the link row and every link-scoped
+  row, including the wrapped data key, so the live database can no longer decrypt anything for
+  that link. A backup that still contains the wrapped key can be decrypted with the deployment
+  KEK; shredding is not protection against the operator or against older backups.
 - **Door.** Handlers never throw; every write is one atomic statement; unique constraints
   replace transactions.
 
