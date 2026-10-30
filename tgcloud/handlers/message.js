@@ -5,11 +5,11 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, linkMemo } from '../lib/keys.js';
+import { linkDek, ownerChatId, sealAction, linkMemo, linkToken } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
-import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor } from '../lib/links.js';
+import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor, tokenLookupFor } from '../lib/links.js';
 import { linksMenu } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -29,7 +29,7 @@ async function nextToken() {
     const token = ids.makeToken();
     const fingerprint = await ids.tokenFp(token);
     if (await store.isRetired(fingerprint)) continue;
-    if (await store.findLinkByToken(token)) continue;
+    if (await store.findLinkByLookup(await tokenLookupFor(token))) continue;
     return token;
   }
   throw new Error('could not allocate a token');
@@ -41,14 +41,18 @@ async function createLink(ownerKey, chatId, memo, now) {
   try {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const token = await nextToken();
+      const tokenLookup = await tokenLookupFor(token);
       const dek = crypto.randomBytes(32);
-      const wrapped = await crypto.encrypt(KEYS[CURRENT_KEK_VERSION], dek, `link:${token}:dek:v1`);
-      const chat = await crypto.encrypt(dek, String(chatId), `link:${token}:owner_chat:v1`);
+      const wrapped = await crypto.encrypt(KEYS[CURRENT_KEK_VERSION], dek, `link:${tokenLookup}:dek:v1`);
+      const chat = await crypto.encrypt(dek, String(chatId), `link:${tokenLookup}:owner_chat:v1`);
+      const sealedToken = await crypto.encrypt(dek, token, `link:${tokenLookup}:token:v1`);
       const memoText = ids.sanitizeMemo(memo);
-      const sealedMemo = await crypto.encrypt(dek, memoText, `link:${token}:memo:v1`);
+      const sealedMemo = await crypto.encrypt(dek, memoText, `link:${tokenLookup}:memo:v1`);
       try {
         const link = await store.insertLink({
-          token,
+          token_lookup: tokenLookup,
+          token_ct: sealedToken.ct,
+          token_nonce: sealedToken.nonce,
           memo: `enc:${sealedMemo.nonce}:${sealedMemo.ct}`,
           slot,
           owner_key: ownerKey,
@@ -114,7 +118,7 @@ async function startOwner(msg, lang, now) {
     await send(chatId, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
     return;
   }
-  const url = await deepLink(link.token);
+  const url = await deepLink(await linkToken(link));
   await send(chatId, render.linkIntro(lang, url, await linkMemo(link)), {
     reply_markup: render.linkButtons(url),
   });
@@ -123,7 +127,7 @@ async function startOwner(msg, lang, now) {
 async function openLink(msg, token, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
-  const link = await store.findLinkByToken(token.trim().toLowerCase());
+  const link = await store.findLinkByLookup(await tokenLookupFor(token.trim().toLowerCase()));
   if (!link) {
     const retired = await store.isRetired(await ids.tokenFp(token));
     return send(chatId, t(lang, retired ? 'linkInactive' : 'linkNotFound'));
@@ -136,7 +140,7 @@ async function openLink(msg, token, lang, now) {
   const senderKey = await senderKeyFrom(base, link.id);
   const talk = await ensureSenderTopic(link, chatId, senderKey, now);
   if (talk.created && talk.thread) {
-    await send(chatId, t(lang, 'senderTopicHint', { token: link.token }));
+    await send(chatId, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
   }
   return send(chatId, t(lang, 'prompt'), talk.thread ? { message_thread_id: talk.thread } : {});
 }
@@ -147,7 +151,7 @@ async function newLink(msg, arg, lang, now) {
   await store.ensureOwner(ownerKey, now, lang);
   const link = await createLink(ownerKey, chatId, arg, now);
   if (!link) return send(chatId, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
-  const url = await deepLink(link.token);
+  const url = await deepLink(await linkToken(link));
   return send(chatId, render.linkIntro(lang, url, await linkMemo(link)), {
     reply_markup: render.linkButtons(url),
   });
@@ -229,7 +233,7 @@ async function plain(msg, lang, now) {
     if (link) {
       const memoText = ids.sanitizeMemo(msg.text);
       const dek = await linkDek(link);
-      const sealed = await crypto.encrypt(dek, memoText, `link:${link.token}:memo:v1`);
+      const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);
       await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
       const updated = await store.getLink(link.id);
       await renameTopics(updated, await ownerChatId(updated));

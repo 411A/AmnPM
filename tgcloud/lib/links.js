@@ -49,6 +49,10 @@ export async function senderKeyFor(link, chatId) {
   return senderKeyFrom(await chatKeyFor(chatId), link.id);
 }
 
+export async function tokenLookupFor(token) {
+  return crypto.hmacHex(await ownerSalt(), `token:${token}`);
+}
+
 export async function botUsername() {
   const cached = await store.getMeta('bot_username');
   if (cached) return cached;

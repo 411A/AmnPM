@@ -39,7 +39,7 @@ tools/                 word list and build stamp generators
 node tools/gen-words.mjs path/to/eff_large_wordlist.txt
 node tools/gen-build.mjs --commit local
 node --import ./tests/register.mjs --test tests/crypto.test.js tests/ids.test.js \
-  tests/store.test.js tests/handlers.test.js tests/render.test.js
+  tests/store.test.js tests/handlers.test.js tests/render.test.js tests/source.test.js
 ```
 
 `tests/loader.mjs` maps `sdk` and `sdk/db` onto `tests/stub-*.mjs`, so the suite runs offline.
@@ -80,7 +80,9 @@ falls back to unthreaded messages in the owner's chat.
 - **No plaintext identifiers.** Session and sender lookups use PBKDF2-HMAC-SHA256
   (100,000 rounds) over a deployment salt; per-link sender keys are HMACs of that base. Chat ids
   and message ids that must be recovered are AES-256-GCM ciphertext under a per-link data key.
-  Memos, sender labels, and the install salt are encrypted too. Message content is never stored.
+  Link tokens are stored only as an HMAC lookup plus AES-GCM ciphertext; sender topic names are
+  blank in the database. Memos, sender labels, and the install salt are encrypted too. Message
+  content is never stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
@@ -91,9 +93,10 @@ falls back to unthreaded messages in the owner's chat.
   does not make it impossible. Changing `CONFIG.kdfIterations` invalidates stored sessions and
   sender keys.
 - **What the operator can still do.** The deployment holds the KEK and receives every update,
-  so the operator can decrypt stored fields and, because Telegram ids are numeric, test
-  candidate ids against the stored KDF outputs. The per-candidate KDF is the barrier, not a
-  proof. Anonymity is from link owners and other users, not from the bot operator or Telegram.
+  so the operator can decrypt stored fields, including link tokens, and, because Telegram ids
+  are numeric, test candidate ids against the stored KDF outputs. The per-candidate KDF is the
+  barrier, not a proof. Anonymity is from link owners and other users, not from the bot operator
+  or Telegram.
 - **Split action records.** Values needed only to answer a button are stored partly in the
   database and partly in `callback_data`; the database alone cannot reconstruct them.
 - **Crypto-shredding (live data).** Revoking a link deletes the link row and every link-scoped
@@ -102,6 +105,30 @@ falls back to unthreaded messages in the owner's chat.
   KEK; shredding is not protection against the operator or against older backups.
 - **Door.** Handlers never throw; every write is one atomic statement; unique constraints
   replace transactions.
+
+### Trust model
+
+This is a centralized bot. The operator can read updates, the deployment, the key-encryption
+keys, and the database, and can change and redeploy code. No application code can prevent that.
+The repository does not claim otherwise.
+
+The narrower guarantees are: message content is never stored; link tokens, chat ids, memos,
+sender labels, and routing targets are ciphertext or one-way derivations; the main handlers
+contain no logging, environment reads, or outbound network code, and CI rejects such lines. A
+database-only leak is useless, and a tracked code change that spies is a visible diff that fails
+CI. A deploy from an uncommitted tree can bypass CI, so deploy only from a green commit.
+
+“Not even the operator” requires the key to live outside the operator's control: an external
+KMS/HSM with audited access, threshold keys, or client-side end-to-end encryption. Those add
+latency or change the Telegram flow and are not implemented.
+
+## Performance
+
+One PBKDF2 derivation is computed per incoming message (~12 ms on a development machine); the
+per-link session/sender keys are then fast HMACs. At 1,000 messages/s that is roughly 12 CPU
+cores just for the KDF. A single Telegram bot cannot deliver thousands of messages per second
+anyway: the Bot API limits sends per bot and per chat. Scale-out means multiple bots, not a
+bigger handler.
 
 ## Retention
 

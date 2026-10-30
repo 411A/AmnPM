@@ -2,7 +2,7 @@ import { api } from 'sdk';
 import * as store from './store.js';
 import * as ids from './ids.js';
 import { t } from './i18n.js';
-import { sealAction, linkMemo } from './keys.js';
+import { sealAction, linkMemo, linkToken } from './keys.js';
 import { deepLink } from './links.js';
 import { shareUrl } from './render.js';
 
@@ -39,7 +39,8 @@ export async function linksMenu(lang, ownerKey, now) {
 }
 
 export async function linkMenu(lang, link, now) {
-  const url = await deepLink(link.token);
+  const token = await linkToken(link);
+  const url = await deepLink(token);
   const memoText = await linkMemo(link);
   await store.deleteActionTokens(link.id, 'memo');
   await store.deleteActionTokens(link.id, 'revoke');
@@ -49,7 +50,7 @@ export async function linkMenu(lang, link, now) {
   return {
     text: t(lang, 'linkMenuTitle', {
       memo: ids.escapeHtml(memoText),
-      token: ids.escapeHtml(link.token),
+      token: ids.escapeHtml(token),
     }),
     keyboard: {
       inline_keyboard: [

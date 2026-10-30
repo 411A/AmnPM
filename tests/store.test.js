@@ -32,7 +32,9 @@ test('owner cap is atomic and released', async () => {
 
 test('links are stored, found, listed and revoked', async () => {
   const inserted = await store.insertLink({
-    token: 'amber_fox_k7m2p',
+    token_lookup: 'lookup-1',
+    token_ct: 'ct',
+    token_nonce: 'nonce',
     memo: 'work',
     slot: 0,
     owner_key: 'owner-1',
@@ -45,7 +47,7 @@ test('links are stored, found, listed and revoked', async () => {
     created_at: 100,
   });
   const id = inserted.id;
-  const link = await store.findLinkByToken('amber_fox_k7m2p');
+  const link = await store.findLinkByLookup('lookup-1');
   assert.equal(link.id, id);
   assert.equal(link.state, 'active');
   assert.equal((await store.listLinks('owner-1')).length, 1);
@@ -114,7 +116,8 @@ test('revocation leaves no link-scoped rows', async () => {
   await store.upsertSession('u', linkId, 1);
   await store.openReplyWindow({ owner_key: 'owner-1', link_id: linkId, target_ct: 'c', target_nonce: 'n', original_id: 1, expires_at: 999 });
   await store.insertLink({
-    token: 'beta_word_abcde', memo: 'm', slot: 0, owner_key: 'owner-1', owner_chat_ct: 'c',
+    token_lookup: 'lookup-2', token_ct: 'ct', token_nonce: 'nonce',
+    memo: 'm', slot: 0, owner_key: 'owner-1', owner_chat_ct: 'c',
     owner_chat_nonce: 'n', salt: 's', dek_wrapped: 'w', dek_nonce: 'n', kek_version: 1, created_at: 1,
   });
   const beforeCounts = await store.countLinkRows(linkId);

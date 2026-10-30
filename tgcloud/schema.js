@@ -15,7 +15,9 @@ export const owners = table('owners', {
 
 export const links = table('links', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  token: text('token').notNull(),
+  token_lookup: text('token_lookup').notNull(),
+  token_ct: text('token_ct').notNull(),
+  token_nonce: text('token_nonce').notNull(),
   memo: text('memo').notNull(),
   slot: integer('slot').notNull().default(0),
   owner_key: text('owner_key').notNull(),
@@ -29,7 +31,7 @@ export const links = table('links', {
   created_at: integer('created_at').notNull(),
   revoked_at: integer('revoked_at'),
 }, (t) => [
-  uniqueIndex('idx_links_token').on(t.token),
+  uniqueIndex('idx_links_token').on(t.token_lookup),
   index('idx_links_owner').on(t.owner_key, t.state),
 ]);
 

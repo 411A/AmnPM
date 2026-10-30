@@ -2,7 +2,7 @@ import { api } from 'sdk';
 import * as store from './store.js';
 import { t } from './i18n.js';
 import { topicName, senderTopicName } from './render.js';
-import { linkMemo, conversationLabel } from './keys.js';
+import { linkMemo, conversationLabel, linkToken } from './keys.js';
 
 export async function ensureTopic(link, chatId, kind, conversationId, name) {
   const existing = await store.getTopic(link.id, kind, conversationId);
@@ -61,19 +61,9 @@ export async function renameTopics(link, chatId) {
 
 export async function ensureSenderTopic(link, chatId, senderKey, now) {
   const existing = await store.getSenderTopic(link.id, senderKey);
-  const name = senderTopicName(link.token);
+  const name = senderTopicName(await linkToken(link));
 
-  if (existing) {
-    if (existing.thread_id && existing.name !== name) {
-      try {
-        await api.editForumTopic({ chat_id: chatId, message_thread_id: existing.thread_id, name });
-        await store.updateSenderTopic(existing.id, existing.thread_id, name, existing.state);
-      } catch {
-        // keep the old name
-      }
-    }
-    return { thread: existing.thread_id, created: false };
-  }
+  if (existing) return { thread: existing.thread_id, created: false };
 
   try {
     const topic = await api.createForumTopic({ chat_id: chatId, name });
@@ -81,7 +71,7 @@ export async function ensureSenderTopic(link, chatId, senderKey, now) {
       link_id: link.id,
       sender_key: senderKey,
       thread_id: topic.message_thread_id,
-      name,
+      name: '',
       state: 'open',
       created_at: now,
     });
@@ -91,7 +81,7 @@ export async function ensureSenderTopic(link, chatId, senderKey, now) {
       link_id: link.id,
       sender_key: senderKey,
       thread_id: 0,
-      name,
+      name: '',
       state: 'unavailable',
       created_at: now,
     });

@@ -10,21 +10,26 @@ export async function linkDek(link) {
     kek,
     link.dek_wrapped,
     link.dek_nonce,
-    `link:${link.token}:dek:v1`,
+    `link:${link.token_lookup}:dek:v1`,
   );
+}
+
+export async function linkToken(link) {
+  const dek = await linkDek(link);
+  return c.decrypt(dek, link.token_ct, link.token_nonce, `link:${link.token_lookup}:token:v1`);
 }
 
 export async function linkMemo(link) {
   if (!link.memo?.startsWith('enc:')) {
     if (!link.memo) return '';
     const dek = await linkDek(link);
-    const sealed = await c.encrypt(dek, link.memo, `link:${link.token}:memo:v1`);
+    const sealed = await c.encrypt(dek, link.memo, `link:${link.token_lookup}:memo:v1`);
     await store.setLinkMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
     return link.memo;
   }
   const dek = await linkDek(link);
   const [, nonce, ct] = link.memo.split(':');
-  return c.decrypt(dek, ct, nonce, `link:${link.token}:memo:v1`);
+  return c.decrypt(dek, ct, nonce, `link:${link.token_lookup}:memo:v1`);
 }
 
 export async function sealConversationLabel(link, label, senderKey, mode) {
@@ -62,7 +67,7 @@ export async function conversationLabel(link, conversation) {
 export async function ownerChatId(link) {
   const dek = await linkDek(link);
   return Number(
-    await c.decrypt(dek, link.owner_chat_ct, link.owner_chat_nonce, `link:${link.token}:owner_chat:v1`),
+    await c.decrypt(dek, link.owner_chat_ct, link.owner_chat_nonce, `link:${link.token_lookup}:owner_chat:v1`),
   );
 }
 

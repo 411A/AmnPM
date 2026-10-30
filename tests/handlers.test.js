@@ -34,7 +34,8 @@ function buttons() {
 }
 
 function tokenOfFirstLink() {
-  return rawDb().prepare('SELECT token FROM links ORDER BY id LIMIT 1').get().token;
+  const sent = callsOf('sendMessage').filter((call) => String(call.args.text).includes('?start='));
+  return sent.at(-1)?.args.text.match(/\?start=([0-9a-z]+)/)?.[1];
 }
 
 async function setupLink() {

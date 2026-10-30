@@ -4,7 +4,7 @@ import * as store from '../lib/store.js';
 import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, openAction, ownerChatId, sealAction, linkMemo } from '../lib/keys.js';
+import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
 import { homeMenu, linksMenu, linkMenu, editMenu } from '../lib/menu.js';
@@ -178,10 +178,11 @@ async function revoke(q, opened, lang, now) {
   const link = opened.link;
   const owner = await store.getOwner(link.owner_key);
   const chat = await ownerChatId(link);
-  const url = await deepLink(link.token);
+  const token = await linkToken(link);
+  const url = await deepLink(token);
 
   await closeLinkTopics(link, chat, owner?.lang ?? lang);
-  await store.insertRetired(await ids.tokenFp(link.token), now);
+  await store.insertRetired(await ids.tokenFp(token), now);
   await store.deleteLinkScoped(link.id);
   await store.deleteLinkRow(link.id);
   await store.releaseSlot(link.owner_key, link.slot);

@@ -54,16 +54,17 @@ export async function releaseSlot(ownerKey, slot) {
 
 export async function insertLink(link) {
   await db.run(sql`INSERT INTO links
-    (token, memo, slot, owner_key, owner_chat_ct, owner_chat_nonce, salt, dek_wrapped, dek_nonce,
-     kek_version, state, created_at)
-    VALUES (${link.token}, ${link.memo}, ${link.slot}, ${link.owner_key}, ${link.owner_chat_ct},
-      ${link.owner_chat_nonce}, ${link.salt}, ${link.dek_wrapped}, ${link.dek_nonce},
+    (token_lookup, token_ct, token_nonce, memo, slot, owner_key, owner_chat_ct, owner_chat_nonce,
+     salt, dek_wrapped, dek_nonce, kek_version, state, created_at)
+    VALUES (${link.token_lookup}, ${link.token_ct}, ${link.token_nonce}, ${link.memo},
+      ${link.slot}, ${link.owner_key}, ${link.owner_chat_ct}, ${link.owner_chat_nonce},
+      ${link.salt}, ${link.dek_wrapped}, ${link.dek_nonce},
       ${link.kek_version}, 'active', ${link.created_at})`);
-  return findLinkByToken(link.token);
+  return findLinkByLookup(link.token_lookup);
 }
 
-export async function findLinkByToken(token) {
-  return db.get(sql`SELECT * FROM links WHERE token = ${token}`);
+export async function findLinkByLookup(lookup) {
+  return db.get(sql`SELECT * FROM links WHERE token_lookup = ${lookup}`);
 }
 
 export async function getLink(id) {
@@ -218,11 +219,6 @@ export async function createSenderTopic(row) {
     VALUES (${row.link_id}, ${row.sender_key}, ${row.thread_id}, ${row.name}, ${row.state},
       ${row.created_at})`);
   return getSenderTopic(row.link_id, row.sender_key);
-}
-
-export async function updateSenderTopic(id, threadId, name, state) {
-  await db.run(sql`UPDATE sender_topics SET thread_id = ${threadId}, name = ${name}, state = ${state}
-    WHERE id = ${id}`);
 }
 
 export async function hasBlock(ownerKey, linkId, senderKey) {
