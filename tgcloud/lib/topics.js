@@ -1,13 +1,15 @@
 import { api } from 'sdk';
 import * as store from './store.js';
 import { t } from './i18n.js';
-import { topicName, senderTopicName } from './render.js';
-import { linkMemo, conversationLabel, linkToken } from './keys.js';
+import { topicName, senderTopicName, customTopicName } from './render.js';
+import { linkMemo, conversationLabel, linkToken, topicLabel } from './keys.js';
 
 export async function ensureTopic(link, chatId, kind, conversationId, name) {
   const existing = await store.getTopic(link.id, kind, conversationId);
   if (existing) {
-    if (existing.name) await store.updateTopic(existing.id, existing.thread_id, '', existing.state);
+    if (existing.name && !existing.name.startsWith('enc:')) {
+      await store.updateTopic(existing.id, existing.thread_id, '', existing.state);
+    }
     return { thread: existing.thread_id, created: false };
   }
 
@@ -42,8 +44,11 @@ export async function renameTopics(link, chatId) {
   const topics = await store.listTopics(link.id);
   for (const topic of topics) {
     if (!topic.thread_id) continue;
+    const custom = await topicLabel(link, topic);
     let name;
-    if (topic.kind === 'anon') {
+    if (custom) {
+      name = customTopicName(topic.kind, custom);
+    } else if (topic.kind === 'anon') {
       name = topicName('anon', memoText);
     } else {
       const conversation = await store.getConversationById(topic.conversation_id);
@@ -52,7 +57,12 @@ export async function renameTopics(link, chatId) {
     }
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: topic.thread_id, name });
-      await store.updateTopic(topic.id, topic.thread_id, '', topic.state);
+      await store.updateTopic(
+        topic.id,
+        topic.thread_id,
+        topic.name?.startsWith('enc:') ? topic.name : '',
+        topic.state,
+      );
     } catch {
       // keep the old name; the memo change is still stored
     }

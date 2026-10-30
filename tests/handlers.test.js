@@ -277,6 +277,40 @@ test('changing a memo renames the topics', async () => {
   assert.match(edits[0].args.name, /newmemo/);
 });
 
+test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
+
+  const edit = callsOf('editForumTopic').at(-1);
+  assert.equal(edit.args.name, '⬇️ 😶‍🌫️ Cool stuff');
+  assert.match(rawDb().prepare('SELECT name FROM topics WHERE thread_id = ?').get(thread).name, /^enc:/);
+  assert.equal(callsOf('sendMessage').at(-1).args.message_thread_id, thread);
+});
+
+test('a renamed topic keeps its custom name after a memo change', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
+
+  await onMessage(message('/links', 100));
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('newmemo', 100));
+
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '⬇️ 😶‍🌫️ Cool stuff');
+});
+
+test('senders can rename their own topic with the mandatory up prefix', async () => {
+  await setupLink();
+  const thread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
+  await onMessage(message('/rename Mine', 200, { message_thread_id: thread }));
+
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '⬆️ Mine');
+});
+
 test('no plaintext chat identifiers or message text are stored', async () => {
   const owner = 987654321;
   const visitor = 123456789;

@@ -32,6 +32,19 @@ export async function linkMemo(link) {
   return c.decrypt(dek, ct, nonce, `link:${link.token_lookup}:memo:v1`);
 }
 
+export async function sealTopicName(link, topicId, name) {
+  const dek = await linkDek(link);
+  const sealed = await c.encrypt(dek, name, `topic:${topicId}:name:v1`);
+  return `enc:${sealed.nonce}:${sealed.ct}`;
+}
+
+export async function topicLabel(link, topic) {
+  if (!topic.name?.startsWith('enc:')) return '';
+  const dek = await linkDek(link);
+  const [, nonce, ct] = topic.name.split(':');
+  return c.decrypt(dek, ct, nonce, `topic:${topic.id}:name:v1`);
+}
+
 export async function sealConversationLabel(link, label, senderKey, mode) {
   const dek = await linkDek(link);
   const sealed = await c.encrypt(

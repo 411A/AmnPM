@@ -148,6 +148,15 @@ apply to other links. Link-scope blocks are deleted with the link. A global bloc
 HMAC of the blocked sender so it works across links, which the operator can resolve to a sender
 id; a link-scope block uses the PBKDF2 sender key.
 
+## Topic names
+
+Rename a topic with `/rename <name>` inside it. The bot always prepends the mandatory
+direction/mode marker: `⬇️ 😶‍🌫️` (anonymous), `⬇️ 😶‍🌫️💬` (history), `⬇️ 😎` (forward), or
+`⬆️` (sender topic). Owner-chosen names are stored encrypted under the link key; sender-chosen
+names stay only in Telegram. The Bot API has no read-topic-name method, so a rename made in the
+Telegram UI cannot be observed or repaired; only `/rename` is enforced. A later memo change
+reapplies the stored custom name to owner topics.
+
 ## Known limits
 
 - Albums always ask for a mode tap once, even after a mode is set, because the tap is the only

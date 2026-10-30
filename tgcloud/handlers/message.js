@@ -5,7 +5,7 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, linkMemo, linkToken } from '../lib/keys.js';
+import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
@@ -163,6 +163,52 @@ async function listLinks(msg, lang, now) {
   await send(chatId, menu.text, { reply_markup: menu.keyboard });
 }
 
+function stripTopicPrefix(text) {
+  return String(text)
+    .replace(/^[⬇️⬆️]\s*/, '')
+    .replace(/^(😶‍🌫️💬|😶‍🌫️|😎)\s*/, '')
+    .trim();
+}
+
+async function renameTopic(msg, arg, lang) {
+  const chatId = msg.chat.id;
+  const threadId = msg.message_thread_id ?? 0;
+  if (!threadId) return send(chatId, t(lang, 'renameNoTopic'));
+  const label = ids.cleanLabel(stripTopicPrefix(arg), 60);
+  if (!label) return send(chatId, t(lang, 'renameUsage'), { message_thread_id: threadId });
+
+  const ownerKey = await userKeyFor(chatId);
+  const topic = await store.getOwnedTopicByThread(ownerKey, threadId);
+  if (topic) {
+    const link = await store.getLink(topic.link_id);
+    if (!link) return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
+    const name = render.customTopicName(topic.kind, label);
+    try {
+      await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+      const sealed = await sealTopicName(link, topic.id, label);
+      await store.updateTopic(topic.id, threadId, sealed, topic.state);
+    } catch {
+      return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+    }
+    return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
+  }
+
+  const base = await chatKeyFor(chatId);
+  for (const row of await store.getSenderTopicsByThread(threadId)) {
+    if (await senderKeyFrom(base, row.link_id) !== row.sender_key) continue;
+    const link = await store.getLink(row.link_id);
+    if (!link) continue;
+    const name = render.customSenderTopicName(label);
+    try {
+      await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+    } catch {
+      return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+    }
+    return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
+  }
+  return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
+}
+
 async function command(msg, lang, now) {
   const [head, ...rest] = String(msg.text ?? '').trim().split(/\s+/);
   const arg = rest.join(' ').trim();
@@ -175,6 +221,7 @@ async function command(msg, lang, now) {
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/links') return listLinks(msg, lang, now);
   if (head === '/about') return send(chatId, render.about(lang));
+  if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
     const session = await store.getSession(await sessionKeyFor(chatId));
     if (!session) return send(chatId, t(lang, 'startFromLink'));

@@ -182,6 +182,11 @@ export async function getTopic(linkId, kind, conversationId) {
     WHERE link_id = ${linkId} AND kind = ${kind} AND conversation_id = ${conversationId}`);
 }
 
+export async function getOwnedTopicByThread(ownerKey, threadId) {
+  return db.get(sql`SELECT t.* FROM topics t JOIN links l ON l.id = t.link_id
+    WHERE t.thread_id = ${threadId} AND l.owner_key = ${ownerKey}`);
+}
+
 export async function createTopic(row) {
   const result = await db.run(sql`INSERT INTO topics
     (link_id, kind, conversation_id, thread_id, name, state)
@@ -207,6 +212,10 @@ export async function countTopicsNamed(linkId, name) {
 export async function getSenderTopic(linkId, senderKey) {
   return db.get(sql`SELECT * FROM sender_topics
     WHERE link_id = ${linkId} AND sender_key = ${senderKey}`);
+}
+
+export async function getSenderTopicsByThread(threadId) {
+  return db.all(sql`SELECT * FROM sender_topics WHERE thread_id = ${threadId}`);
 }
 
 export async function createSenderTopic(row) {

@@ -6,12 +6,15 @@ const en = {
   linkIntro:
     '🔗 <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
-    'Share it. Anyone with it can write to you without seeing your identity.',
+    'Share it. Anyone with it can write to you without seeing your identity.\n' +
+    'Rename a topic with /rename &lt;name&gt; inside it.',
   linkInactive: '⚠️ This link is no longer active.',
   linkNotFound: '⚠️ Link not found.',
   ownLink: '🙃 This is your own link. Share it instead.',
   startFromLink: '🔗 Open a link first, then send your message.',
-  prompt: '✍️ Send your message. The bot will wait for it as long as needed.',
+  prompt:
+    '✍️ Send your message. The bot will wait for it as long as needed.\n' +
+    'Rename this topic with /rename &lt;name&gt;.',
   senderTopicHint: '📥 Your messages for this link are in the "⬆️ {token}" topic. Open it and write there.',
   chooseMode: '📨 How should this reach the owner?',
   modeAnon: '😶‍🌫️ Anonymous',
@@ -43,6 +46,10 @@ const en = {
   revokedShort: 'Revoked.',
   memoPrompt: '✏️ Send the new memo (max {max} characters).',
   memoChanged: '✏️ Memo updated.',
+  renameUsage: '✏️ Send /rename &lt;name&gt; inside the topic you want to rename.',
+  renamed: '✏️ Topic renamed to {name}.',
+  renameNoTopic: '⚠️ Use /rename inside a topic.',
+  renameFailed: '⚠️ Could not rename this topic.',
   answerWindow: '✍️ Reply within {seconds}s. Send your message now.',
   answerSent: '✅ Reply sent.',
   answerExpired: '⌛ The reply window closed. Press Answer again.',
@@ -80,12 +87,15 @@ const fa = {
   linkIntro:
     '🔗 <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
-    'آن را به اشتراک بگذارید؛ هر کسی با آن می‌تواند بدون دیدن هویت شما پیام بدهد.',
+    'آن را به اشتراک بگذارید؛ هر کسی با آن می‌تواند بدون دیدن هویت شما پیام بدهد.\n' +
+    'نام موضوع را با /rename &lt;نام&gt; داخل آن تغییر دهید.',
   linkInactive: '⚠️ این لینک دیگر فعال نیست.',
   linkNotFound: '⚠️ لینک پیدا نشد.',
   ownLink: '🙃 این لینک خودتان است. آن را به اشتراک بگذارید.',
   startFromLink: '🔗 اول یک لینک باز کنید، بعد پیام بفرستید.',
-  prompt: '✍️ پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.',
+  prompt:
+    '✍️ پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.\n' +
+    'نام این موضوع را با /rename &lt;نام&gt; تغییر دهید.',
   senderTopicHint: '📥 پیام‌های این لینک در موضوع «⬆️ {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
   chooseMode: '📨 این پیام چطور به صاحب لینک برسد؟',
   modeAnon: '😶‍🌫️ ناشناس',
@@ -117,6 +127,10 @@ const fa = {
   revokedShort: 'حذف شد.',
   memoPrompt: '✏️ یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
   memoChanged: '✏️ یادداشت به‌روز شد.',
+  renameUsage: '✏️ داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: /rename &lt;نام&gt;',
+  renamed: '✏️ نام موضوع به {name} تغییر کرد.',
+  renameNoTopic: '⚠️ دستور /rename را داخل یک موضوع بفرستید.',
+  renameFailed: '⚠️ تغییر نام این موضوع ممکن نشد.',
   answerWindow: '✍️ تا {seconds} ثانیه پاسخ دهید. پیامتان را بفرستید.',
   answerSent: '✅ پاسخ ارسال شد.',
   answerExpired: '⌛ پنجره پاسخ بسته شد. دوباره Answer را بزنید.',

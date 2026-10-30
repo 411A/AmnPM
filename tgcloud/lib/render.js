@@ -39,6 +39,20 @@ export function about(lang) {
   });
 }
 
+export function topicPrefix(kind) {
+  if (kind === 'anon') return '⬇️ 😶‍🌫️ ';
+  if (kind === 'history') return '⬇️ 😶‍🌫️💬 ';
+  return '⬇️ 😎 ';
+}
+
+export function customTopicName(kind, custom) {
+  return `${topicPrefix(kind)}${cleanLabel(custom, 60)}`;
+}
+
+export function customSenderTopicName(custom) {
+  return `⬆️ ${cleanLabel(custom, 60)}`;
+}
+
 export function topicName(kind, memo, label) {
   const tail = cleanLabel(memo, 40);
   if (kind === 'anon') return `⬇️ 😶‍🌫️ Anonymous · ${tail}`;
