@@ -6,6 +6,7 @@ import * as schema from '../tgcloud/schema.js';
 import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
 import { linkMemo } from '../tgcloud/lib/keys.js';
+import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
 
 beforeEach(() => {
   resetDb();
@@ -69,6 +70,20 @@ async function click(data, userId = 200, replyMarkup) {
     data,
   });
 }
+
+test('bot metadata config runs once', async () => {
+  await configureBotOnce();
+  assert.equal(callsOf('setMyName').length, 1);
+  assert.equal(callsOf('setMyCommands').length, 2);
+  assert.equal(callsOf('setMyDescription').length, 2);
+  assert.equal(callsOf('setMyShortDescription').length, 2);
+  assert.equal(callsOf('setChatMenuButton').length, 1);
+  assert.equal(callsOf('setMyProfilePhoto').length, 1);
+
+  await configureBotOnce();
+  assert.equal(callsOf('setMyName').length, 1);
+  assert.equal(callsOf('setMyProfilePhoto').length, 1);
+});
 
 test('help mentions the manual topic rename limitation', async () => {
   await onMessage(message('/help', 100));

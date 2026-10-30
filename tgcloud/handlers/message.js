@@ -10,6 +10,7 @@ import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor, tokenLookupFor } from '../lib/links.js';
+import { configureBotOnce } from '../lib/bot-config.js';
 import { linksMenu } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -103,6 +104,7 @@ async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, 
 
 async function startOwner(msg, lang, now) {
   const chatId = msg.chat.id;
+  void configureBotOnce();
   const ownerKey = await userKeyFor(chatId);
   const created = await store.ensureOwner(ownerKey, now, lang);
   await send(chatId, render.welcome(lang));

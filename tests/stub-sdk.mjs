@@ -68,6 +68,30 @@ export const api = {
     record('getMe', {});
     return { id: 1, is_bot: true, first_name: 'Test', username: 'test_bot' };
   },
+  async setMyName(args) {
+    record('setMyName', args);
+    return true;
+  },
+  async setMyCommands(args) {
+    record('setMyCommands', args);
+    return true;
+  },
+  async setMyDescription(args) {
+    record('setMyDescription', args);
+    return true;
+  },
+  async setMyShortDescription(args) {
+    record('setMyShortDescription', args);
+    return true;
+  },
+  async setChatMenuButton(args) {
+    record('setChatMenuButton', args);
+    return true;
+  },
+  async setMyProfilePhoto(args) {
+    record('setMyProfilePhoto', args);
+    return true;
+  },
   async sendMessage(args) {
     record('sendMessage', args);
     return { message_id: nextId++, chat: { id: args.chat_id }, text: args.text };

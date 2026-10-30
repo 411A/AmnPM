@@ -16,6 +16,7 @@ tgcloud/
     callback_query.js  mode, answer, read, block, revoke, memo
   lib/
     config.js          limits, repo/contact
+    bot-config.js      one-time bot name, commands, descriptions, photo
     secret.js          KEK ring (deploy-only, never committed)
     secret.example.js  template for secret.js
     build.js           generated at deploy: release, commit, bundle hash, verified
@@ -132,6 +133,18 @@ The default path uses one fast HMAC per incoming message; there is no PBKDF2 cos
 100,000 rounds on a development machine), so 1,000 messages/s needs roughly 12 CPU cores just
 for the KDF. A single Telegram bot cannot deliver thousands of messages per second anyway: the
 Bot API limits sends per bot and per chat. Scale-out means multiple bots, not a bigger handler.
+
+## Bot metadata
+
+On the first owner `/start`, `tgcloud/lib/bot-config.js` sets the bot name, commands (English
+and Persian), description, short description, menu button, and profile photo. It is
+fire-and-forget: `/start` does not wait for it. `bot_config_version` and `bot_photo_version`
+meta flags make each part one-time; bump the constants in that file to reapply.
+
+The profile photo is fetched by Telegram from the public JPG URL in `PHOTO_URL`; replace it with
+your own public JPG. If the photo call fails, the core metadata is still applied and the photo is
+retried on a later `/start`. If the Bot API does not support `setMyProfilePhoto` on the platform,
+the profile photo can be set manually in @BotFather.
 
 ## Retention
 
