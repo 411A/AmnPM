@@ -29,6 +29,15 @@ export async function getOwner(ownerKey) {
   return db.get(sql`SELECT * FROM owners WHERE owner_key = ${ownerKey}`);
 }
 
+// One read covers the memo prompt, the reply window, and owner detection.
+export async function getOwnerState(ownerKey) {
+  return db.get(sql`SELECT o.owner_key, o.memo_link_id, o.memo_message_id,
+      r.link_id AS reply_link_id, r.target_ct, r.target_nonce, r.original_id, r.expires_at
+    FROM owners o
+    LEFT JOIN reply_windows r ON r.owner_key = o.owner_key
+    WHERE o.owner_key = ${ownerKey}`);
+}
+
 export async function claimSlot(ownerKey, cap, now) {
   // Recover slots left by a crashed insert older than one hour.
   await db.run(sql`DELETE FROM link_slots
@@ -108,18 +117,21 @@ export async function getSession(userKey) {
   return db.get(sql`SELECT * FROM sessions WHERE user_key = ${userKey}`);
 }
 
+// Session and link in one read for the common non-topic message path.
+export async function getSessionWithLink(userKey) {
+  return db.get(sql`SELECT l.*, s.mode AS session_mode FROM sessions s
+    JOIN links l ON l.id = s.link_id WHERE s.user_key = ${userKey}`);
+}
+
 export async function setSessionMode(userKey, mode, now) {
   await db.run(sql`UPDATE sessions SET mode = ${mode}, updated_at = ${now} WHERE user_key = ${userKey}`);
 }
 
 export async function addPending(row) {
-  const existing = await db.get(sql`SELECT 1 AS hit FROM pending
-    WHERE user_key = ${row.user_key} AND group_key = ${row.group_key}
-      AND message_id = ${row.message_id}`);
-  await db.run(sql`INSERT OR IGNORE INTO pending
+  const result = await db.run(sql`INSERT OR IGNORE INTO pending
     (user_key, link_id, group_key, message_id, created_at)
     VALUES (${row.user_key}, ${row.link_id}, ${row.group_key}, ${row.message_id}, ${row.created_at})`);
-  return !existing;
+  return result.changes > 0;
 }
 
 export async function listPending(userKey, groupKey) {
@@ -135,17 +147,20 @@ export async function sweepPending(cutoff) {
   await db.run(sql`DELETE FROM pending WHERE created_at <= ${cutoff}`);
 }
 
-export async function setMemoState(ownerKey, linkId) {
-  await db.run(sql`UPDATE owners SET memo_link_id = ${linkId} WHERE owner_key = ${ownerKey}`);
+export async function setMemoState(ownerKey, linkId, messageId) {
+  await db.run(sql`UPDATE owners SET memo_link_id = ${linkId}, memo_message_id = ${messageId}
+    WHERE owner_key = ${ownerKey}`);
 }
 
 export async function getMemoState(ownerKey) {
-  const row = await db.get(sql`SELECT memo_link_id FROM owners WHERE owner_key = ${ownerKey}`);
-  return row?.memo_link_id ?? null;
+  const row = await db.get(sql`SELECT memo_link_id, memo_message_id FROM owners
+    WHERE owner_key = ${ownerKey}`);
+  return row?.memo_link_id ? row : null;
 }
 
 export async function clearMemoState(ownerKey) {
-  await db.run(sql`UPDATE owners SET memo_link_id = NULL WHERE owner_key = ${ownerKey}`);
+  await db.run(sql`UPDATE owners SET memo_link_id = NULL, memo_message_id = NULL
+    WHERE owner_key = ${ownerKey}`);
 }
 
 export async function deleteSession(userKey) {
@@ -239,6 +254,15 @@ export async function isBlocked(ownerKey, linkId, senderKey) {
   return Boolean(row);
 }
 
+// Link-scope row uses the per-link key; global row uses the chat-wide key.
+export async function isBlockedBy(ownerKey, linkId, linkSenderKey, globalSenderKey) {
+  const row = await db.get(sql`SELECT 1 AS hit FROM blocks
+    WHERE owner_key = ${ownerKey}
+      AND (link_id = 0 OR link_id = ${linkId})
+      AND sender_key IN (${linkSenderKey}, ${globalSenderKey})`);
+  return Boolean(row);
+}
+
 export async function setBlock(ownerKey, linkId, senderKey, now) {
   await db.run(sql`INSERT OR IGNORE INTO blocks (owner_key, link_id, sender_key, created_at)
     VALUES (${ownerKey}, ${linkId}, ${senderKey}, ${now})`);
@@ -309,14 +333,13 @@ export async function failJob(id) {
 
 export async function bumpRate(linkId, senderKey, now) {
   const cutoff = now - 60;
-  await db.run(sql`INSERT INTO rate_limits (link_id, sender_key, window_start, count)
+  const row = await db.get(sql`INSERT INTO rate_limits (link_id, sender_key, window_start, count)
     VALUES (${linkId}, ${senderKey}, ${now}, 1)
     ON CONFLICT(link_id, sender_key) DO UPDATE SET
       count = CASE WHEN rate_limits.window_start <= ${cutoff} THEN 1 ELSE rate_limits.count + 1 END,
       window_start = CASE WHEN rate_limits.window_start <= ${cutoff} THEN ${now}
-        ELSE rate_limits.window_start END`);
-  const row = await db.get(sql`SELECT count FROM rate_limits
-    WHERE link_id = ${linkId} AND sender_key = ${senderKey}`);
+        ELSE rate_limits.window_start END
+    RETURNING count`);
   return Number(row?.count ?? 0);
 }
 

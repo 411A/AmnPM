@@ -9,10 +9,10 @@ import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName } 
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
-import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sessionKeyFor, senderKeyFor, tokenLookupFor } from '../lib/links.js';
+import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
-import { linksMenu } from '../lib/menu.js';
+import { linksMenu, requestMemo } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -94,16 +94,14 @@ async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, 
     group_key: groupKey,
     first_name: firstName,
   };
-  const [anon, history, forward] = await Promise.all([
-    sealAction(link, 'mode', { ...payload, mode: 'anon' }, now, CONFIG.modeTtlSeconds),
-    sealAction(link, 'mode', { ...payload, mode: 'history' }, now, CONFIG.modeTtlSeconds),
-    sealAction(link, 'mode', { ...payload, mode: 'forward' }, now, CONFIG.modeTtlSeconds),
-  ]);
+  // One sealed token backs all three buttons; the mode letter is the only difference.
+  const sealed = await sealAction(link, 'mode', payload, now, CONFIG.modeTtlSeconds);
+  const data = `${sealed.prefix}${CALLBACK.SEP}${sealed.suffix}`;
   await send(senderId, t(lang, 'chooseMode'), {
     reply_markup: render.modeKeyboard(lang, {
-      anon: `${CALLBACK.MODE_ANON}${CALLBACK.SEP}${anon.prefix}${CALLBACK.SEP}${anon.suffix}`,
-      history: `${CALLBACK.MODE_HISTORY}${CALLBACK.SEP}${history.prefix}${CALLBACK.SEP}${history.suffix}`,
-      forward: `${CALLBACK.MODE_FORWARD}${CALLBACK.SEP}${forward.prefix}${CALLBACK.SEP}${forward.suffix}`,
+      anon: `${CALLBACK.MODE_ANON}${CALLBACK.SEP}${data}`,
+      history: `${CALLBACK.MODE_HISTORY}${CALLBACK.SEP}${data}`,
+      forward: `${CALLBACK.MODE_FORWARD}${CALLBACK.SEP}${data}`,
     }, current),
     reply_to_message_id: messageId,
     ...(threadId ? { message_thread_id: threadId } : {}),
@@ -174,7 +172,7 @@ async function listLinks(msg, lang, now) {
 }
 
 function stripTopicPrefix(text) {
-  const direction = new RegExp(`^(${EMOJI.down}|${EMOJI.up})\\s*`);
+  const direction = new RegExp(`^\\u200E?(${EMOJI.down}|${EMOJI.up})\\s*`);
   const mode = new RegExp(`^(${EMOJI.history}|${EMOJI.anon}|${EMOJI.forward})\\s*`);
   return String(text).replace(direction, '').replace(mode, '').trim();
 }
@@ -191,7 +189,7 @@ async function renameTopic(msg, arg, lang) {
   if (topic) {
     const link = await store.getLink(topic.link_id);
     if (!link) return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
-    const name = render.customTopicName(topic.kind, label);
+    const name = render.customTopicName(topic.kind, label, await linkMemo(link));
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
       const sealed = await sealTopicName(link, topic.id, label);
@@ -287,27 +285,47 @@ async function senderTopicFor(base, threadId) {
 async function plain(msg, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
+  const state = await store.getOwnerState(ownerKey);
 
-  const memoLink = await store.getMemoState(ownerKey);
-  if (memoLink) {
+  if (state?.memo_link_id) {
     if (typeof msg.text !== 'string') {
-      return sendHere(msg, t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }));
+      try {
+        await api.deleteMessage({ chat_id: chatId, message_id: msg.message_id });
+      } catch {
+        // message already gone
+      }
+      const link = await store.getLink(state.memo_link_id);
+      if (link) await requestMemo(link, lang);
+      return undefined;
     }
-    const link = await store.getLink(memoLink);
+    const link = await store.getLink(state.memo_link_id);
     if (link) {
       const memoText = ids.sanitizeMemo(msg.text);
       const dek = await linkDek(link);
       const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);
       await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
       const updated = await store.getLink(link.id);
-      await renameTopics(updated, await ownerChatId(updated));
+      const chat = await ownerChatId(updated);
+      await renameTopics(updated, chat);
+      await Promise.all([
+        state.memo_message_id
+          ? api.deleteMessage({ chat_id: chat, message_id: state.memo_message_id }).catch(() => {})
+          : null,
+        api.deleteMessage({ chat_id: chatId, message_id: msg.message_id }).catch(() => {}),
+        store.clearMemoState(ownerKey),
+      ]);
+    } else {
+      await store.clearMemoState(ownerKey);
     }
-    await store.clearMemoState(ownerKey);
     return sendHere(msg, t(lang, 'memoChanged'));
   }
 
-  const window = await store.getReplyWindow(ownerKey, now);
-  if (window) return replyToWindow(msg, window, lang, now);
+  if (state?.reply_link_id) {
+    if (state.expires_at > now) {
+      return replyToWindow(msg, { ...state, link_id: state.reply_link_id }, lang, now);
+    }
+    await store.closeReplyWindow(ownerKey);
+  }
 
   const base = await chatKeyFor(chatId);
   const sessionKey = await sessionKeyFrom(base);
@@ -328,23 +346,20 @@ async function plain(msg, lang, now) {
     const session = await store.getSession(sessionKey);
     if (session?.link_id === link.id) current = session.mode;
   } else {
-    const session = await store.getSession(sessionKey);
+    const session = await store.getSessionWithLink(sessionKey);
     if (!session) {
-      const owner = await store.getOwner(ownerKey);
-      return sendHere(msg, t(lang, owner ? 'answerOnly' : 'startFromLink'));
+      return sendHere(msg, t(lang, state?.owner_key ? 'answerOnly' : 'startFromLink'));
     }
-    link = await store.getLink(session.link_id);
-    if (!link || link.state !== 'active') {
+    link = session;
+    if (link.state !== 'active') {
       await store.deleteSession(sessionKey);
       return sendHere(msg, t(lang, 'linkInactive'));
     }
     senderKey = await senderKeyFrom(base, link.id);
-    current = session.mode;
+    current = session.session_mode;
   }
 
-  const globalKey = await userKeyFor(chatId);
-  if (await store.hasBlock(link.owner_key, link.id, senderKey)
-      || await store.hasBlock(link.owner_key, 0, globalKey)) {
+  if (await store.isBlockedBy(link.owner_key, link.id, senderKey, ownerKey)) {
     return sendHere(msg, t(lang, 'blockedNotice'));
   }
 
@@ -380,8 +395,14 @@ export default async function onMessage(update) {
     const msg = update;
     if (!msg?.chat || !msg?.from || msg.from.is_bot) return;
     const now = nowSec();
-    await store.sweepActionTokens(now);
-    await store.sweepPending(now - 86_400);
+    // Housekeeping does not need to run on every update; expired rows are also
+    // rejected and removed on use.
+    if (Math.random() < 0.02) {
+      await Promise.all([
+        store.sweepActionTokens(now),
+        store.sweepPending(now - 86_400),
+      ]);
+    }
     const lang = normalizeLang(msg.from.language_code);
 
     if (typeof msg.text === 'string' && msg.text.startsWith('/')) return await command(msg, lang, now);

@@ -84,10 +84,10 @@ export async function ownerChatId(link) {
   );
 }
 
-export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds) {
-  const dek = await linkDek(link);
+export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
+  const key = dek ?? (await linkDek(link));
   const { ct, nonce } = await c.encrypt(
-    dek,
+    key,
     JSON.stringify(payload),
     `link:${link.id}:action:${kind}:v1`,
   );

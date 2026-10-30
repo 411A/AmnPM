@@ -2,7 +2,9 @@ import { CONFIG } from './config.js';
 import { BUILD } from './build.js';
 import { t } from './i18n.js';
 import { escapeHtml, cleanLabel } from './ids.js';
-import { EMOJI } from './constants.js';
+import { EMOJI, LTR_MARK } from './constants.js';
+
+const ltr = (name) => `${LTR_MARK}${name}`;
 
 export function verifyLine() {
   const manifest = escapeHtml(CONFIG.manifestUrl);
@@ -46,23 +48,26 @@ export function topicPrefix(kind) {
   return `${EMOJI.down} ${EMOJI.forward} `;
 }
 
-export function customTopicName(kind, custom) {
-  return `${topicPrefix(kind)}${cleanLabel(custom, 60)}`;
+export function customTopicName(kind, custom, memo) {
+  const tail = cleanLabel(memo, 40);
+  return ltr(`${topicPrefix(kind)}${cleanLabel(custom, 60)}${tail ? ` · ${tail}` : ''}`);
 }
 
 export function customSenderTopicName(custom) {
-  return `${EMOJI.up} ${cleanLabel(custom, 60)}`;
+  return ltr(`${EMOJI.up} ${cleanLabel(custom, 60)}`);
 }
 
 export function topicName(kind, memo, label) {
   const tail = cleanLabel(memo, 40);
-  if (kind === 'anon') return `${EMOJI.down} ${EMOJI.anon} Anonymous · ${tail}`;
-  if (kind === 'history') return `${EMOJI.down} ${EMOJI.history} ${cleanLabel(label, 30)} · ${tail}`;
-  return `${EMOJI.down} ${EMOJI.forward} ${cleanLabel(label, 30)} · ${tail}`;
+  if (kind === 'anon') return ltr(`${EMOJI.down} ${EMOJI.anon} Anonymous · ${tail}`);
+  if (kind === 'history') {
+    return ltr(`${EMOJI.down} ${EMOJI.history} ${cleanLabel(label, 30)} · ${tail}`);
+  }
+  return ltr(`${EMOJI.down} ${EMOJI.forward} ${cleanLabel(label, 30)} · ${tail}`);
 }
 
 export function senderTopicName(token) {
-  return `${EMOJI.up} ${cleanLabel(token, 40)}`;
+  return ltr(`${EMOJI.up} ${cleanLabel(token, 40)}`);
 }
 
 export function modeKeyboard(lang, callbacks, current) {

@@ -9,6 +9,7 @@ export const owners = table('owners', {
   owner_key: text('owner_key').primaryKey(),
   lang: text('lang').notNull().default('en'),
   memo_link_id: integer('memo_link_id'),
+  memo_message_id: integer('memo_message_id'),
   created_at: integer('created_at').notNull(),
 });
 

@@ -166,16 +166,18 @@ sender topic.
 Global **Block all** rows are owner-level and are not link-scoped; they survive revocation and
 apply to other links. Link-scope blocks are deleted with the link. A global block stores a fast
 HMAC of the blocked sender so it works across links, which the operator can resolve to a sender
-id; a link-scope block uses the PBKDF2 sender key.
+id; a link-scope block uses the per-link sender key.
 
 ## Topic names
 
 Rename a topic with `/rename <name>` inside it. The bot always prepends the mandatory
 direction/mode marker: `⬇️ 😶‍🌫️` (anonymous), `⬇️ 😶‍🌫️💬` (history), `⬇️ 😎` (forward), or
-`⬆️` (sender topic). Owner-chosen names are stored encrypted under the link key; sender-chosen
-names stay only in Telegram. The Bot API has no read-topic-name method, so a rename made in the
-Telegram UI cannot be observed or repaired; only `/rename` is enforced. A later memo change
-reapplies the stored custom name to owner topics.
+`⬆️` (sender topic). Owner topic names keep the memo at the end (`marker + custom · memo`), so a
+rename never drops it and a later memo change updates every owner topic, including renamed ones.
+A leading U+200E left-to-right mark keeps the marker on the left when the custom name is RTL.
+Owner-chosen names are stored encrypted under the link key; sender-chosen names stay only in
+Telegram. The Bot API has no read-topic-name method, so a rename made in the Telegram UI cannot
+be observed or repaired; only `/rename` is enforced.
 
 Replies and status messages sent from inside a topic carry `message_thread_id`, so they stay in
 that topic instead of leaking into the All/General chat. On revoke, owner topics receive a

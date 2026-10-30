@@ -7,7 +7,7 @@ import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
-import { homeMenu, linksMenu, linkMenu, editMenu } from '../lib/menu.js';
+import { homeMenu, linksMenu, linkMenu, editMenu, requestMemo } from '../lib/menu.js';
 import { deepLink, userKeyFor } from '../lib/links.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
@@ -74,9 +74,7 @@ async function mode(q, k, opened, lang, now) {
   const link = opened.link;
   if (link.state !== 'active') return answer(q, t(lang, 'linkInactive'));
 
-  const globalKey = await userKeyFor(p.sender_id);
-  if (await store.hasBlock(link.owner_key, link.id, p.sender_key)
-      || await store.hasBlock(link.owner_key, 0, globalKey)) {
+  if (await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_id))) {
     await store.clearPending(p.user_key, p.group_key);
     await store.deleteActionToken(opened.row.prefix);
     return answer(q, t(lang, 'blockedNotice'));
@@ -85,14 +83,15 @@ async function mode(q, k, opened, lang, now) {
   const pending = await store.listPending(p.user_key, p.group_key);
   if (!pending.length) return answer(q, t(lang, 'answerExpired'));
 
+  // Stop the button spinner now; delivery and cleanup continue behind it.
+  await answer(q);
+
   const chosen = k === CALLBACK.MODE_ANON ? 'anon' : k === CALLBACK.MODE_HISTORY ? 'history' : 'forward';
   const session = await store.getSession(p.user_key);
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
   const target = await deliver(link, p.sender_id, p.sender_key, chosen,
     pending.map((row) => row.message_id), p.first_name, now);
-  await store.clearPending(p.user_key, p.group_key);
-  await store.deleteActionToken(opened.row.prefix);
 
   const text = chosen === 'anon'
     ? t(lang, 'sentAnon')
@@ -101,20 +100,20 @@ async function mode(q, k, opened, lang, now) {
       : t(lang, 'sentForward');
 
   const replyTo = q.message?.reply_to_message?.message_id;
-  if (q.message?.chat?.id && q.message?.message_id) {
-    try {
-      await api.deleteMessage({ chat_id: q.message.chat.id, message_id: q.message.message_id });
-    } catch {
-      // already gone
-    }
-  }
-  await api.sendMessage({
-    chat_id: p.sender_id,
-    ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
-    text,
-    ...(replyTo ? { reply_to_message_id: replyTo } : {}),
-  });
-  return answer(q);
+  await Promise.all([
+    store.clearPending(p.user_key, p.group_key),
+    store.deleteActionToken(opened.row.prefix),
+    q.message?.chat?.id && q.message?.message_id
+      ? api.deleteMessage({ chat_id: q.message.chat.id, message_id: q.message.message_id }).catch(() => {})
+      : null,
+    api.sendMessage({
+      chat_id: p.sender_id,
+      ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
+      text,
+      ...(replyTo ? { reply_to_message_id: replyTo } : {}),
+    }),
+  ]);
+  return undefined;
 }
 
 async function replyWindow(q, opened, lang, now) {
@@ -203,7 +202,15 @@ async function revoke(q, opened, lang, now) {
   const chat = await ownerChatId(link);
   const token = await linkToken(link);
   const url = await deepLink(token);
+  const memoState = await store.getMemoState(link.owner_key);
 
+  if (memoState?.memo_link_id === link.id && memoState.memo_message_id) {
+    try {
+      await api.deleteMessage({ chat_id: chat, message_id: memoState.memo_message_id });
+    } catch {
+      // already gone
+    }
+  }
   await closeLinkTopics(link, chat, owner?.lang ?? lang);
   await store.insertRetired(await ids.tokenFp(token), now);
   await store.deleteLinkScoped(link.id);
@@ -232,15 +239,7 @@ async function revoke(q, opened, lang, now) {
 }
 
 async function memoPrompt(q, opened, lang) {
-  const link = opened.link;
-  await store.setMemoState(link.owner_key, link.id);
-  const chatId = q.message?.chat?.id ?? (await ownerChatId(link));
-  const thread = q.message?.message_thread_id;
-  await api.sendMessage({
-    chat_id: chatId,
-    ...(thread ? { message_thread_id: thread } : {}),
-    text: t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }),
-  });
+  await requestMemo(opened.link, lang);
   return answer(q);
 }
 

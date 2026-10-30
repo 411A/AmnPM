@@ -47,7 +47,7 @@ export async function renameTopics(link, chatId) {
     const custom = await topicLabel(link, topic);
     let name;
     if (custom) {
-      name = customTopicName(topic.kind, custom);
+      name = customTopicName(topic.kind, custom, memoText);
     } else if (topic.kind === 'anon') {
       name = topicName('anon', memoText);
     } else {

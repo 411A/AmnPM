@@ -1,6 +1,6 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
-import { openJob, ownerChatId, sealAction } from './keys.js';
+import { openJob, ownerChatId, sealAction, linkDek } from './keys.js';
 import * as store from './store.js';
 import { ownerKeyboard } from './render.js';
 import { t } from './i18n.js';
@@ -36,35 +36,40 @@ async function send(job, payload) {
 }
 
 async function sendControls(link, payload, sent, now) {
-  const owner = await store.getOwner(link.owner_key);
-  const lang = owner?.lang ?? 'en';
   const globalKey = await userKeyFor(payload.from_chat_id);
-  const blockedLink = await store.hasBlock(link.owner_key, link.id, payload.sender_key);
-  const blockedAll = await store.hasBlock(link.owner_key, 0, globalKey);
+  const [owner, blockedLink, blockedAll] = await Promise.all([
+    store.getOwner(link.owner_key),
+    store.hasBlock(link.owner_key, link.id, payload.sender_key),
+    store.hasBlock(link.owner_key, 0, globalKey),
+  ]);
+  const lang = owner?.lang ?? 'en';
 
-  const answer = await sealAction(link, 'answer', {
-    link_id: link.id,
-    sender_chat_id: payload.from_chat_id,
-    sender_key: payload.sender_key,
-    original_id: payload.message_ids[0],
-  }, now);
-  const read = await sealAction(link, 'read', {
-    link_id: link.id,
-    sender_chat_id: payload.from_chat_id,
-    message_id: payload.message_ids[0],
-  }, now);
-  const blockLink = await sealAction(link, 'block', {
-    link_id: link.id,
-    sender_key: payload.sender_key,
-    sender_chat_id: payload.from_chat_id,
-    scope: 'link',
-  }, now);
-  const blockAll = await sealAction(link, 'block', {
-    link_id: link.id,
-    sender_key: payload.sender_key,
-    sender_chat_id: payload.from_chat_id,
-    scope: 'all',
-  }, now);
+  const dek = await linkDek(link);
+  const [answer, read, blockLink, blockAll] = await Promise.all([
+    sealAction(link, 'answer', {
+      link_id: link.id,
+      sender_chat_id: payload.from_chat_id,
+      sender_key: payload.sender_key,
+      original_id: payload.message_ids[0],
+    }, now, CONFIG.actionTtlSeconds, dek),
+    sealAction(link, 'read', {
+      link_id: link.id,
+      sender_chat_id: payload.from_chat_id,
+      message_id: payload.message_ids[0],
+    }, now, CONFIG.actionTtlSeconds, dek),
+    sealAction(link, 'block', {
+      link_id: link.id,
+      sender_key: payload.sender_key,
+      sender_chat_id: payload.from_chat_id,
+      scope: 'link',
+    }, now, CONFIG.actionTtlSeconds, dek),
+    sealAction(link, 'block', {
+      link_id: link.id,
+      sender_key: payload.sender_key,
+      sender_chat_id: payload.from_chat_id,
+      scope: 'all',
+    }, now, CONFIG.actionTtlSeconds, dek),
+  ]);
 
   const message = {
     chat_id: payload.chat_id,

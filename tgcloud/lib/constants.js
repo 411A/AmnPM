@@ -1,4 +1,8 @@
 // All user-facing glyphs and callback tokens live here.
+// Forces LTR layout in a topic name so the direction emoji stays on the left even
+// when the custom name is RTL.
+export const LTR_MARK = '\u200E';
+
 export const EMOJI = {
   brand: '🕊️',
   plus: '➕',

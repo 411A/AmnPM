@@ -9,19 +9,28 @@ async function sealOwnerSalt(salt) {
   return `enc:${CURRENT_KEK_VERSION}:${sealed.nonce}:${sealed.ct}`;
 }
 
+// Isolate-local cache: the salt is stable and read on nearly every update.
+// shortcut: cached for the isolate lifetime, so a restored database needs an isolate restart.
+let saltCache = null;
+let usernameCache = null;
+
 async function ownerSalt() {
+  if (saltCache) return saltCache;
   const stored = await store.getMeta('install_salt');
   if (!stored) {
     const salt = crypto.randomHex(32);
     await store.setMeta('install_salt', await sealOwnerSalt(salt));
+    saltCache = salt;
     return salt;
   }
   if (stored.startsWith('enc:')) {
     const [, version, nonce, ct] = stored.split(':');
-    return crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
+    saltCache = await crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
+    return saltCache;
   }
   await store.setMeta('install_salt', await sealOwnerSalt(stored));
-  return stored;
+  saltCache = stored;
+  return saltCache;
 }
 
 export async function userKeyFor(chatId) {
@@ -56,11 +65,16 @@ export async function tokenLookupFor(token) {
 }
 
 export async function botUsername() {
+  if (usernameCache) return usernameCache;
   const cached = await store.getMeta('bot_username');
-  if (cached) return cached;
+  if (cached) {
+    usernameCache = cached;
+    return cached;
+  }
   const me = await api.getMe();
+  usernameCache = me.username;
   await store.setMeta('bot_username', me.username);
-  return me.username;
+  return usernameCache;
 }
 
 export async function deepLink(token) {

@@ -109,8 +109,8 @@ test('owner start creates a link and repeats only the welcome', async () => {
 
 test('a stranger reaches the owner anonymously', async () => {
   const token = await setupLink();
-  const senderTopic = callsOf('createForumTopic').find((call) => call.args.name.startsWith('⬆️'));
-  assert.equal(senderTopic.args.name, `⬆️ ${token}`);
+  const senderTopic = callsOf('createForumTopic').find((call) => call.args.name.startsWith('\u200E⬆️'));
+  assert.equal(senderTopic.args.name, `\u200E⬆️ ${token}`);
   assert.ok(callsOf('sendMessage').at(-1).args.message_thread_id);
 
   const controls = await deliverAnonymous();
@@ -122,7 +122,7 @@ test('a stranger reaches the owner anonymously', async () => {
   assert.equal(copies[0].args.message_ids.length, 1);
 
   const ownerTopic = callsOf('createForumTopic').find((call) => call.args.name.includes('Anonymous'));
-  assert.equal(ownerTopic.args.name, '⬇️ 😶‍🌫️ Anonymous · main');
+  assert.equal(ownerTopic.args.name, '\u200E⬇️ 😶‍🌫️ Anonymous · main');
   assert.ok(controls.args.reply_markup.inline_keyboard.flat().some((b) => b.callback_data.startsWith('A|')));
 
   const sent = callsOf('sendMessage').find((call) => call.args.text?.startsWith('😶‍🌫️'));
@@ -167,9 +167,9 @@ test('history mode keeps one topic and a stable indicator', async () => {
   await onMessage(message('two', 200, { first_name: 'V' }));
   await click(buttons().filter((entry) => entry.startsWith('H|')).at(-1));
 
-  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('⬇️'));
+  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.equal(ownerTopics.length, 1);
-  assert.match(ownerTopics[0].args.name, /^⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main$/);
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main$/);
   assert.equal(callsOf('copyMessages').length, 2);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM conversations').get().n, 1);
 });
@@ -180,8 +180,8 @@ test('forward mode forwards the profile into its own topic', async () => {
   await click(buttons().find((entry) => entry.startsWith('F|')));
 
   assert.equal(callsOf('forwardMessages').length, 1);
-  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('⬇️'));
-  assert.match(ownerTopics[0].args.name, /^⬇️ 😎 V · main$/);
+  const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😎 V · main$/);
 });
 
 test('answer copies the owner reply back to the sender', async () => {
@@ -334,7 +334,7 @@ test('owners can rename a topic and keep the mandatory emoji prefix', async () =
   await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
 
   const edit = callsOf('editForumTopic').at(-1);
-  assert.equal(edit.args.name, '⬇️ 😶‍🌫️ Cool stuff');
+  assert.equal(edit.args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · main');
   assert.match(rawDb().prepare('SELECT name FROM topics WHERE thread_id = ?').get(thread).name, /^enc:/);
   assert.equal(callsOf('sendMessage').at(-1).args.message_thread_id, thread);
 });
@@ -350,7 +350,43 @@ test('a renamed topic keeps its custom name after a memo change', async () => {
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('newmemo', 100));
 
-  assert.equal(callsOf('editForumTopic').at(-1).args.name, '⬇️ 😶‍🌫️ Cool stuff');
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · newmemo');
+});
+
+test('a renamed forward topic keeps its memo and follows memo changes', async () => {
+  await setupLink();
+  await onMessage(message('hi', 200, { first_name: 'V' }));
+  await click(buttons().find((entry) => entry.startsWith('F|')));
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'forward'").get().thread_id;
+  assert.ok(thread);
+
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · main');
+
+  await onMessage(message('/links', 100));
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('newmemo', 100));
+
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · newmemo');
+});
+
+test('the memo prompt and the memo message are removed after use', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await onMessage(message('/links', 100));
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+
+  const prompt = callsOf('sendMessage').find((call) => /Send the new memo/.test(call.args.text));
+  assert.ok(prompt);
+  assert.equal(prompt.args.chat_id, 100);
+
+  await onMessage(message('newmemo', 100, { message_id: 7777 }));
+  const deleted = callsOf('deleteMessage').map((call) => call.args);
+  assert.ok(deleted.some((args) => args.chat_id === 100 && args.message_id === 7777));
+  assert.ok(deleted.some((args) => args.chat_id === 100 && args.message_id !== 7777));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Memo updated/);
 });
 
 test('senders can rename their own topic with the mandatory up prefix', async () => {
@@ -358,7 +394,7 @@ test('senders can rename their own topic with the mandatory up prefix', async ()
   const thread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
   await onMessage(message('/rename Mine', 200, { message_thread_id: thread }));
 
-  assert.equal(callsOf('editForumTopic').at(-1).args.name, '⬆️ Mine');
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬆️ Mine');
 });
 
 test('no plaintext chat identifiers or message text are stored', async () => {

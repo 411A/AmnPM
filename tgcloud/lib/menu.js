@@ -1,8 +1,9 @@
 import { api } from 'sdk';
+import { CONFIG } from './config.js';
 import * as store from './store.js';
 import * as ids from './ids.js';
 import { t } from './i18n.js';
-import { sealAction, linkMemo, linkToken } from './keys.js';
+import { sealAction, linkMemo, linkToken, ownerChatId } from './keys.js';
 import { deepLink } from './links.js';
 import { shareUrl } from './render.js';
 import { EMOJI, CALLBACK } from './constants.js';
@@ -41,13 +42,16 @@ export async function linksMenu(lang, ownerKey, now) {
 }
 
 export async function linkMenu(lang, link, now) {
-  const token = await linkToken(link);
+  const [token, memoText] = await Promise.all([linkToken(link), linkMemo(link)]);
   const url = await deepLink(token);
-  const memoText = await linkMemo(link);
-  await store.deleteActionTokens(link.id, 'memo');
-  await store.deleteActionTokens(link.id, 'revoke');
-  const memo = await sealAction(link, 'memo', { link_id: link.id }, now);
-  const revoke = await sealAction(link, 'revoke', { link_id: link.id }, now);
+  await Promise.all([
+    store.deleteActionTokens(link.id, 'memo'),
+    store.deleteActionTokens(link.id, 'revoke'),
+  ]);
+  const [memo, revoke] = await Promise.all([
+    sealAction(link, 'memo', { link_id: link.id }, now),
+    sealAction(link, 'revoke', { link_id: link.id }, now),
+  ]);
 
   return {
     text: t(lang, 'linkMenuTitle', {
@@ -88,4 +92,25 @@ export async function editMenu(q, menu) {
   } catch (err) {
     if (!/not modified/i.test(String(err?.description ?? err))) throw err;
   }
+}
+
+// Sends the memo prompt into the owner chat and remembers it, so it can be
+// removed once the memo arrives. Replaces any prompt still pending.
+export async function requestMemo(link, lang) {
+  const chatId = await ownerChatId(link);
+  const current = await store.getMemoState(link.owner_key);
+  if (current?.memo_message_id) {
+    try {
+      await api.deleteMessage({ chat_id: chatId, message_id: current.memo_message_id });
+    } catch {
+      // already gone
+    }
+  }
+  const sent = await api.sendMessage({
+    chat_id: chatId,
+    text: t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }),
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+  });
+  await store.setMemoState(link.owner_key, link.id, sent.message_id);
 }
