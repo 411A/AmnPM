@@ -61,6 +61,12 @@ tgcloud migrate --yes
 tgcloud status
 ```
 
+`verified` is an operator claim, not a remote check. Use `--verified false` for ordinary deploys.
+For a verified release, generate the build, publish `manifest.json` as a GitHub release asset with
+the same `release`, `commit`, and `bundleHash`, then stamp `--verified true` and deploy. The bot
+links to `releases/latest/download/manifest.json`, so only publish `true` when that asset matches
+the deployed bundle. A mismatch is a false claim; keep the stamp `false` instead.
+
 `tgcloud/lib/secret.js` is gitignored and deployed as code. Generate it once per deployment;
 losing it makes every stored link undecryptable. Rotating a key means adding a new version and
 changing `CURRENT_KEK_VERSION`; older versions must stay in the ring while old links exist.
