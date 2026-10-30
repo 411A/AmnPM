@@ -33,7 +33,7 @@ const en = {
   modeHistory: '{e.history} With history',
   modeForward: '{e.forward} Forward',
   sentAnon: '{e.anon} Sent anonymously.',
-  sentHistory: '{e.history} Sent with history as {indicator}.',
+  sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one with /links.',
   about:
@@ -129,7 +129,7 @@ const fa = {
   modeHistory: '{e.history} با سابقه',
   modeForward: '{e.forward} هدایت',
   sentAnon: '{e.anon} ناشناس ارسال شد.',
-  sentHistory: '{e.history} با سابقه به‌عنوان {indicator} ارسال شد.',
+  sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. با /links یکی را حذف کنید.',
   about:

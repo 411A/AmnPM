@@ -33,8 +33,8 @@ test('memo is trimmed, collapsed, bounded, and defaulted', () => {
 
 test('indicator is deterministic per link and differs across people', async () => {
   const salt = 'aa'.repeat(32);
-  const a = await makeIndicator(salt, 'Ali');
-  assert.equal(a, await makeIndicator(salt, 'Ali'));
+  const a = await makeIndicator(salt, 'Visitor');
+  assert.equal(a, await makeIndicator(salt, 'Visitor'));
   assert.notEqual(a, await makeIndicator(salt, 'Sara'));
   assert.match(a, /^[a-z]+-[a-z]+$/);
 });

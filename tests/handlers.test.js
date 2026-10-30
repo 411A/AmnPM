@@ -134,10 +134,12 @@ test('a stranger reaches the owner anonymously', async () => {
   assert.equal(ownerTopic.args.name, '\u200E⬇️ 😶‍🌫️ Anonymous · main');
   assert.ok(controls.args.reply_markup.inline_keyboard.flat().some((b) => b.callback_data.startsWith('A|')));
 
-  const sent = callsOf('sendMessage').find((call) => call.args.text?.startsWith('😶‍🌫️'));
+  const sent = callsOf('editMessageText').find((call) => call.args.text?.startsWith('😶‍🌫️'));
   assert.ok(sent);
-  assert.equal(sent.args.reply_to_message_id, 3);
-  assert.equal(callsOf('deleteMessage').length, 1);
+  assert.equal(sent.args.chat_id, 200);
+  assert.equal(sent.args.message_id, 999);
+  assert.equal(sent.args.reply_markup.inline_keyboard.length, 0);
+  assert.equal(callsOf('deleteMessage').length, 0);
 
   const answerData = controls.args.reply_markup.inline_keyboard.flat()
     .find((button) => button.callback_data.startsWith('A|')).callback_data;
@@ -179,6 +181,10 @@ test('history mode keeps one topic and a stable indicator', async () => {
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.equal(ownerTopics.length, 1);
   assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main$/);
+  const historySent = callsOf('editMessageText')
+    .filter((call) => String(call.args.text).includes('Sent with history')).at(-1);
+  assert.ok(historySent);
+  assert.match(historySent.args.text, /<code>[a-z]+-[a-z]+<\/code>/);
   assert.equal(callsOf('copyMessages').length, 2);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM conversations').get().n, 1);
 });

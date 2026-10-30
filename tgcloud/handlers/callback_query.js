@@ -134,19 +134,35 @@ async function mode(q, k, opened, lang, now) {
       ? t(lang, 'sentHistory', { indicator: target.indicator })
       : t(lang, 'sentForward');
 
-  const replyTo = q.message?.reply_to_message?.message_id;
+  const fallback = () => api.sendMessage({
+    chat_id: q.message?.chat?.id ?? p.sender_id,
+    ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
+    text,
+    parse_mode: 'HTML',
+    ...(q.message?.reply_to_message?.message_id
+      ? { reply_to_message_id: q.message.reply_to_message.message_id }
+      : {}),
+  });
+  const confirm = async () => {
+    if (!q.message?.chat?.id || !q.message?.message_id) return fallback();
+    try {
+      await api.editMessageText({
+        chat_id: q.message.chat.id,
+        message_id: q.message.message_id,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [] },
+      });
+      return undefined;
+    } catch {
+      return fallback();
+    }
+  };
+
   await Promise.all([
     store.clearPending(p.user_key, p.group_key),
     store.deleteActionToken(opened.row.prefix),
-    q.message?.chat?.id && q.message?.message_id
-      ? api.deleteMessage({ chat_id: q.message.chat.id, message_id: q.message.message_id }).catch(() => {})
-      : null,
-    api.sendMessage({
-      chat_id: p.sender_id,
-      ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
-      text,
-      ...(replyTo ? { reply_to_message_id: replyTo } : {}),
-    }),
+    confirm(),
   ]);
   return undefined;
 }
