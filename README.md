@@ -99,7 +99,9 @@ falls back to unthreaded messages in the owner's chat.
   barrier, not a proof. Anonymity is from link owners and other users, not from the bot operator
   or Telegram.
 - **Split action records.** Values needed only to answer a button are stored partly in the
-  database and partly in `callback_data`; the database alone cannot reconstruct them.
+  database and partly in `callback_data`; the database alone cannot reconstruct them. A callback
+  is accepted only from the link owner for owner actions, or from the original sender for mode
+  actions; forwarding a button does not grant access.
 - **Crypto-shredding (live data).** Revoking a link deletes the link row and every link-scoped
   row, including the wrapped data key, so the live database can no longer decrypt anything for
   that link. A backup that still contains the wrapped key can be decrypted with the deployment

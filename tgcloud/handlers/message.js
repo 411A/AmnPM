@@ -58,7 +58,6 @@ async function createLink(ownerKey, chatId, memo, now) {
           owner_key: ownerKey,
           owner_chat_ct: chat.ct,
           owner_chat_nonce: chat.nonce,
-          salt: ids.newSalt(),
           dek_wrapped: wrapped.ct,
           dek_nonce: wrapped.nonce,
           kek_version: CURRENT_KEK_VERSION,

@@ -55,10 +55,10 @@ export async function releaseSlot(ownerKey, slot) {
 export async function insertLink(link) {
   await db.run(sql`INSERT INTO links
     (token_lookup, token_ct, token_nonce, memo, slot, owner_key, owner_chat_ct, owner_chat_nonce,
-     salt, dek_wrapped, dek_nonce, kek_version, state, created_at)
+     dek_wrapped, dek_nonce, kek_version, state, created_at)
     VALUES (${link.token_lookup}, ${link.token_ct}, ${link.token_nonce}, ${link.memo},
       ${link.slot}, ${link.owner_key}, ${link.owner_chat_ct}, ${link.owner_chat_nonce},
-      ${link.salt}, ${link.dek_wrapped}, ${link.dek_nonce},
+      ${link.dek_wrapped}, ${link.dek_nonce},
       ${link.kek_version}, 'active', ${link.created_at})`);
   return findLinkByLookup(link.token_lookup);
 }
@@ -86,10 +86,6 @@ export async function setLinkMemo(id, memo) {
 
 export async function setConversationIndicator(id, indicator) {
   await db.run(sql`UPDATE conversations SET indicator = ${indicator} WHERE id = ${id}`);
-}
-
-export async function revokeLink(id, now) {
-  await db.run(sql`UPDATE links SET state = 'revoked', revoked_at = ${now} WHERE id = ${id}`);
 }
 
 export async function insertRetired(fingerprint, now) {

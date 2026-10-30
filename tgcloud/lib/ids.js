@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 import { WORDS } from './words.js';
-import { hmacBytes, randomBytes, sha256Fp } from './crypto.js';
+import { hmacBytes, sha256Fp } from './crypto.js';
 
 if (CONFIG.tokenAlphabet.length !== 32) {
   throw new Error('tokenAlphabet must contain exactly 32 symbols');
@@ -42,8 +42,4 @@ export function escapeHtml(text) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
-}
-
-export function newSalt() {
-  return Array.from(randomBytes(32), (b) => b.toString(16).padStart(2, '0')).join('');
 }

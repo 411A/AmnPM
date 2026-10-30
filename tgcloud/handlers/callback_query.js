@@ -19,6 +19,8 @@ const KINDS = {
   A: 'answer', R: 'read', B: 'block',
   V: 'revoke', K: 'revoke_ok', E: 'memo', D: 'menu',
 };
+const SENDER_KINDS = new Set(['M', 'H', 'F']);
+const OWNER_KINDS = new Set(['A', 'R', 'B', 'V', 'K', 'E', 'D']);
 
 function answer(q, text, alert = false) {
   return api.answerCallbackQuery({
@@ -252,6 +254,17 @@ export default async function onCallback(update) {
     const expected = KINDS[k];
     if (!opened || !expected || opened.row.kind !== expected) {
       return await answer(q, t(lang, 'linkNotFound'));
+    }
+
+    // Action tokens are bearer capabilities; bind them to the intended actor.
+    if (SENDER_KINDS.has(k)) {
+      if (Number(opened.payload.sender_id) !== Number(q.from.id)) {
+        return await answer(q, t(lang, 'linkNotFound'));
+      }
+    } else if (OWNER_KINDS.has(k)) {
+      if (await userKeyFor(q.from.id) !== opened.link.owner_key) {
+        return await answer(q, t(lang, 'linkNotFound'));
+      }
     }
 
     if (k === 'M' || k === 'H' || k === 'F') return await mode(q, k, opened, lang, now);

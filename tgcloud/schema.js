@@ -7,7 +7,6 @@ export const meta = table('meta', {
 
 export const owners = table('owners', {
   owner_key: text('owner_key').primaryKey(),
-  active_links: integer('active_links').notNull().default(0),
   lang: text('lang').notNull().default('en'),
   memo_link_id: integer('memo_link_id'),
   created_at: integer('created_at').notNull(),
@@ -23,13 +22,11 @@ export const links = table('links', {
   owner_key: text('owner_key').notNull(),
   owner_chat_ct: text('owner_chat_ct').notNull(),
   owner_chat_nonce: text('owner_chat_nonce').notNull(),
-  salt: text('salt').notNull(),
   dek_wrapped: text('dek_wrapped').notNull(),
   dek_nonce: text('dek_nonce').notNull(),
   kek_version: integer('kek_version').notNull(),
   state: text('state').notNull(),
   created_at: integer('created_at').notNull(),
-  revoked_at: integer('revoked_at'),
 }, (t) => [
   uniqueIndex('idx_links_token').on(t.token_lookup),
   index('idx_links_owner').on(t.owner_key, t.state),

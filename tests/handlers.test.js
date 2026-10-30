@@ -202,6 +202,32 @@ test('block refuses the next message', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
 });
 
+test('a forwarded mode keyboard does not deliver for another user', async () => {
+  await setupLink();
+  await onMessage(message('hi', 200, { first_name: 'V' }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  await click(data, 300);
+  assert.equal(callsOf('copyMessages').length, 0);
+});
+
+test('forwarded owner controls do not block for another user', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+  await click(data, 300, controls.args.reply_markup);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM blocks').get().n, 0);
+});
+
+test('a forwarded link menu does not reveal the link to another user', async () => {
+  await setupLink();
+  await onMessage(message('/links', 100));
+  const data = buttons().find((entry) => entry.startsWith('D|'));
+  await click(data, 300);
+  assert.equal(callsOf('editMessageText').length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
+});
+
 test('a failed read receipt shows a popup', async () => {
   await setupLink();
   const controls = await deliverAnonymous();

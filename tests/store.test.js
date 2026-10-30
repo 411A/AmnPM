@@ -30,7 +30,7 @@ test('owner cap is atomic and released', async () => {
   assert.equal(await store.claimSlot(key, 2, 1), 0);
 });
 
-test('links are stored, found, listed and revoked', async () => {
+test('links are stored, found, listed and deleted', async () => {
   const inserted = await store.insertLink({
     token_lookup: 'lookup-1',
     token_ct: 'ct',
@@ -40,7 +40,6 @@ test('links are stored, found, listed and revoked', async () => {
     owner_key: 'owner-1',
     owner_chat_ct: 'ct',
     owner_chat_nonce: 'nonce',
-    salt: 'aa'.repeat(32),
     dek_wrapped: 'wrapped',
     dek_nonce: 'nonce',
     kek_version: 1,
@@ -51,8 +50,8 @@ test('links are stored, found, listed and revoked', async () => {
   assert.equal(link.id, id);
   assert.equal(link.state, 'active');
   assert.equal((await store.listLinks('owner-1')).length, 1);
-  await store.revokeLink(id, 200);
-  assert.equal((await store.getLink(id)).state, 'revoked');
+  await store.deleteLinkRow(id);
+  assert.equal(await store.getLink(id), undefined);
   assert.equal((await store.listLinks('owner-1')).length, 0);
 });
 
@@ -118,7 +117,7 @@ test('revocation leaves no link-scoped rows', async () => {
   await store.insertLink({
     token_lookup: 'lookup-2', token_ct: 'ct', token_nonce: 'nonce',
     memo: 'm', slot: 0, owner_key: 'owner-1', owner_chat_ct: 'c',
-    owner_chat_nonce: 'n', salt: 's', dek_wrapped: 'w', dek_nonce: 'n', kek_version: 1, created_at: 1,
+    owner_chat_nonce: 'n', dek_wrapped: 'w', dek_nonce: 'n', kek_version: 1, created_at: 1,
   });
   const beforeCounts = await store.countLinkRows(linkId);
   assert.equal(beforeCounts.jobs, 1);
