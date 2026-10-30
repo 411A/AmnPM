@@ -1,8 +1,13 @@
 const en = {
   welcome:
     '🕊️ <b>AmnPM</b> — a private inbox, one link away.\n' +
-    '➕ /newlink   🔗 /links   ℹ️ /about\n' +
+    '➕ /newlink   🔗 /links   🛠 /help   ℹ️ /about\n' +
     '{verify} · <a href="{repo}">source</a>',
+  help:
+    '🛠 <b>Help</b>\n' +
+    '/newlink [memo] · /links · /about\n' +
+    '/rename &lt;name&gt; inside a topic — the direction/mode emoji stays at the front.\n' +
+    'Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.',
   linkIntro:
     '🔗 <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
@@ -34,6 +39,7 @@ const en = {
   linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
   homeTitle: '🏠 <b>AmnPM</b>\nChoose an option.',
   homeLinks: '🔗 My links',
+  homeHelp: '🛠 Help',
   homeAbout: 'ℹ️ About',
   back: '⬅️ Back',
   open: '🔗 Open',
@@ -82,8 +88,13 @@ const en = {
 const fa = {
   welcome:
     '🕊️ <b>AmnPM</b> — صندوق خصوصی، فقط با یک لینک.\n' +
-    '➕ /newlink   🔗 /links   ℹ️ /about\n' +
+    '➕ /newlink   🔗 /links   🛠 /help   ℹ️ /about\n' +
     '{verify} · <a href="{repo}">منبع</a>',
+  help:
+    '🛠 <b>راهنما</b>\n' +
+    '/newlink [یادداشت] · /links · /about\n' +
+    '/rename &lt;نام&gt; داخل موضوع — ایموجی جهت/حالت همیشه در ابتدا می‌ماند.\n' +
+    'تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.',
   linkIntro:
     '🔗 <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
@@ -115,6 +126,7 @@ const fa = {
   linkMenuTitle: '🔗 <b>{memo}</b>\n<code>{token}</code>',
   homeTitle: '🏠 <b>AmnPM</b>\nیک گزینه را انتخاب کنید.',
   homeLinks: '🔗 لینک‌های من',
+  homeHelp: '🛠 راهنما',
   homeAbout: 'ℹ️ درباره',
   back: '⬅️ بازگشت',
   open: '🔗 باز کردن',

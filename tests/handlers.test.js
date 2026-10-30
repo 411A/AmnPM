@@ -70,6 +70,13 @@ async function click(data, userId = 200, replyMarkup) {
   });
 }
 
+test('help mentions the manual topic rename limitation', async () => {
+  await onMessage(message('/help', 100));
+  const text = callsOf('sendMessage').at(-1).args.text;
+  assert.match(text, /Telegram UI renames/);
+  assert.match(text, /only \/rename/);
+});
+
 test('owner start creates a link and repeats only the welcome', async () => {
   await onMessage(message('/start', 100));
   const sent = callsOf('sendMessage');

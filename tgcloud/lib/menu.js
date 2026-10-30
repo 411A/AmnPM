@@ -12,6 +12,7 @@ export function homeMenu(lang) {
     keyboard: {
       inline_keyboard: [
         [{ text: t(lang, 'homeLinks'), callback_data: 'm:links' }],
+        [{ text: t(lang, 'homeHelp'), callback_data: 'm:help' }],
         [{ text: t(lang, 'homeAbout'), callback_data: 'm:about' }],
       ],
     },

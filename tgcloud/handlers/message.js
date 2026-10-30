@@ -220,6 +220,7 @@ async function command(msg, lang, now) {
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/links') return listLinks(msg, lang, now);
+  if (head === '/help') return send(chatId, t(lang, 'help'));
   if (head === '/about') return send(chatId, render.about(lang));
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {

@@ -239,6 +239,13 @@ async function menu(q, data, lang, now) {
     await editMenu(q, await linksMenu(lang, await userKeyFor(q.from.id), now));
     return answer(q);
   }
+  if (data === 'm:help') {
+    await editMenu(q, {
+      text: t(lang, 'help'),
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: 'm:home' }]] },
+    });
+    return answer(q);
+  }
   if (data === 'm:about') {
     await editMenu(q, {
       text: render.about(lang),
