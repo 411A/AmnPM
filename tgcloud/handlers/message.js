@@ -5,7 +5,7 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName } from '../lib/keys.js';
+import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, conversationChatId } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic, recreateSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
@@ -265,8 +265,55 @@ function replyTarget(text) {
   return { chatId: Number(text), threadId: 0 };
 }
 
+async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now) {
+  const attempt = (withReply, targetThread) => {
+    const base = { chat_id: chatId, from_chat_id: msg.chat.id, message_id: msg.message_id };
+    if (targetThread) base.message_thread_id = targetThread;
+    if (withReply && replyTo) base.reply_to_message_id = replyTo;
+    return api.copyMessage(base);
+  };
+
+  let lastError;
+  try {
+    await attempt(Boolean(replyTo), thread);
+    return true;
+  } catch (err) {
+    lastError = err;
+  }
+  if (replyTo) {
+    try {
+      await attempt(false, thread);
+      return true;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (!thread) return false;
+
+  const description = String(lastError?.description ?? lastError).toLowerCase();
+  if (!/thread|topic/.test(description)) return false;
+
+  if (/closed/.test(description)) {
+    try {
+      await api.reopenForumTopic({ chat_id: chatId, message_thread_id: thread });
+      await attempt(false, thread);
+      return true;
+    } catch {
+      // fall through to a fresh topic
+    }
+  }
+
+  const fresh = await recreateSenderTopic(link, chatId, senderKey, now);
+  if (!fresh) return false;
+  try {
+    await attempt(false, fresh);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function replyToWindow(msg, window, lang, now) {
-  const chatId = msg.chat.id;
   const link = await store.getLink(window.link_id);
   if (!link) {
     await store.closeReplyWindow(window.owner_key);
@@ -288,40 +335,54 @@ async function replyToWindow(msg, window, lang, now) {
     thread = talk.thread;
   }
 
-  const base = { chat_id: target.chatId, from_chat_id: chatId, message_id: msg.message_id };
-  if (thread) base.message_thread_id = thread;
-  else base.reply_to_message_id = window.original_id;
+  const copied = await copyToSender(
+    msg,
+    link,
+    target.chatId,
+    senderKey,
+    thread,
+    window.original_id,
+    now,
+  );
+  if (!copied) return sendHere(msg, t(lang, 'failed'));
 
-  try {
-    await api.copyMessage(base);
-  } catch (err) {
-    if (!thread) return sendHere(msg, t(lang, 'failed'));
-    const description = String(err?.description ?? err).toLowerCase();
-    if (!/thread|topic/.test(description)) return sendHere(msg, t(lang, 'failed'));
-
-    let copied = false;
-    if (/closed/.test(description)) {
-      try {
-        await api.reopenForumTopic({ chat_id: target.chatId, message_thread_id: thread });
-        await api.copyMessage(base);
-        copied = true;
-      } catch {
-        // fall through to a fresh topic
-      }
-    }
-    if (!copied) {
-      const fresh = await recreateSenderTopic(link, target.chatId, senderKey, now);
-      if (!fresh) return sendHere(msg, t(lang, 'failed'));
-      base.message_thread_id = fresh;
-      try {
-        await api.copyMessage(base);
-      } catch {
-        return sendHere(msg, t(lang, 'failed'));
-      }
+  if (window.reply_prompt_id) {
+    try {
+      await api.deleteMessage({
+        chat_id: await ownerChatId(link),
+        message_id: window.reply_prompt_id,
+      });
+    } catch {
+      // already gone
     }
   }
-
   await store.closeReplyWindow(window.owner_key);
+  return sendHere(msg, t(lang, 'answerSent'));
+}
+
+async function directReply(msg, link, conversation, lang, now) {
+  let targetChat = 0;
+  try {
+    targetChat = await conversationChatId(link, conversation);
+  } catch {
+    return sendHere(msg, t(lang, 'answerOnly'));
+  }
+  if (!targetChat) return sendHere(msg, t(lang, 'answerOnly'));
+
+  const talk = await ensureSenderTopic(link, targetChat, conversation.sender_key, now);
+  if (talk.pending) return sendHere(msg, t(lang, 'preparing'));
+  if (!talk.thread) return sendHere(msg, t(lang, 'failed'));
+
+  const copied = await copyToSender(
+    msg,
+    link,
+    targetChat,
+    conversation.sender_key,
+    talk.thread,
+    conversation.last_message_id,
+    now,
+  );
+  if (!copied) return sendHere(msg, t(lang, 'failed'));
   return sendHere(msg, t(lang, 'answerSent'));
 }
 
@@ -372,13 +433,10 @@ async function plain(msg, lang, now) {
   }
 
   if (state?.reply_link_id) {
-    if (state.expires_at > now) {
-      if (state.reply_thread_id === (msg.message_thread_id ?? 0)) {
-        return replyToWindow(msg, { ...state, link_id: state.reply_link_id }, lang, now);
-      }
-      // Another thread: leave the window for the thread that opened it.
-    } else {
+    if (state.expires_at !== 0 && state.expires_at <= now) {
       await store.closeReplyWindow(ownerKey);
+    } else if (state.reply_thread_id === (msg.message_thread_id ?? 0)) {
+      return replyToWindow(msg, { ...state, link_id: state.reply_link_id }, lang, now);
     }
   }
 
@@ -390,7 +448,17 @@ async function plain(msg, lang, now) {
 
   if (msg.message_thread_id) {
     const owned = await store.getOwnedTopicByThread(ownerKey, msg.message_thread_id);
-    if (owned) return sendHere(msg, t(lang, 'answerOnly'));
+    if (owned) {
+      if (owned.kind === 'anon' || msg.chat.type !== 'private') {
+        return sendHere(msg, t(lang, 'answerOnly'));
+      }
+      const link = await store.getLink(owned.link_id);
+      const conversation = await store.getConversationById(owned.conversation_id);
+      if (!link || link.state !== 'active' || !conversation) {
+        return sendHere(msg, t(lang, 'answerOnly'));
+      }
+      return directReply(msg, link, conversation, lang, now);
+    }
 
     const talk = await senderTopicFor(base, msg.message_thread_id);
     if (!talk?.link || talk.link.state !== 'active') {

@@ -117,22 +117,16 @@ test('a pending group is claimed by exactly one caller', async () => {
   assert.equal(await store.claimPending('u', 'g'), true);
 });
 
-test('only one live reply window can exist per owner', async () => {
+test('a new answer replaces the previous reply target', async () => {
   const row = {
     owner_key: 'o', link_id: 1, target_ct: 'c', target_nonce: 'n',
     thread_id: 104, original_id: 1, expires_at: 100, now: 50,
   };
   assert.equal(await store.openReplyWindow(row), true);
-  assert.equal(await store.openReplyWindow({ ...row, thread_id: 205, expires_at: 200, now: 60 }), false);
-  assert.equal(
-    rawDb().prepare('SELECT thread_id FROM reply_windows WHERE owner_key = ?').get('o').thread_id,
-    104,
-  );
-  assert.equal(await store.openReplyWindow({ ...row, thread_id: 205, expires_at: 300, now: 200 }), true);
-  assert.equal(
-    rawDb().prepare('SELECT thread_id FROM reply_windows WHERE owner_key = ?').get('o').thread_id,
-    205,
-  );
+  assert.equal(await store.openReplyWindow({ ...row, thread_id: 205, original_id: 2 }), true);
+  const stored = rawDb().prepare('SELECT thread_id, original_id FROM reply_windows WHERE owner_key = ?').get('o');
+  assert.equal(stored.thread_id, 205);
+  assert.equal(stored.original_id, 2);
 });
 
 test('a memo prompt and a reply window exclude each other', async () => {

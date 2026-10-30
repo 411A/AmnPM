@@ -211,7 +211,7 @@ test('answer copies the owner reply back to the sender topic', async () => {
     },
     data,
   });
-  const windowMsg = callsOf('sendMessage').find((call) => call.args.text?.includes('Reply within'));
+  const windowMsg = callsOf('sendMessage').find((call) => call.args.text?.includes('Send your reply'));
   assert.equal(windowMsg.args.message_thread_id, 104);
   await onMessage(message('reply text', 100, { message_thread_id: 104 }));
 
@@ -268,6 +268,7 @@ test('an answer recreates a missing sender topic instead of leaking to All', asy
   await click(data, 100, controls.args.reply_markup, 104);
 
   failNext('copyMessage', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  failNext('copyMessage', { errorCode: 400, description: 'Bad Request: message thread not found' });
   await onMessage(message('reply text', 100, { message_thread_id: 104 }));
 
   const topic = callsOf('createForumTopic').at(-1);
@@ -282,7 +283,7 @@ test('an answer recreates a missing sender topic instead of leaking to All', asy
   assert.match(callsOf('sendMessage').at(-1).args.text, /Reply sent/);
 });
 
-test('a second answer window is rejected while one is live', async () => {
+test('a second answer replaces the target and cleans the old prompt', async () => {
   await setupLink();
   const controls = await deliverAnonymous();
   const data = controls.args.reply_markup.inline_keyboard.flat()
@@ -302,11 +303,53 @@ test('a second answer window is rejected while one is live', async () => {
   await onCallback(update('cb-answer-1'));
   await onCallback(update('cb-answer-2'));
 
-  assert.equal(callsOf('sendMessage').filter((call) => /Reply within/.test(call.args.text)).length, 1);
-  const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
-  assert.equal(alerts.length, 1);
-  assert.match(alerts[0].args.text, /already waiting/);
+  assert.equal(callsOf('sendMessage').filter((call) => /Send your reply/.test(call.args.text)).length, 2);
+  assert.equal(callsOf('answerCallbackQuery').filter((call) => call.args.show_alert).length, 0);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 1);
+});
+
+test('direct owner text in a per-sender topic replies to the latest message', async () => {
+  await setupLink();
+  const senderThread = firstSenderThread();
+  await onMessage(message('hello', 200, {
+    first_name: 'V',
+    message_thread_id: senderThread,
+    message_id: 55,
+  }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+
+  const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+  const before = callsOf('copyMessage').length;
+  await onMessage(message('direct reply', 100, {
+    message_thread_id: ownerThread,
+    message_id: 666,
+  }));
+
+  const copy = callsOf('copyMessage').at(-1);
+  assert.equal(callsOf('copyMessage').length, before + 1);
+  assert.equal(copy.args.chat_id, 200);
+  assert.equal(copy.args.message_thread_id, senderThread);
+  assert.equal(copy.args.reply_to_message_id, 55);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Reply sent/);
+});
+
+test('the reply prompt can be cancelled without sending', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const data = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  await click(data, 100, controls.args.reply_markup, 104);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 1);
+
+  await onCallback({
+    id: 'cb-cancel-reply',
+    from: { id: 100, language_code: 'en' },
+    message: { message_id: 501, chat: { id: 100 }, message_thread_id: 104 },
+    data: 'X',
+  });
+
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 0);
+  assert.ok(callsOf('deleteMessage').some((call) => call.args.message_id === 501));
 });
 
 test('an owner message in another thread is not sent as the answer', async () => {

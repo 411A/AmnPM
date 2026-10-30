@@ -39,7 +39,8 @@ export async function getOwner(ownerKey) {
 export async function getOwnerState(ownerKey) {
   return db.get(sql`SELECT o.owner_key, o.memo_link_id, o.memo_message_id,
       r.link_id AS reply_link_id, r.target_ct, r.target_nonce,
-      r.thread_id AS reply_thread_id, r.original_id, r.expires_at
+      r.thread_id AS reply_thread_id, r.prompt_message_id AS reply_prompt_id,
+      r.original_id, r.expires_at
     FROM owners o
     LEFT JOIN reply_windows r ON r.owner_key = o.owner_key
     WHERE o.owner_key = ${ownerKey}`);
@@ -209,10 +210,20 @@ export async function getConversation(linkId, senderKey, mode) {
 
 export async function createConversation(row) {
   const result = await db.run(sql`INSERT OR IGNORE INTO conversations
-    (link_id, sender_key, mode, indicator, topic_id, created_at, last_at)
+    (link_id, sender_key, mode, indicator, sender_chat_ct, last_message_id, topic_id, created_at, last_at)
     VALUES (${row.link_id}, ${row.sender_key}, ${row.mode}, ${row.indicator ?? null},
-      ${row.topic_id ?? 0}, ${row.created_at}, ${row.last_at})`);
+      ${row.sender_chat_ct ?? null}, ${row.last_message_id ?? 0}, ${row.topic_id ?? 0},
+      ${row.created_at}, ${row.last_at})`);
   return result.lastInsertRowid;
+}
+
+export async function setConversationChat(id, sealed) {
+  await db.run(sql`UPDATE conversations SET sender_chat_ct = ${sealed} WHERE id = ${id}`);
+}
+
+export async function setConversationLastMessage(id, messageId) {
+  await db.run(sql`UPDATE conversations SET last_message_id = ${messageId}
+    WHERE id = ${id} AND last_message_id < ${messageId}`);
 }
 
 export async function touchConversation(id, now) {
@@ -438,25 +449,29 @@ export async function bumpRate(linkId, senderKey, now) {
 
 export async function openReplyWindow(row) {
   const result = await db.run(sql`INSERT INTO reply_windows
-    (owner_key, link_id, target_ct, target_nonce, thread_id, original_id, expires_at)
+    (owner_key, link_id, target_ct, target_nonce, thread_id, prompt_message_id, original_id, expires_at)
     SELECT ${row.owner_key}, ${row.link_id}, ${row.target_ct}, ${row.target_nonce},
-      ${row.thread_id ?? 0}, ${row.original_id}, ${row.expires_at}
+      ${row.thread_id ?? 0}, 0, ${row.original_id}, 0
     WHERE NOT EXISTS (SELECT 1 FROM owners
       WHERE owner_key = ${row.owner_key} AND memo_link_id IS NOT NULL)
     ON CONFLICT(owner_key) DO UPDATE SET
       link_id = excluded.link_id, target_ct = excluded.target_ct,
       target_nonce = excluded.target_nonce, thread_id = excluded.thread_id,
-      original_id = excluded.original_id, expires_at = excluded.expires_at
-    WHERE reply_windows.expires_at <= ${row.now ?? 0}
-      AND NOT EXISTS (SELECT 1 FROM owners
-        WHERE owner_key = ${row.owner_key} AND memo_link_id IS NOT NULL)`);
+      prompt_message_id = 0, original_id = excluded.original_id, expires_at = 0
+    WHERE NOT EXISTS (SELECT 1 FROM owners
+      WHERE owner_key = ${row.owner_key} AND memo_link_id IS NOT NULL)`);
   return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function setReplyPrompt(ownerKey, messageId) {
+  await db.run(sql`UPDATE reply_windows SET prompt_message_id = ${messageId}
+    WHERE owner_key = ${ownerKey}`);
 }
 
 export async function getReplyWindow(ownerKey, now) {
   const row = await db.get(sql`SELECT * FROM reply_windows WHERE owner_key = ${ownerKey}`);
   if (!row) return null;
-  if (row.expires_at <= now) {
+  if (row.expires_at !== 0 && row.expires_at <= now) {
     await db.run(sql`DELETE FROM reply_windows WHERE owner_key = ${ownerKey}`);
     return null;
   }

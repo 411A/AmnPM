@@ -45,6 +45,28 @@ export async function topicLabel(link, topic) {
   return c.decrypt(dek, ct, nonce, `topic:${topic.id}:name:v1`);
 }
 
+export async function sealConversationChat(link, chatId, senderKey, mode) {
+  const dek = await linkDek(link);
+  const sealed = await c.encrypt(
+    dek,
+    String(chatId),
+    `conversation:${link.id}:${senderKey}:${mode}:chat:v1`,
+  );
+  return `enc:${sealed.nonce}:${sealed.ct}`;
+}
+
+export async function conversationChatId(link, conversation) {
+  if (!conversation.sender_chat_ct?.startsWith('enc:')) return 0;
+  const dek = await linkDek(link);
+  const [, nonce, ct] = conversation.sender_chat_ct.split(':');
+  return Number(await c.decrypt(
+    dek,
+    ct,
+    nonce,
+    `conversation:${link.id}:${conversation.sender_key}:${conversation.mode}:chat:v1`,
+  ));
+}
+
 export async function sealConversationLabel(link, label, senderKey, mode) {
   const dek = await linkDek(link);
   const sealed = await c.encrypt(

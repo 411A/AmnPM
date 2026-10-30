@@ -3,22 +3,32 @@ import * as store from './store.js';
 import * as ids from './ids.js';
 import * as render from './render.js';
 import { t } from './i18n.js';
-import { ownerChatId, sealJob, linkMemo, sealConversationLabel, conversationLabel } from './keys.js';
+import { ownerChatId, sealJob, linkMemo, sealConversationLabel, conversationLabel, sealConversationChat } from './keys.js';
 import { ensureTopic } from './topics.js';
 import { EMOJI } from './constants.js';
 
-async function conversationFor(link, senderKey, mode, firstName, now) {
+async function conversationFor(link, senderKey, mode, firstName, senderId, now) {
   const existing = await store.getConversation(link.id, senderKey, mode);
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.sender_chat_ct) {
+      await store.setConversationChat(
+        existing.id,
+        await sealConversationChat(link, senderId, senderKey, mode),
+      );
+    }
+    return existing;
+  }
   const label = mode === 'history'
     ? await ids.makeIndicator(senderKey, firstName)
     : ids.cleanLabel(firstName, 30);
   const indicator = await sealConversationLabel(link, label, senderKey, mode);
+  const senderChat = await sealConversationChat(link, senderId, senderKey, mode);
   await store.createConversation({
     link_id: link.id,
     sender_key: senderKey,
     mode,
     indicator,
+    sender_chat_ct: senderChat,
     topic_id: 0,
     created_at: now,
     last_at: now,
@@ -26,7 +36,7 @@ async function conversationFor(link, senderKey, mode, firstName, now) {
   return store.getConversation(link.id, senderKey, mode);
 }
 
-async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) {
+async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now) {
   const memoText = await linkMemo(link);
   const memo = ids.escapeHtml(memoText);
   const owner = await store.getOwner(link.owner_key);
@@ -47,7 +57,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
     return { kind: 'copy', thread, indicator: null, header: `${EMOJI.ninja} Anonymous · ${memo}` };
   }
 
-  const conversation = await conversationFor(link, senderKey, mode, firstName, now);
+  const conversation = await conversationFor(link, senderKey, mode, firstName, senderId, now);
   const label = await conversationLabel(link, conversation);
   const { thread, pending } = await ensureTopic(
     link,
@@ -65,6 +75,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
   return {
     kind: mode === 'forward' ? 'forward' : 'copy',
     thread,
+    conversation_id: conversation.id,
     indicator: label,
     header: mode === 'history'
       ? `${EMOJI.chat} ${label} · ${memo}`
@@ -74,11 +85,12 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, now) 
 
 export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0) {
   const ownerChat = await ownerChatId(link);
-  const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, now);
+  const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now);
   if (target.pending) return target;
   await sealJob(link, target.kind, {
     chat_id: ownerChat,
     thread_id: target.thread,
+    conversation_id: target.conversation_id ?? 0,
     from_chat_id: senderId,
     message_ids: messageIds,
     sender_key: senderKey,

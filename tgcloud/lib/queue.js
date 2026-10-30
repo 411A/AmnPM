@@ -141,6 +141,17 @@ export async function drain() {
         }
       }
 
+      if ((job.kind === 'copy' || job.kind === 'forward') && opened.payload.conversation_id) {
+        try {
+          await store.setConversationLastMessage(
+            opened.payload.conversation_id,
+            opened.payload.message_ids[opened.payload.message_ids.length - 1],
+          );
+        } catch {
+          // direct replies fall back to the previous target
+        }
+      }
+
       if ((job.kind === 'copy' || job.kind === 'forward') && sentIds.length) {
         await sendControls(opened.link, opened.payload, sentIds, nowSec());
       }

@@ -4,7 +4,6 @@ export const CONFIG = {
   throttlePerMinute: 30,
   maxAttempts: 5,
   maxMemoLength: 32,
-  replyWindowSeconds: 60,
   actionTtlSeconds: 2_592_000,
   modeTtlSeconds: 86_400,
   tokenLength: 10,

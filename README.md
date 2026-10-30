@@ -89,7 +89,8 @@ are asked to reopen the link; owner delivery falls back to unthreaded messages w
   is a deliberate speed/security tradeoff. Chat ids and message ids that must be recovered are
   AES-256-GCM ciphertext under a per-link data key. Link tokens are stored only as an HMAC
   lookup plus AES-GCM ciphertext; sender topic names are blank in the database. Memos, sender
-  labels, and the install salt are encrypted too. Message content is never stored.
+  labels, sender chat ids, and the install salt are encrypted too. Message content is never
+  stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
   links readable while new links use the new key. Encryption protects a leaked database or
@@ -182,12 +183,17 @@ be observed or repaired; only `/rename` is enforced.
 Replies and status messages sent from inside a topic carry `message_thread_id`, so they stay in
 that topic instead of leaking into the All/General chat. Senders must write in their link topic:
 a message in All is answered with a pointer to that topic (or a fresh link button), never
-delivered. The owner's answer follows the thread of the sender's original message, so it lands in
-the same topic; if that topic was deleted, the bot recreates the link topic and retries instead of
-silently dropping the answer into All. On revoke, owner topics receive a “topic closed” notice,
-and the sender is told “Stored data deleted” the next time they open the link or write in that
-sender topic. Immediate push notification would require storing the sender chat id; the bot does
-not store it.
+delivered. In a history/forward topic the owner can simply type: the bot copies that message to
+the sender's link topic as a reply to the latest message from that sender, with no Answer button.
+In the anonymous topic, press Answer to choose the sender; the choice is one-shot and has no time
+limit, and the prompt has a Cancel button. The owner's answer follows the thread of the sender's
+original message, so it lands in the same topic; if that topic was deleted, the bot recreates the
+link topic and retries instead of silently dropping the answer into All. On revoke, owner topics
+receive a “topic closed” notice, and the sender is told “Stored data deleted” the next time they
+open the link or write in that sender topic. A sender chat id is stored only as AES-GCM
+ciphertext: in history/forward conversations for direct replies, and in the one-shot anonymous
+reply window. It is deleted with the link. Immediate push notifications would need a server
+trigger, which the platform does not provide.
 
 ## Concurrency and routing
 
@@ -195,9 +201,9 @@ not store it.
   they get a pointer to the link topic (or a fresh link button if the topic is missing).
 - A pending mode group is claimed by exactly one callback. Double taps and two different mode
   buttons deliver once.
-- Owner reply windows are single, atomic, and matched to the topic where Answer was pressed. A
-  second Answer waits instead of silently replacing the first; a reply from another thread is
-  not captured.
+- Owner reply windows are single, atomic, one-shot, and matched to the topic where Answer was
+  pressed. A new Answer explicitly replaces the target; a reply from another thread is not
+  captured. Per-sender topics do not need Answer at all and reply to their latest message.
 - Memo prompts and reply windows exclude each other with atomic claims.
 - Topic creation reserves the unique `(link, kind, conversation)` slot before calling Telegram;
   a concurrent delivery reuses the row or retries after the creator finishes.

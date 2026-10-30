@@ -76,6 +76,8 @@ export const conversations = table('conversations', {
   sender_key: text('sender_key').notNull(),
   mode: text('mode').notNull(),
   indicator: text('indicator'),
+  sender_chat_ct: text('sender_chat_ct'),
+  last_message_id: integer('last_message_id').notNull().default(0),
   topic_id: integer('topic_id').notNull().default(0),
   created_at: integer('created_at').notNull(),
   last_at: integer('last_at').notNull(),
@@ -166,6 +168,7 @@ export const reply_windows = table('reply_windows', {
   target_ct: text('target_ct').notNull(),
   target_nonce: text('target_nonce').notNull(),
   thread_id: integer('thread_id').notNull().default(0),
+  prompt_message_id: integer('prompt_message_id').notNull().default(0),
   original_id: integer('original_id').notNull(),
   expires_at: integer('expires_at').notNull(),
 }, (t) => [

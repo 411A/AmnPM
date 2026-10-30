@@ -164,6 +164,7 @@ async function replyWindow(q, opened, lang, now) {
   });
   const sealed = await crypto.encrypt(dek, target, `link:${link.id}:reply:v1`);
   const ownerChat = await ownerChatId(link);
+  const previous = await store.getReplyWindow(link.owner_key, now);
   const thread = q.message?.chat?.id === ownerChat
     ? (q.message?.message_thread_id ?? p.owner_thread_id ?? 0)
     : (p.owner_thread_id ?? 0);
@@ -174,15 +175,24 @@ async function replyWindow(q, opened, lang, now) {
     target_nonce: sealed.nonce,
     thread_id: thread,
     original_id: p.original_id,
-    expires_at: now + CONFIG.replyWindowSeconds,
-    now,
   });
   if (!openedWindow) return answer(q, t(lang, 'replyBusy'), true);
-  await api.sendMessage({
+  if (previous?.prompt_message_id) {
+    try {
+      await api.deleteMessage({ chat_id: ownerChat, message_id: previous.prompt_message_id });
+    } catch {
+      // already gone
+    }
+  }
+  const sent = await api.sendMessage({
     chat_id: ownerChat,
     ...(thread ? { message_thread_id: thread } : {}),
-    text: t(lang, 'answerWindow', { seconds: CONFIG.replyWindowSeconds }),
+    text: t(lang, 'answerWindow'),
+    reply_markup: {
+      inline_keyboard: [[{ text: t(lang, 'cancel'), callback_data: CALLBACK.CANCEL }]],
+    },
   });
+  await store.setReplyPrompt(link.owner_key, sent.message_id);
   return answer(q);
 }
 
@@ -266,10 +276,18 @@ async function revoke(q, opened, lang, now) {
   const token = await linkToken(link);
   const url = await deepLink(token);
   const memoState = await store.getMemoState(link.owner_key);
+  const replyState = await store.getReplyWindow(link.owner_key, now);
 
   if (memoState?.memo_link_id === link.id && memoState.memo_message_id) {
     try {
       await api.deleteMessage({ chat_id: chat, message_id: memoState.memo_message_id });
+    } catch {
+      // already gone
+    }
+  }
+  if (replyState?.link_id === link.id && replyState.prompt_message_id) {
+    try {
+      await api.deleteMessage({ chat_id: chat, message_id: replyState.prompt_message_id });
     } catch {
       // already gone
     }
@@ -348,7 +366,22 @@ export default async function onCallback(update) {
     const [k, prefix, suffix] = String(q.data).split(CALLBACK.SEP);
 
     if (k.startsWith(CALLBACK.MENU_PREFIX)) return await menu(q, k, lang, now);
-    if (k === CALLBACK.CANCEL) return await answer(q, t(lang, 'cancelled'));
+    if (k === CALLBACK.CANCEL) {
+      if (q.message?.chat?.id) {
+        await store.closeReplyWindow(await userKeyFor(q.message.chat.id));
+        if (q.message.message_id) {
+          try {
+            await api.deleteMessage({
+              chat_id: q.message.chat.id,
+              message_id: q.message.message_id,
+            });
+          } catch {
+            // already gone
+          }
+        }
+      }
+      return await answer(q, t(lang, 'cancelled'));
+    }
 
     const opened = await openAction(prefix, suffix);
     const expected = KINDS[k];
