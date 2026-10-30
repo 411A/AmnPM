@@ -61,12 +61,13 @@ changing `CURRENT_KEK_VERSION`; older versions must stay in the ring while old l
 
 ### Upgrading from an older revision
 
-This revision derives session and sender keys with PBKDF2. Sessions, sender topics,
-conversations, and blocks written by an older revision are keyed differently and are not
-reused. Start from a fresh database (delete and recreate the bot or drop its database) and
-create new links. If the old database is kept, existing owner links still open, but senders
-must reopen the link and old history/blocks are ignored. The schema itself is unchanged, so
-`tgcloud migrate` does not clear those rows.
+This revision derives session and sender keys with PBKDF2 and stores link tokens as an HMAC
+lookup plus AES-GCM ciphertext. Sessions, sender topics, conversations, blocks, and links
+written by an older revision are keyed or shaped differently and are not reused. Start from a
+fresh database (delete and recreate the bot or drop its database) and create new links. The
+schema changed, so an old database cannot be migrated in place; `tgcloud migrate` only creates
+the new schema. If the old database is kept, the bot will not find old links and senders must
+start over.
 
 The token is read by the CLI from `TGCLOUD_TOKEN` or `.tgcloud/credentials`. It is never placed
 in this repository. `tgcloud push` deploys code; `migrate` applies the schema. A crash after
