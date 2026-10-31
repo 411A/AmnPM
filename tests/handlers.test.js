@@ -95,7 +95,7 @@ test('bot metadata config runs once', async () => {
   assert.equal(callsOf('setMyDescription').length, 2);
   assert.equal(callsOf('setMyShortDescription').length, 2);
   assert.equal(callsOf('setChatMenuButton').length, 1);
-  assert.equal(callsOf('setMyProfilePhoto').length, 1);
+  assert.equal(callsOf('setMyProfilePhoto').length, 0);
 
   const commands = callsOf('setMyCommands')[0].args.commands;
   assert.deepEqual(
@@ -108,7 +108,7 @@ test('bot metadata config runs once', async () => {
 
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
-  assert.equal(callsOf('setMyProfilePhoto').length, 1);
+  assert.equal(callsOf('setMyProfilePhoto').length, 0);
 });
 
 test('help mentions the manual topic rename limitation', async () => {
@@ -215,10 +215,10 @@ test('a stranger reaches the owner anonymously', async () => {
   assert.equal(copies[0].args.message_ids.length, 1);
 
   const ownerTopic = callsOf('createForumTopic').find((call) => call.args.name.includes('Anonymous'));
-  assert.equal(ownerTopic.args.name, '\u200E⬇️ 😶‍🌫️ Anonymous · main 1');
+  assert.equal(ownerTopic.args.name, '\u200E⬇️ 👽 Anonymous · main 1');
   assert.ok(controls.args.reply_markup.inline_keyboard.flat().some((b) => b.callback_data.startsWith('A|')));
 
-  const sent = callsOf('editMessageText').find((call) => call.args.text?.startsWith('😶‍🌫️'));
+  const sent = callsOf('editMessageText').find((call) => call.args.text?.startsWith('👽'));
   assert.ok(sent);
   assert.equal(sent.args.chat_id, 200);
   assert.equal(sent.args.message_id, 999);
@@ -264,7 +264,7 @@ test('history mode keeps one topic and a stable indicator', async () => {
 
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.equal(ownerTopics.length, 1);
-  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main 1$/);
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️ [a-z]+-[a-z]+ · main 1$/);
   const historySent = callsOf('editMessageText')
     .filter((call) => String(call.args.text).includes('Sent with history')).at(-1);
   assert.ok(historySent);
@@ -664,7 +664,7 @@ test('owners can rename a topic and keep the mandatory emoji prefix', async () =
   await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
 
   const edit = callsOf('editForumTopic').at(-1);
-  assert.equal(edit.args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · main 1');
+  assert.equal(edit.args.name, '\u200E⬇️ 👽 Cool stuff · main 1');
   assert.match(rawDb().prepare('SELECT name FROM topics WHERE thread_id = ?').get(thread).name, /^enc:/);
   assert.equal(callsOf('sendMessage').at(-1).args.message_thread_id, thread);
 });
@@ -680,7 +680,7 @@ test('a renamed topic keeps its custom name after a memo change', async () => {
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('newmemo', 100));
 
-  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · newmemo');
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 👽 Cool stuff · newmemo');
 });
 
 test('a renamed forward topic keeps its memo and follows memo changes', async () => {
@@ -719,7 +719,7 @@ test('the memo prompt and the memo message are removed after use', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /Memo updated/);
 });
 
-test('senders can rename their own topic with the mandatory up prefix', async () => {
+test('senders can rename their own topic with the mandatory sender prefix', async () => {
   await setupLink();
   const thread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
   await onMessage(message('/rename Mine', 200, { message_thread_id: thread }));

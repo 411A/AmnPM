@@ -49,9 +49,9 @@ export function about(lang) {
 }
 
 export function topicPrefix(kind) {
-  if (kind === 'anon') return `${EMOJI.down} ${EMOJI.anon} `;
-  if (kind === 'history') return `${EMOJI.down} ${EMOJI.history} `;
-  return `${EMOJI.down} ${EMOJI.forward} `;
+  if (kind === 'anon') return `${EMOJI.receiver} ${EMOJI.anon} `;
+  if (kind === 'history') return `${EMOJI.receiver} ${EMOJI.history} `;
+  return `${EMOJI.receiver} ${EMOJI.forward} `;
 }
 
 export function customTopicName(kind, custom, memo) {
@@ -60,20 +60,20 @@ export function customTopicName(kind, custom, memo) {
 }
 
 export function customSenderTopicName(custom) {
-  return ltr(`${EMOJI.up} ${cleanLabel(custom, 60)}`);
+  return ltr(`${EMOJI.sender} ${cleanLabel(custom, 60)}`);
 }
 
 export function topicName(kind, memo, label) {
   const tail = cleanLabel(memo, 40);
-  if (kind === 'anon') return ltr(`${EMOJI.down} ${EMOJI.anon} Anonymous · ${tail}`);
+  if (kind === 'anon') return ltr(`${EMOJI.receiver} ${EMOJI.anon} Anonymous · ${tail}`);
   if (kind === 'history') {
-    return ltr(`${EMOJI.down} ${EMOJI.history} ${cleanLabel(label, 30)} · ${tail}`);
+    return ltr(`${EMOJI.receiver} ${EMOJI.history} ${cleanLabel(label, 30)} · ${tail}`);
   }
-  return ltr(`${EMOJI.down} ${EMOJI.forward} ${cleanLabel(label, 30)} · ${tail}`);
+  return ltr(`${EMOJI.receiver} ${EMOJI.forward} ${cleanLabel(label, 30)} · ${tail}`);
 }
 
 export function senderTopicName(token) {
-  return ltr(`${EMOJI.up} ${cleanLabel(token, 40)}`);
+  return ltr(`${EMOJI.sender} ${cleanLabel(token, 40)}`);
 }
 
 export function modeKeyboard(lang, callbacks, current, modes = MODES) {

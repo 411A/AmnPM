@@ -19,7 +19,7 @@ const en = {
     '{e.start} /start — open the bot\n' +
     '{e.link} /newlink [memo] — create a link\n' +
     '{e.chain} /links — manage links\n' +
-    '{e.tag} /rename &lt;name&gt; — rename this topic\n' +
+    '{e.tag} /rename name — rename this topic\n' +
     '{e.book} /help — this list\n' +
     '{e.lock} /privacy — what is stored\n' +
     '{e.info} /about — version and source\n' +
@@ -33,15 +33,15 @@ const en = {
     '{e.link} <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
     'Share it. Anyone with it can write to you without seeing your identity.\n' +
-    'Rename a topic with /rename &lt;name&gt; inside it.',
+    'Rename a topic with <code>/rename name</code> inside it.',
   linkInactive: '{e.warn} This link is no longer active.',
   linkNotFound: '{e.warn} Link not found.',
   ownLink: '{e.upside} This is your own link. Share it instead.',
   startFromLink: '{e.link} Open a link first, then send your message.',
   prompt:
     '{e.write} Send your message. The bot will wait for it as long as needed.\n' +
-    'Rename this topic with /rename &lt;name&gt;.',
-  senderTopicHint: '{e.inbox} Your messages for this link are in the "{e.up} {token}" topic. Open it and write there.',
+    'Rename this topic with <code>/rename name</code>.',
+  senderTopicHint: '{e.inbox} Your messages for this link are in the "{e.sender} {token}" topic. Open it and write there.',
   senderTopicMissing:
     'Open your link again to create your topic, then write there.\n' +
     'Messages in All are not delivered.',
@@ -66,7 +66,7 @@ const en = {
     '{verify}\n' +
     'No message content is stored.',
   linksTitle:
-    '{e.link} <b>Your links</b>\n' +
+    '{e.chain} <b>Your links</b>\n' +
     'Pick one to manage.\n' +
     '<blockquote expandable>Each button opens one link — share, rename, or revoke it.\n{e.back} Back — open the main menu</blockquote>',
   noLinks: '{e.feather} No links yet. /newlink creates your first one.',
@@ -77,10 +77,10 @@ const en = {
   homeTitle:
     '{e.home} <b>AmnPM</b>\n' +
     'Choose an option.\n' +
-    '<blockquote expandable>{e.link} My links — manage and share\n{e.settings} Receive modes — choose allowed send modes\n{e.tool} Help — commands and topic rules\n{e.info} About — version and privacy</blockquote>',
-  homeLinks: '{e.link} My links',
+    '<blockquote expandable>{e.chain} My links — manage and share\n{e.settings} Receive modes — choose allowed send modes\n{e.book} Help — commands and topic rules\n{e.info} About — version and privacy</blockquote>',
+  homeLinks: '{e.chain} My links',
   homeModes: '{e.settings} Receive modes',
-  homeHelp: '{e.tool} Help',
+  homeHelp: '{e.book} Help',
   homeAbout: '{e.info} About',
   modesTitle:
     '{e.settings} <b>Receive modes</b>\n' +
@@ -99,9 +99,9 @@ const en = {
   revokedShort: 'Revoked.',
   memoPrompt: '{e.memo} Send the new memo (max {max} characters).',
   memoChanged: '{e.memo} Memo updated.',
-  renameUsage: '{e.memo} Send /rename &lt;name&gt; inside the topic you want to rename.',
-  renamed: '{e.memo} Topic renamed to {name}.',
-  renameNoTopic: '{e.warn} Use /rename inside a topic.',
+  renameUsage: '{e.tag} Send <code>/rename name</code> inside the topic you want to rename.',
+  renamed: '{e.tag} Topic renamed to {name}.',
+  renameNoTopic: '{e.warn} Use <code>/rename name</code> inside a topic.',
   renameFailed: '{e.warn} Could not rename this topic.',
   answerWindow: '{e.write} Send your reply in this topic. Press Answer on another message to switch.',
   cancel: 'Cancel',
@@ -157,7 +157,7 @@ const fa = {
     '{e.start} /start — شروع ربات\n' +
     '{e.link} /newlink [یادداشت] — ساخت لینک\n' +
     '{e.chain} /links — مدیریت لینک‌ها\n' +
-    '{e.tag} /rename &lt;نام&gt; — تغییر نام موضوع\n' +
+    '{e.tag} /rename نام — تغییر نام موضوع\n' +
     '{e.book} /help — همین فهرست\n' +
     '{e.lock} /privacy — چه چیزی ذخیره می‌شود\n' +
     '{e.info} /about — نسخه و منبع\n' +
@@ -171,15 +171,15 @@ const fa = {
     '{e.link} <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
     '<code>{link}</code>\n' +
     'آن را به اشتراک بگذارید؛ هر کسی با آن می‌تواند بدون دیدن هویت شما پیام بدهد.\n' +
-    'نام موضوع را با /rename &lt;نام&gt; داخل آن تغییر دهید.',
+    'نام موضوع را با <code>/rename نام</code> داخل آن تغییر دهید.',
   linkInactive: '{e.warn} این لینک دیگر فعال نیست.',
   linkNotFound: '{e.warn} لینک پیدا نشد.',
   ownLink: '{e.upside} این لینک خودتان است. آن را به اشتراک بگذارید.',
   startFromLink: '{e.link} اول یک لینک باز کنید، بعد پیام بفرستید.',
   prompt:
     '{e.write} پیامتان را بفرستید. ربات هرقدر لازم باشد منتظر می‌ماند.\n' +
-    'نام این موضوع را با /rename &lt;نام&gt; تغییر دهید.',
-  senderTopicHint: '{e.inbox} پیام‌های این لینک در موضوع «{e.up} {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
+    'نام این موضوع را با <code>/rename نام</code> تغییر دهید.',
+  senderTopicHint: '{e.inbox} پیام‌های این لینک در موضوع «{e.sender} {token}» هستند. آن را باز کنید و همان‌جا بنویسید.',
   senderTopicMissing:
     'لینک را دوباره باز کنید تا موضوع شما ساخته شود، سپس همان‌جا بنویسید.\n' +
     'پیام‌های بخش All ارسال نمی‌شوند.',
@@ -204,7 +204,7 @@ const fa = {
     '{verify}\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
   linksTitle:
-    '{e.link} <b>لینک‌های شما</b>\n' +
+    '{e.chain} <b>لینک‌های شما</b>\n' +
     'یکی را برای مدیریت انتخاب کنید.\n' +
     '<blockquote expandable>هر دکمه یک لینک را باز می‌کند — اشتراک، تغییر نام یا حذف.\n{e.back} بازگشت — منوی اصلی</blockquote>',
   noLinks: '{e.feather} هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
@@ -215,10 +215,10 @@ const fa = {
   homeTitle:
     '{e.home} <b>AmnPM</b>\n' +
     'یک گزینه را انتخاب کنید.\n' +
-    '<blockquote expandable>{e.link} لینک‌های من — مدیریت و اشتراک\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.tool} راهنما — دستورها و قواعد\n{e.info} درباره — نسخه و حریم خصوصی</blockquote>',
-  homeLinks: '{e.link} لینک‌های من',
+    '<blockquote expandable>{e.chain} لینک‌های من — مدیریت و اشتراک\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.book} راهنما — دستورات و قواعد\n{e.info} درباره — نسخه و حریم خصوصی</blockquote>',
+  homeLinks: '{e.chain} لینک‌های من',
   homeModes: '{e.settings} حالت‌های دریافت',
-  homeHelp: '{e.tool} راهنما',
+  homeHelp: '{e.book} راهنما',
   homeAbout: '{e.info} درباره',
   modesTitle:
     '{e.settings} <b>حالت‌های دریافت</b>\n' +
@@ -237,9 +237,9 @@ const fa = {
   revokedShort: 'حذف شد.',
   memoPrompt: '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
   memoChanged: '{e.memo} یادداشت به‌روز شد.',
-  renameUsage: '{e.memo} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: /rename &lt;نام&gt;',
-  renamed: '{e.memo} نام موضوع به {name} تغییر کرد.',
-  renameNoTopic: '{e.warn} دستور /rename را داخل یک موضوع بفرستید.',
+  renameUsage: '{e.tag} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: <code>/rename نام</code>',
+  renamed: '{e.tag} نام موضوع به {name} تغییر کرد.',
+  renameNoTopic: '{e.warn} برای تغییر نام، <code>/rename نام</code> را داخل یک موضوع بفرستید.',
   renameFailed: '{e.warn} تغییر نام این موضوع ممکن نشد.',
   answerWindow: '{e.write} پاسخ را در همین موضوع بفرستید. برای تغییر، Answer پیام دیگری را بزنید.',
   cancel: 'لغو',

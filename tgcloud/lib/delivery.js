@@ -54,7 +54,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     if (created && !thread) {
       await api.sendMessage({ chat_id: ownerChat, text: t(lang, 'topicsDisabled') });
     }
-    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.alien} Anonymous · ${memo}` };
+    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.anon} Anonymous · ${memo}` };
   }
 
   const conversation = await conversationFor(link, senderKey, mode, firstName, senderId, now);
@@ -78,8 +78,8 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     conversation_id: conversation.id,
     indicator: label,
     header: mode === 'history'
-      ? `${EMOJI.chat} ${label} · ${memo}`
-      : `${EMOJI.user} ${ids.escapeHtml(label)} · ${memo}`,
+      ? `${EMOJI.history} ${label} · ${memo}`
+      : `${EMOJI.forward} ${ids.escapeHtml(label)} · ${memo}`,
   };
 }
 

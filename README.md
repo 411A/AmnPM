@@ -150,14 +150,9 @@ Bot API limits sends per bot and per chat. Scale-out means multiple bots, not a 
 ## Bot metadata
 
 On the first owner `/start`, `tgcloud/lib/bot-config.js` sets the bot name, commands (English
-and Persian), description, short description, menu button, and profile photo. It is
-fire-and-forget: `/start` does not wait for it. `bot_config_version` and `bot_photo_version`
-meta flags make each part one-time; bump the constants in that file to reapply.
-
-The profile photo is fetched by Telegram from the public JPG URL in `PHOTO_URL`; replace it with
-your own public JPG. If the photo call fails, the core metadata is still applied and the photo is
-retried on a later `/start`. If the Bot API does not support `setMyProfilePhoto` on the platform,
-the profile photo can be set manually in @BotFather.
+and Persian), description, short description, and menu button. It is fire-and-forget: `/start`
+does not wait for it. `bot_config_version` makes it one-time; bump `CONFIG_VERSION` in that file
+to reapply. The bot never changes the profile photo; set it manually in @BotFather.
 
 ## Receive modes
 
@@ -186,7 +181,7 @@ id; a link-scope block uses the per-link sender key.
 ## Topic names
 
 Rename a topic with `/rename <name>` inside it. The bot always prepends the mandatory
-direction/mode marker: `⬇️ 😶‍🌫️` (anonymous), `⬇️ 😶‍🌫️💬` (history), `⬇️ 😎` (forward), or
+direction/mode marker: `⬇️ 👽` (anonymous), `⬇️ 😶‍🌫️` (history), `⬇️ 😎` (forward), or
 `⬆️` (sender topic). Owner topic names keep the memo at the end (`marker + custom · memo`), so a
 rename never drops it and a later memo change updates every owner topic, including renamed ones.
 A leading U+200E left-to-right mark keeps the marker on the left when the custom name is RTL.

@@ -211,7 +211,7 @@ async function listLinks(msg, lang, now) {
 }
 
 function stripTopicPrefix(text) {
-  const direction = new RegExp(`^\\u200E?(${EMOJI.down}|${EMOJI.up})\\s*`);
+  const direction = new RegExp(`^\\u200E?(${EMOJI.receiver}|${EMOJI.sender})\\s*`);
   const mode = new RegExp(`^(${EMOJI.history}|${EMOJI.anon}|${EMOJI.forward})\\s*`);
   return String(text).replace(direction, '').replace(mode, '').trim();
 }

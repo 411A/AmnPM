@@ -2,12 +2,8 @@ import { api } from 'sdk';
 import * as store from './store.js';
 import { EMOJI } from './constants.js';
 
-// Bump either version to reapply that part on the next /start.
-const CONFIG_VERSION = 2;
-const PHOTO_VERSION = 1;
-
-// Public JPG used only while setting the bot photo; Telegram copies it.
-const PHOTO_URL = 'https://ui-avatars.com/api/?name=AmnPM&background=0B1F1C&color=E8FFF8&size=512&bold=true&format=jpg';
+// Bump to reapply bot metadata on the next /start.
+const CONFIG_VERSION = 3;
 
 const NAME = 'AmnPM';
 
@@ -26,7 +22,7 @@ const COMMANDS_FA = [
   { command: 'newlink', description: `${EMOJI.link} ساخت لینک` },
   { command: 'links', description: `${EMOJI.chain} مدیریت لینک‌ها` },
   { command: 'rename', description: `${EMOJI.tag} تغییر نام موضوع` },
-  { command: 'help', description: `${EMOJI.book} دستورها و راهنما` },
+  { command: 'help', description: `${EMOJI.book} دستورات و راهنما` },
   { command: 'privacy', description: `${EMOJI.lock} چه چیزی ذخیره می‌شود` },
   { command: 'about', description: `${EMOJI.info} نسخه و منبع` },
 ];
@@ -52,19 +48,6 @@ async function apply() {
       api.setChatMenuButton({ menu_button: { type: 'commands' } }),
     ]);
     await store.setMeta('bot_config_version', String(CONFIG_VERSION));
-  }
-
-  if (!PHOTO_URL) {
-    await store.setMeta('bot_photo_version', String(PHOTO_VERSION));
-    return;
-  }
-  if (await store.getMeta('bot_photo_version') !== String(PHOTO_VERSION)) {
-    try {
-      await api.setMyProfilePhoto({ photo: { type: 'static', photo: PHOTO_URL } });
-      await store.setMeta('bot_photo_version', String(PHOTO_VERSION));
-    } catch {
-      // The core metadata is already applied; retry the photo on a later /start.
-    }
   }
 }
 
