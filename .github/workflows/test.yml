@@ -1,4 +1,4 @@
-name: CI
+name: 🧪 CI
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Tests
+    name: 🧪 Test suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,56 +18,56 @@ jobs:
         with:
           node-version: 24
 
-      - name: Test · crypto
+      - name: 🔐 Crypto primitives
         id: crypto
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/crypto.test.js
 
-      - name: Test · ids
+      - name: 🔑 Tokens & IDs
         id: ids
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/ids.test.js
 
-      - name: Test · store
+      - name: 🗄️ Store & schema
         id: store
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/store.test.js
 
-      - name: Test · handlers
+      - name: 🤖 Handlers & routing
         id: handlers
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/handlers.test.js
 
-      - name: Test · render
+      - name: 🎨 Rendering & text
         id: render
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/render.test.js
 
-      - name: Test · source
+      - name: 🛡️ Source guardrails
         id: source
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js
 
-      - name: Test · topics
+      - name: 🧵 Topic coordination
         id: topics
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/topics.test.js
 
-      - name: Test summary
+      - name: 📊 Test summary
         if: always()
         run: |
           {
-            echo "## AmnPM test results"
+            echo "## 📊 AmnPM test results"
             echo ""
             echo "| Section | Result |"
             echo "| --- | --- |"
-            echo "| crypto | ${{ steps.crypto.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| ids | ${{ steps.ids.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| store | ${{ steps.store.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| handlers | ${{ steps.handlers.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| render | ${{ steps.render.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| source | ${{ steps.source.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
-            echo "| topics | ${{ steps.topics.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🔐 Crypto primitives | ${{ steps.crypto.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🔑 Tokens & IDs | ${{ steps.ids.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🗄️ Store & schema | ${{ steps.store.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🤖 Handlers & routing | ${{ steps.handlers.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🎨 Rendering & text | ${{ steps.render.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🛡️ Source guardrails | ${{ steps.source.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🧵 Topic coordination | ${{ steps.topics.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
