@@ -4,33 +4,37 @@ import * as render from '../tgcloud/lib/render.js';
 import { t } from '../tgcloud/lib/i18n.js';
 import { BUILD } from '../tgcloud/lib/build.js';
 
-const COMMANDS = ['/start', '/newlink', '/links', '/rename', '/help', '/privacy', '/about'];
+const COMMANDS = ['/start', '/newlink', '/settings', '/rename', '/help', '/privacy', '/about'];
 
-test('welcome lists every command once in the required order', () => {
-  const expected = ['🔰 /start', '🔗 /newlink', '⛓️ /links', '🏷 /rename', '📖 /help', '🔏 /privacy', 'ℹ️ /about'];
+test('welcome explains the bot and modes without listing commands', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.welcome(lang);
-    assert.deepEqual(text.split('\n').filter((line) => line.includes(' /')), expected);
-    assert.ok(text.split('\n').length <= 13, text);
-    assert.match(text, /http/);
+    assert.match(text, /AmnPM/);
+    assert.match(text, /newlink/);
+    assert.match(text, /👽/);
+    assert.match(text, /😶‍🌫️/);
+    assert.match(text, /😎/);
+    assert.doesNotMatch(text, /<blockquote>[0-9a-f]{64}<\/blockquote>/);
+    assert.match(text, /matches source|unverified release/);
+    assert.ok(text.split('\n').length <= 20, text);
   }
 });
 
-test('help lists every command once in the required order', () => {
+test('help lists every command once in the required order and inside a collapsed block', () => {
   for (const lang of ['en', 'fa']) {
     const text = t(lang, 'help');
     const positions = COMMANDS.map((command) => text.indexOf(command));
     assert.deepEqual([...positions].sort((a, b) => a - b), positions, lang);
-    assert.equal(
-      text.split('\n').filter((line) => !line.includes('<blockquote') && COMMANDS.some((command) => line.includes(command))).length,
-      7,
-    );
+    const commands = text.match(/<blockquote expandable><b>[^<]+<\/b>([\s\S]*?)<\/blockquote>/)?.[1] ?? '';
+    for (const command of COMMANDS) {
+      assert.equal(commands.split('\n').filter((line) => line.includes(command)).length, 1, `${lang}: ${command}`);
+    }
   }
 });
 
 test('button screens include a collapsed guide', () => {
   for (const lang of ['en', 'fa']) {
-    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'chooseMode', 'controlsGuide', 'modesTitle']) {
+    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'linkGuide', 'chooseMode', 'controlsGuide', 'modesTitle']) {
       assert.match(t(lang, key), /<blockquote expandable>[\s\S]*<\/blockquote>/, `${lang}:${key}`);
     }
   }
@@ -50,14 +54,17 @@ test('about stays within five lines in both languages', () => {
   }
 });
 
-test('link intro stays within five lines', () => {
+test('link intro puts the note on its own line and the link in its own block', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.linkIntro(lang, 'https://t.me/bot?start=amber_fox_k7m2p', 'work');
-    assert.ok(text.split('\n').length <= 5, text);
+    assert.match(text, /📝 <b>work<\/b>/);
+    assert.match(text, /\n\n<code>https:\/\/t\.me\/bot\?start=amber_fox_k7m2p<\/code>\n\n/);
+    assert.match(text, /<blockquote expandable>/);
+    assert.ok(text.split('\n').length <= 10, text);
   }
 });
 
-test('verification renders both states with the release page and hash', () => {
+test('verification says the running code matches source without printing the hash', () => {
   const previousVerified = BUILD.verified;
   const previousRelease = BUILD.release;
   const hash = BUILD.bundleHash;
@@ -68,14 +75,14 @@ test('verification renders both states with the release page and hash', () => {
   let text = render.verifyLine();
   assert.match(text, /unverified/);
   assert.match(text, /https:\/\/github\.com\/411A\/AmnPM\/releases"/);
-  assert.match(text, new RegExp(`<blockquote>${hash}</blockquote>`));
+  assert.equal(text.includes(hash), false);
 
   BUILD.verified = true;
   BUILD.release = 'v1.0.0';
   text = render.verifyLine();
-  assert.match(text, /verified/);
+  assert.match(text, /running code matches source/);
   assert.match(text, /releases\/tag\/v1\.0\.0/);
-  assert.match(text, new RegExp(`<blockquote>${hash}</blockquote>`));
+  assert.equal(text.includes(hash), false);
 
   BUILD.verified = previousVerified;
   BUILD.release = previousRelease;

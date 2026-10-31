@@ -42,10 +42,13 @@ export function modesMenu(lang, modes) {
 
 export async function linksMenu(lang, ownerKey, now) {
   const links = await store.listLinks(ownerKey);
-  const rows = [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]];
+  const rows = [];
 
   if (!links.length) {
-    return { text: t(lang, 'noLinks'), keyboard: { inline_keyboard: rows } };
+    return {
+      text: t(lang, 'noLinks'),
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
+    };
   }
 
   for (const link of links) {
@@ -57,6 +60,7 @@ export async function linksMenu(lang, ownerKey, now) {
       callback_data: `${CALLBACK.MENU_LINK}${CALLBACK.SEP}${menu.prefix}${CALLBACK.SEP}${menu.suffix}`,
     }]);
   }
+  rows.push([{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]);
   return { text: t(lang, 'linksTitle'), keyboard: { inline_keyboard: rows } };
 }
 
@@ -79,7 +83,6 @@ export async function linkMenu(lang, link, now) {
     }),
     keyboard: {
       inline_keyboard: [
-        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
         [
           { text: t(lang, 'open'), url },
           { text: t(lang, 'share'), url: shareUrl(url) },
@@ -94,6 +97,7 @@ export async function linkMenu(lang, link, now) {
             callback_data: `${CALLBACK.REVOKE}${CALLBACK.SEP}${revoke.prefix}${CALLBACK.SEP}${revoke.suffix}`,
           },
         ],
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
       ],
     },
   };

@@ -3,24 +3,24 @@ import * as store from './store.js';
 import { EMOJI } from './constants.js';
 
 // Bump to reapply bot metadata on the next /start.
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
 
 const NAME = 'AmnPM';
 
 const COMMANDS_EN = [
   { command: 'start', description: `${EMOJI.start} Start here` },
   { command: 'newlink', description: `${EMOJI.link} Create a link` },
-  { command: 'links', description: `${EMOJI.chain} Manage links` },
+  { command: 'settings', description: `${EMOJI.control} Settings & manage links` },
   { command: 'rename', description: `${EMOJI.tag} Rename this topic` },
-  { command: 'help', description: `${EMOJI.book} Commands and usage` },
+  { command: 'help', description: `${EMOJI.book} Commands & usage` },
   { command: 'privacy', description: `${EMOJI.lock} What is stored` },
-  { command: 'about', description: `${EMOJI.info} Version and source` },
+  { command: 'about', description: `${EMOJI.info} Version & source` },
 ];
 
 const COMMANDS_FA = [
   { command: 'start', description: `${EMOJI.start} شروع` },
   { command: 'newlink', description: `${EMOJI.link} ساخت لینک` },
-  { command: 'links', description: `${EMOJI.chain} مدیریت لینک‌ها` },
+  { command: 'settings', description: `${EMOJI.control} تنظیمات و مدیریت لینک‌ها` },
   { command: 'rename', description: `${EMOJI.tag} تغییر نام موضوع` },
   { command: 'help', description: `${EMOJI.book} دستورات و راهنما` },
   { command: 'privacy', description: `${EMOJI.lock} چه چیزی ذخیره می‌شود` },

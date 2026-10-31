@@ -55,18 +55,27 @@ file; feature code imports `EMOJI` and `CALLBACK` directly.
 
 ```bash
 cp tools/secret.example.js tgcloud/lib/secret.js   # fill in real keys; never commit it
-node tools/gen-build.mjs --commit "$(git rev-parse --short HEAD)" --verified false
+node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified false
+tgcloud push
+tgcloud pull --force
+node tools/verify-deployed.mjs --github
+```
+
+`verify-deployed.mjs` compares the pulled deployed bundle, the local source, the release
+manifest, and the GitHub release asset. Publish `release/manifest.json` as the GitHub release
+asset for the tag before running it. Only after it prints `MATCH`, stamp the same build with
+`--verified true` and deploy `tgcloud/lib/build.js` again:
+
+```bash
+node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified true
 tgcloud push
 tgcloud migrate --yes
 tgcloud status
 ```
 
-`verified` is an operator claim, not a remote check. Use `--verified false` for ordinary deploys.
-For a verified release, generate the build, publish `manifest.json` as a GitHub release asset with
-the same `release`, `commit`, and `bundleHash`, then stamp `--verified true` and deploy. The bot
-links the label to that release page and prints the bundle hash below it, so only publish `true`
-when the asset matches the deployed bundle. A mismatch is a false claim; keep the stamp `false`
-instead.
+The bundle hash is unchanged by the stamp because `build.js` is excluded from it. The bot links
+the label to the release page and shows `running code matches source` only while the stamp is
+true; it never prints the hash. Keep `--verified false` for ordinary deploys.
 
 `tgcloud/lib/secret.js` is gitignored and deployed as code. Generate it once per deployment;
 losing it makes every stored link undecryptable. Rotating a key means adding a new version and
@@ -156,10 +165,10 @@ to reapply. The bot never changes the profile photo; set it manually in @BotFath
 
 ## Receive modes
 
-Each owner chooses which delivery modes senders can use. `/start` shows a **Receive modes** button;
-the setting is stored on the owner row and applies to all their links. Disabled modes are removed
-from the sender's mode buttons and rejected if an old chooser is clicked. At least one mode must
-stay enabled.
+Each owner chooses which delivery modes senders can use. `/settings` → **Receive modes** shows the
+toggles; the setting is stored on the owner row and applies to all their links. Disabled modes are
+removed from the sender's mode buttons and rejected if an old chooser is clicked. At least one mode
+must stay enabled.
 
 ## Retention
 

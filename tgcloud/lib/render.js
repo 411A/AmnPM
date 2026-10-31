@@ -13,10 +13,9 @@ export function verifyLine() {
     ? `${base}/releases/tag/${encodeURIComponent(BUILD.release)}`
     : `${base}/releases`;
   const link = escapeHtml(page);
-  const label = BUILD.verified
-    ? `${EMOJI.check} <a href="${link}">verified · ${escapeHtml(BUILD.release)}</a>`
+  return BUILD.verified
+    ? `${EMOJI.check} <a href="${link}">running code matches source</a>`
     : `${EMOJI.unverified} <a href="${link}">unverified release</a>`;
-  return `${label}\n<blockquote>${escapeHtml(BUILD.bundleHash)}</blockquote>`;
 }
 
 export function shareUrl(link) {
@@ -37,7 +36,11 @@ export function welcome(lang) {
 }
 
 export function linkIntro(lang, link, memo) {
-  return t(lang, 'linkIntro', { link, memo: escapeHtml(memo) });
+  return t(lang, 'linkIntro', {
+    link,
+    memo: escapeHtml(memo),
+    guide: t(lang, 'linkGuide'),
+  });
 }
 
 export function about(lang) {

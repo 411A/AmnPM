@@ -2,38 +2,64 @@ import { EMOJI } from './constants.js';
 
 const en = {
   welcome:
-    '{e.brand} <b>AmnPM</b>\n' +
-    '<blockquote>Private, anonymous inbox behind one link.</blockquote>\n' +
+    '{e.brand} <b>AmnPM</b> — a private inbox behind one link.\n' +
     '\n' +
-    '{e.start} /start\n' +
-    '{e.link} /newlink\n' +
-    '{e.chain} /links\n' +
-    '{e.tag} /rename\n' +
-    '{e.book} /help\n' +
-    '{e.lock} /privacy\n' +
-    '{e.info} /about\n' +
+    'Use /newlink to create a link, then share it. Anyone can write to you without seeing your identity. Unlike archive-style inbox bots, no message content is stored; link details are encrypted at rest. It runs on Telegram Serverless with open-source code (<a href="{repo}">source</a>).\n' +
+    '\n' +
+    '<blockquote expandable><b>Send modes</b>\n' +
+    '{e.anon} Full anonymous — no name or history is shared.\n' +
+    '{e.history} With history — a stable alias, so replies can reach you.\n' +
+    '{e.forward} Forward — your Telegram profile is shown with the message.</blockquote>\n' +
+    '\n' +
+    '<blockquote expandable><b>Privacy</b>\n' +
+    'No ads, no analytics, no message archive. Revoking a link deletes all data the bot stored for it. Telegram keeps its own chat history.</blockquote>\n' +
     '\n' +
     '{verify}',
   help:
     '{e.book} <b>Help</b>\n' +
-    '{e.start} /start — open the bot\n' +
-    '{e.link} /newlink [memo] — create a link\n' +
-    '{e.chain} /links — manage links\n' +
-    '{e.tag} /rename name — rename this topic\n' +
-    '{e.book} /help — this list\n' +
-    '{e.lock} /privacy — what is stored\n' +
-    '{e.info} /about — version and source\n' +
-    '<blockquote expandable>Topic names keep the direction/mode emoji. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.</blockquote>',
+    'Tap a section to expand it.\n' +
+    '<blockquote expandable><b>Commands</b>\n' +
+    '{e.start} /start\n' +
+    'Welcome & your main link.\n' +
+    '{e.link} /newlink [note]\n' +
+    'Create a link; the note is its label.\n' +
+    '{e.control} /settings\n' +
+    'Manage links, receive modes, help & about.\n' +
+    '{e.tag} /rename name\n' +
+    'Rename the topic you are writing in.\n' +
+    '{e.book} /help\n' +
+    'Show this guide.\n' +
+    '{e.lock} /privacy\n' +
+    'Explain what is stored.\n' +
+    '{e.info} /about\n' +
+    'Show version, source & verification.</blockquote>\n' +
+    '<blockquote expandable><b>Send modes</b>\n' +
+    '{e.anon} Full anonymous\n' +
+    'No name or history is shared; replies still reach your topic.\n' +
+    '{e.history} With history\n' +
+    'A stable alias per link; the owner can reply to you.\n' +
+    '{e.forward} Forward\n' +
+    'Your Telegram profile is shown with the message.</blockquote>\n' +
+    '<blockquote expandable><b>Topics & naming</b>\n' +
+    'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.</blockquote>\n' +
+    '<blockquote expandable><b>Managing links</b>\n' +
+    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays.</blockquote>',
   privacy:
     '{e.lock} <b>Privacy</b>\n' +
     'No message content is stored.\n' +
     'Links, memos, and sender ids are encrypted at rest.\n' +
     '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Telegram keeps its own copy of messages. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
   linkIntro:
-    '{e.link} <b>Your link is ready</b> — memo: <b>{memo}</b>\n' +
+    '{e.link} <b>Your link is ready</b>\n' +
+    '{e.memo} <b>{memo}</b>\n' +
+    '\n' +
     '<code>{link}</code>\n' +
+    '\n' +
     'Share it. Anyone with it can write to you without seeing your identity.\n' +
-    'Rename a topic with <code>/rename name</code> inside it.',
+    'Rename a topic with <code>/rename name</code> inside it.\n' +
+    '{guide}',
+  linkGuide:
+    '<blockquote expandable>{e.link} Open — open your link\n{e.share} Share — send it to someone</blockquote>',
   linkInactive: '{e.warn} This link is no longer active.',
   linkNotFound: '{e.warn} Link not found.',
   ownLink: '{e.upside} This is your own link. Share it instead.',
@@ -59,29 +85,30 @@ const en = {
   sentAnon: '{e.anon} Sent anonymously.',
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
-  capReached: '{e.warn} Link limit reached ({cap}). Revoke one with /links.',
+  capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
   about:
     '{e.info} <b>AmnPM</b>\n' +
     '<a href="{contact}">Bot</a> · <a href="{repo}">Source</a>\n' +
     '{verify}\n' +
     'No message content is stored.',
   linksTitle:
-    '{e.chain} <b>Your links</b>\n' +
+    '{e.chain} <b>My links</b>\n' +
     'Pick one to manage.\n' +
-    '<blockquote expandable>Each button opens one link — share, rename, or revoke it.\n{e.back} Back — open the main menu</blockquote>',
+    '<blockquote expandable>Each button opens one link — open, share, rename, or revoke it.\n{e.back} Back — settings</blockquote>',
   noLinks: '{e.feather} No links yet. /newlink creates your first one.',
   linkMenuTitle:
     '{e.link} <b>{memo}</b>\n' +
     '<code>{token}</code>\n' +
     '<blockquote expandable>{e.back} Back — link list\n{e.link} Open — open your link\n{e.share} Share — send it to someone\n{e.memo} Memo — rename this link\n{e.cross} Revoke — delete the link and its data</blockquote>',
   homeTitle:
-    '{e.home} <b>AmnPM</b>\n' +
-    'Choose an option.\n' +
-    '<blockquote expandable>{e.chain} My links — manage and share\n{e.settings} Receive modes — choose allowed send modes\n{e.book} Help — commands and topic rules\n{e.info} About — version and privacy</blockquote>',
+    '{e.control} <b>Settings</b>\n' +
+    'Manage links & choose what senders can use.\n' +
+    '<blockquote expandable>{e.chain} My links — open, share, rename, revoke\n{e.settings} Receive modes — choose allowed send modes\n{e.book} Help — commands & guides\n{e.info} About — version, source & verification</blockquote>',
   homeLinks: '{e.chain} My links',
   homeModes: '{e.settings} Receive modes',
   homeHelp: '{e.book} Help',
   homeAbout: '{e.info} About',
+  openMain: '{e.link} Open main link',
   modesTitle:
     '{e.settings} <b>Receive modes</b>\n' +
     'Choose what senders can use on all your links.\n' +
@@ -140,38 +167,64 @@ const en = {
 
 const fa = {
   welcome:
-    '{e.brand} <b>AmnPM</b>\n' +
-    '<blockquote>صندوق خصوصی و ناشناس، پشت یک لینک.</blockquote>\n' +
+    '{e.brand} <b>AmnPM</b> — صندوق خصوصی، پشت یک لینک.\n' +
     '\n' +
-    '{e.start} /start\n' +
-    '{e.link} /newlink\n' +
-    '{e.chain} /links\n' +
-    '{e.tag} /rename\n' +
-    '{e.book} /help\n' +
-    '{e.lock} /privacy\n' +
-    '{e.info} /about\n' +
+    'برای ساخت لینک از /newlink استفاده کنید و آن را به اشتراک بگذارید. هر کسی می‌تواند بدون دیدن هویت شما پیام بدهد. برخلاف ربات‌های صندوق آرشیوی، هیچ محتوای پیامی ذخیره نمی‌شود؛ اطلاعات لینک در حالت سکون رمزنگاری می‌شود. این ربات روی Telegram Serverless با کد متن‌باز اجرا می‌شود (<a href="{repo}">منبع</a>).\n' +
+    '\n' +
+    '<blockquote expandable><b>حالت‌های ارسال</b>\n' +
+    '{e.anon} کاملاً ناشناس — هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود.\n' +
+    '{e.history} با سابقه — نام مستعار ثابت، تا پاسخ‌ها به شما برسد.\n' +
+    '{e.forward} هدایت — پروفایل تلگرام شما همراه پیام دیده می‌شود.</blockquote>\n' +
+    '\n' +
+    '<blockquote expandable><b>حریم خصوصی</b>\n' +
+    'بدون تبلیغ، بدون تحلیل، بدون آرشیو پیام. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تلگرام تاریخچه گفتگوی خودش را نگه می‌دارد.</blockquote>\n' +
     '\n' +
     '{verify}',
   help:
     '{e.book} <b>راهنما</b>\n' +
-    '{e.start} /start — شروع ربات\n' +
-    '{e.link} /newlink [یادداشت] — ساخت لینک\n' +
-    '{e.chain} /links — مدیریت لینک‌ها\n' +
-    '{e.tag} /rename نام — تغییر نام موضوع\n' +
-    '{e.book} /help — همین فهرست\n' +
-    '{e.lock} /privacy — چه چیزی ذخیره می‌شود\n' +
-    '{e.info} /about — نسخه و منبع\n' +
-    '<blockquote expandable>نام موضوع همیشه ایموجی جهت/حالت را نگه می‌دارد. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.</blockquote>',
+    'برای باز کردن، روی هر بخش بزنید.\n' +
+    '<blockquote expandable><b>دستورات</b>\n' +
+    '{e.start} /start\n' +
+    'صفحه خوش‌آمد و لینک اصلی.\n' +
+    '{e.link} /newlink [یادداشت]\n' +
+    'ساخت لینک؛ یادداشت برچسب آن است.\n' +
+    '{e.control} /settings\n' +
+    'مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.\n' +
+    '{e.tag} /rename نام\n' +
+    'تغییر نام موضوعی که در آن می‌نویسید.\n' +
+    '{e.book} /help\n' +
+    'نمایش این راهنما.\n' +
+    '{e.lock} /privacy\n' +
+    'توضیح اینکه چه چیزی ذخیره می‌شود.\n' +
+    '{e.info} /about\n' +
+    'نمایش نسخه، منبع و تأیید.</blockquote>\n' +
+    '<blockquote expandable><b>حالت‌های ارسال</b>\n' +
+    '{e.anon} کاملاً ناشناس\n' +
+    'هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود؛ پاسخ‌ها همچنان به موضوع شما می‌رسند.\n' +
+    '{e.history} با سابقه\n' +
+    'نام مستعار ثابت برای هر لینک؛ صاحب لینک می‌تواند پاسخ دهد.\n' +
+    '{e.forward} هدایت\n' +
+    'پروفایل تلگرام شما همراه پیام دیده می‌شود.</blockquote>\n' +
+    '<blockquote expandable><b>موضوع‌ها و نام‌گذاری</b>\n' +
+    'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.</blockquote>\n' +
+    '<blockquote expandable><b>مدیریت لینک‌ها</b>\n' +
+    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند.</blockquote>',
   privacy:
     '{e.lock} <b>حریم خصوصی</b>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.\n' +
     'لینک‌ها، یادداشت‌ها و شناسه فرستنده‌ها در حالت سکون رمزنگاری می‌شوند.\n' +
     '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
   linkIntro:
-    '{e.link} <b>لینک شما آماده است</b> — یادداشت: <b>{memo}</b>\n' +
+    '{e.link} <b>لینک شما آماده است</b>\n' +
+    '{e.memo} <b>{memo}</b>\n' +
+    '\n' +
     '<code>{link}</code>\n' +
+    '\n' +
     'آن را به اشتراک بگذارید؛ هر کسی با آن می‌تواند بدون دیدن هویت شما پیام بدهد.\n' +
-    'نام موضوع را با <code>/rename نام</code> داخل آن تغییر دهید.',
+    'نام موضوع را با <code>/rename نام</code> داخل آن تغییر دهید.\n' +
+    '{guide}',
+  linkGuide:
+    '<blockquote expandable>{e.link} باز کردن — باز کردن لینک\n{e.share} اشتراک — ارسال برای دیگران</blockquote>',
   linkInactive: '{e.warn} این لینک دیگر فعال نیست.',
   linkNotFound: '{e.warn} لینک پیدا نشد.',
   ownLink: '{e.upside} این لینک خودتان است. آن را به اشتراک بگذارید.',
@@ -197,29 +250,30 @@ const fa = {
   sentAnon: '{e.anon} ناشناس ارسال شد.',
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
-  capReached: '{e.warn} سقف لینک ({cap}) پر است. با /links یکی را حذف کنید.',
+  capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
   about:
     '{e.info} <b>AmnPM</b>\n' +
     '<a href="{contact}">ربات</a> · <a href="{repo}">منبع</a>\n' +
     '{verify}\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
   linksTitle:
-    '{e.chain} <b>لینک‌های شما</b>\n' +
+    '{e.chain} <b>لینک‌های من</b>\n' +
     'یکی را برای مدیریت انتخاب کنید.\n' +
-    '<blockquote expandable>هر دکمه یک لینک را باز می‌کند — اشتراک، تغییر نام یا حذف.\n{e.back} بازگشت — منوی اصلی</blockquote>',
+    '<blockquote expandable>هر دکمه یک لینک را باز می‌کند — باز کردن، اشتراک، تغییر نام یا حذف.\n{e.back} بازگشت — تنظیمات</blockquote>',
   noLinks: '{e.feather} هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
   linkMenuTitle:
     '{e.link} <b>{memo}</b>\n' +
     '<code>{token}</code>\n' +
     '<blockquote expandable>{e.back} بازگشت — فهرست لینک‌ها\n{e.link} باز کردن — باز کردن لینک\n{e.share} اشتراک — ارسال برای دیگران\n{e.memo} یادداشت — تغییر نام این لینک\n{e.cross} حذف — پاک کردن لینک و داده‌ها</blockquote>',
   homeTitle:
-    '{e.home} <b>AmnPM</b>\n' +
-    'یک گزینه را انتخاب کنید.\n' +
-    '<blockquote expandable>{e.chain} لینک‌های من — مدیریت و اشتراک\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.book} راهنما — دستورات و قواعد\n{e.info} درباره — نسخه و حریم خصوصی</blockquote>',
+    '{e.control} <b>تنظیمات</b>\n' +
+    'مدیریت لینک‌ها و انتخاب حالت‌های مجاز.\n' +
+    '<blockquote expandable>{e.chain} لینک‌های من — باز کردن، اشتراک، تغییر نام، حذف\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.book} راهنما — دستورات و قواعد\n{e.info} درباره — نسخه، منبع و تأیید</blockquote>',
   homeLinks: '{e.chain} لینک‌های من',
   homeModes: '{e.settings} حالت‌های دریافت',
   homeHelp: '{e.book} راهنما',
   homeAbout: '{e.info} درباره',
+  openMain: '{e.link} باز کردن لینک اصلی',
   modesTitle:
     '{e.settings} <b>حالت‌های دریافت</b>\n' +
     'انتخاب کنید فرستنده‌ها روی همه لینک‌های شما از چه حالت‌هایی استفاده کنند.\n' +

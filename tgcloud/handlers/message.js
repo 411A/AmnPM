@@ -13,7 +13,7 @@ import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, sender
 import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
 import { parseModes } from '../lib/modes.js';
-import { linksMenu, requestMemo } from '../lib/menu.js';
+import { homeMenu, requestMemo } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -135,26 +135,16 @@ async function startOwner(msg, lang, now) {
   const chatId = msg.chat.id;
   void configureBotOnce();
   const ownerKey = await userKeyFor(chatId);
-  const created = await store.ensureOwner(ownerKey, now, lang);
-  const reply_markup = {
-    inline_keyboard: [[{ text: t(lang, 'homeModes'), callback_data: CALLBACK.MODES }]],
-  };
-  await sendHere(msg, render.welcome(lang), { reply_markup });
-  if (!created) {
-    const links = await store.listLinks(ownerKey);
-    if (!links.length) await sendHere(msg, t(lang, 'noLinks'), { reply_markup });
-    return;
+  await store.ensureOwner(ownerKey, now, lang);
+  const main = (await store.listLinks(ownerKey)).at(-1);
+  const extra = {};
+  if (main) {
+    const url = await deepLink(await linkToken(main));
+    extra.reply_markup = {
+      inline_keyboard: [[{ text: t(lang, 'openMain'), url }]],
+    };
   }
-
-  const link = await createLink(ownerKey, chatId, await nextDefaultMemo(ownerKey), now);
-  if (!link) {
-    await sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
-    return;
-  }
-  const url = await deepLink(await linkToken(link));
-  await sendHere(msg, render.linkIntro(lang, url, await linkMemo(link)), {
-    reply_markup: render.linkButtons(url),
-  });
+  return sendHere(msg, render.welcome(lang), extra);
 }
 
 async function openLink(msg, token, lang, now) {
@@ -203,10 +193,8 @@ async function newLink(msg, arg, lang, now) {
   });
 }
 
-async function listLinks(msg, lang, now) {
-  const chatId = msg.chat.id;
-  const ownerKey = await userKeyFor(chatId);
-  const menu = await linksMenu(lang, ownerKey, now);
+async function settingsPage(msg, lang) {
+  const menu = homeMenu(lang);
   await sendHere(msg, menu.text, { reply_markup: menu.keyboard });
 }
 
@@ -265,7 +253,7 @@ async function command(msg, lang, now) {
     return startOwner(msg, lang, now);
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
-  if (head === '/links') return listLinks(msg, lang, now);
+  if (head === '/settings') return settingsPage(msg, lang);
   if (head === '/help') return sendHere(msg, t(lang, 'help'));
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
   if (head === '/about') return sendHere(msg, render.about(lang));

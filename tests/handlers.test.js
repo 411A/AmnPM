@@ -42,6 +42,11 @@ function modeToggle(mode) {
   return lastMenuButtons().find((entry) => entry.callback_data.startsWith(`T|${mode}|`)).callback_data;
 }
 
+async function openLinkList() {
+  await onMessage(message('/settings', 100));
+  await click('m:links', 100);
+}
+
 function tokenOfFirstLink() {
   const sent = callsOf('sendMessage').filter((call) => String(call.args.text).includes('?start='));
   return sent.at(-1)?.args.text.match(/\?start=([0-9a-z]+)/)?.[1];
@@ -57,6 +62,7 @@ function lastSenderThread() {
 
 async function setupLink() {
   await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
   const token = tokenOfFirstLink();
   await onMessage(message(`/start ${token}`, 200));
   return token;
@@ -100,10 +106,11 @@ test('bot metadata config runs once', async () => {
   const commands = callsOf('setMyCommands')[0].args.commands;
   assert.deepEqual(
     commands.map((entry) => entry.command),
-    ['start', 'newlink', 'links', 'rename', 'help', 'privacy', 'about'],
+    ['start', 'newlink', 'settings', 'rename', 'help', 'privacy', 'about'],
   );
   assert.ok(commands.every((entry) => !entry.description.includes('\n')));
   assert.match(commands[0].description, /^🔰 /);
+  assert.match(commands[2].description, /^🎛 .*&/);
   assert.match(commands[6].description, /^ℹ️ /);
 
   await configureBotOnce();
@@ -118,23 +125,27 @@ test('help mentions the manual topic rename limitation', async () => {
   assert.match(text, /only \/rename/);
 });
 
-test('owner start creates a link and repeats only the welcome', async () => {
+test('owner start shows one main-link button only after a link exists', async () => {
   await onMessage(message('/start', 100));
-  const sent = callsOf('sendMessage');
-  assert.equal(sent.length, 2);
-  assert.match(sent[1].args.text, /t\.me\/test_bot\?start=/);
+  let sent = callsOf('sendMessage').at(-1);
+  assert.equal(sent.args.reply_markup, undefined);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+  assert.match(sent.args.text, /Use \/newlink/);
+  assert.match(sent.args.text, /running code matches source|unverified release/);
 
-  const link = rawDb().prepare('SELECT * FROM links').get();
-  assert.equal(await linkMemo(link), 'main 1');
-  assert.match(link.memo, /^enc:/);
-  assert.equal(link.state, 'active');
-
+  await onMessage(message('/newlink', 100));
   await onMessage(message('/start', 100));
-  assert.equal(callsOf('sendMessage').length, 3);
+  sent = callsOf('sendMessage').at(-1);
+  const rows = sent.args.reply_markup.inline_keyboard;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].length, 1);
+  assert.match(rows[0][0].url, /t\.me\/test_bot\?start=/);
+  assert.equal(rows[0][0].callback_data, undefined);
 });
 
 test('new links use numbered default memos and keep explicit ones', async () => {
   await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
   await onMessage(message('/newlink', 100));
   await onMessage(message('/newlink custom', 100));
 
@@ -149,14 +160,34 @@ test('privacy command explains what is stored', async () => {
   assert.match(text, /<blockquote expandable>/);
 });
 
-test('the owner can hide send modes and senders see only the rest', async () => {
+test('/settings opens the home menu without a back button', async () => {
   await onMessage(message('/start', 100));
-  const token = tokenOfFirstLink();
+  await onMessage(message('/settings', 100));
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Settings/);
+  const keyboard = sent.args.reply_markup.inline_keyboard;
+  assert.deepEqual(
+    keyboard.flat().map((button) => button.callback_data),
+    ['m:links', 'm:modes', 'm:help', 'm:about'],
+  );
+});
+
+test('help opened from settings has no buttons', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/settings', 100));
+  await click('m:help', 100);
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Commands/);
+  assert.equal(sent.args.reply_markup, undefined);
+});
+
+test('the owner can hide send modes and senders see only the rest', async () => {
+  await setupLink();
+  await onMessage(message('/settings', 100));
   await click('m:modes', 100);
   await click(modeToggle('history'), 100);
   await click(modeToggle('forward'), 100);
 
-  await onMessage(message(`/start ${token}`, 200));
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
 
   const chooser = callsOf('sendMessage').filter((call) =>
@@ -168,9 +199,7 @@ test('the owner can hide send modes and senders see only the rest', async () => 
 });
 
 test('a stale chooser cannot use a mode the owner disabled', async () => {
-  await onMessage(message('/start', 100));
-  const token = tokenOfFirstLink();
-  await onMessage(message(`/start ${token}`, 200));
+  await setupLink();
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
 
   const forward = callsOf('sendMessage').filter((call) =>
@@ -179,6 +208,7 @@ test('a stale chooser cannot use a mode the owner disabled', async () => {
     .args.reply_markup.inline_keyboard.flat()
     .find((button) => String(button.callback_data).startsWith('F|'));
 
+  await onMessage(message('/settings', 100));
   await click('m:modes', 100);
   await click(modeToggle('forward'), 100);
   await click(forward.callback_data, 200);
@@ -189,6 +219,7 @@ test('a stale chooser cannot use a mode the owner disabled', async () => {
 
 test('the last enabled mode cannot be disabled', async () => {
   await onMessage(message('/start', 100));
+  await onMessage(message('/settings', 100));
   await click('m:modes', 100);
   await click(modeToggle('anon'), 100);
   await click(modeToggle('history'), 100);
@@ -553,10 +584,11 @@ test('forwarded owner controls do not block for another user', async () => {
 
 test('a forwarded link menu does not reveal the link to another user', async () => {
   await setupLink();
-  await onMessage(message('/links', 100));
+  await openLinkList();
   const data = buttons().find((entry) => entry.startsWith('D|'));
+  const before = callsOf('editMessageText').length;
   await click(data, 300);
-  assert.equal(callsOf('editMessageText').length, 0);
+  assert.equal(callsOf('editMessageText').length, before);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
 });
 
@@ -645,7 +677,7 @@ test('a failed read receipt shows a popup', async () => {
 test('changing a memo renames the topics', async () => {
   await setupLink();
   await deliverAnonymous();
-  await onMessage(message('/links', 100));
+  await openLinkList();
   const menuData = buttons().find((entry) => entry.startsWith('D|'));
   await click(menuData, 100);
   const memoData = buttons().find((entry) => entry.startsWith('E|'));
@@ -675,7 +707,7 @@ test('a renamed topic keeps its custom name after a memo change', async () => {
   const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
   await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
 
-  await onMessage(message('/links', 100));
+  await openLinkList();
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('newmemo', 100));
@@ -693,7 +725,7 @@ test('a renamed forward topic keeps its memo and follows memo changes', async ()
   await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
   assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · main 1');
 
-  await onMessage(message('/links', 100));
+  await openLinkList();
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('newmemo', 100));
@@ -704,7 +736,7 @@ test('a renamed forward topic keeps its memo and follows memo changes', async ()
 test('the memo prompt and the memo message are removed after use', async () => {
   await setupLink();
   await deliverAnonymous();
-  await onMessage(message('/links', 100));
+  await openLinkList();
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
 
@@ -731,6 +763,7 @@ test('no plaintext chat identifiers or message text are stored', async () => {
   const owner = 987654321;
   const visitor = 123456789;
   await onMessage(message('/start', owner));
+  await onMessage(message('/newlink', owner));
   const token = tokenOfFirstLink();
   await onMessage(message(`/start ${token}`, visitor));
   await onMessage(message('secret text', visitor, { first_name: 'V', message_thread_id: firstSenderThread() }));
@@ -750,7 +783,7 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
   const token = await setupLink();
   await deliverAnonymous();
 
-  await onMessage(message('/links', 100));
+  await openLinkList();
   const menuData = buttons().find((entry) => entry.startsWith('D|'));
   await click(menuData, 100);
   const revokeData = buttons().find((entry) => entry.startsWith('V|'));
@@ -783,7 +816,7 @@ test('a sender is told about deletion when returning to a revoked topic', async 
   await deliverAnonymous();
   const senderThread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
 
-  await onMessage(message('/links', 100));
+  await openLinkList();
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
   await click(buttons().find((entry) => entry.startsWith('V|')), 100);
   await click(buttons().find((entry) => entry.startsWith('K|')), 100);
