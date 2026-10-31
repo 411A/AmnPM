@@ -1,8 +1,9 @@
 import { api } from 'sdk';
 import * as store from './store.js';
+import { EMOJI } from './constants.js';
 
 // Bump either version to reapply that part on the next /start.
-const CONFIG_VERSION = 1;
+const CONFIG_VERSION = 2;
 const PHOTO_VERSION = 1;
 
 // Public JPG used only while setting the bot photo; Telegram copies it.
@@ -11,21 +12,23 @@ const PHOTO_URL = 'https://ui-avatars.com/api/?name=AmnPM&background=0B1F1C&colo
 const NAME = 'AmnPM';
 
 const COMMANDS_EN = [
-  { command: 'start', description: 'Start AmnPM' },
-  { command: 'newlink', description: 'Create an anonymous link' },
-  { command: 'links', description: 'Manage your links' },
-  { command: 'rename', description: 'Rename the current topic (emoji prefix stays)' },
-  { command: 'help', description: 'Commands and usage' },
-  { command: 'about', description: 'About this bot' },
+  { command: 'start', description: `${EMOJI.start} Start here` },
+  { command: 'newlink', description: `${EMOJI.link} Create a link` },
+  { command: 'links', description: `${EMOJI.chain} Manage links` },
+  { command: 'rename', description: `${EMOJI.tag} Rename this topic` },
+  { command: 'help', description: `${EMOJI.book} Commands and usage` },
+  { command: 'privacy', description: `${EMOJI.lock} What is stored` },
+  { command: 'about', description: `${EMOJI.info} Version and source` },
 ];
 
 const COMMANDS_FA = [
-  { command: 'start', description: 'شروع AmnPM' },
-  { command: 'newlink', description: 'ساخت لینک ناشناس' },
-  { command: 'links', description: 'مدیریت لینک‌ها' },
-  { command: 'rename', description: 'تغییر نام موضوع (ایموجی ثابت می‌ماند)' },
-  { command: 'help', description: 'دستورها و راهنما' },
-  { command: 'about', description: 'درباره ربات' },
+  { command: 'start', description: `${EMOJI.start} شروع` },
+  { command: 'newlink', description: `${EMOJI.link} ساخت لینک` },
+  { command: 'links', description: `${EMOJI.chain} مدیریت لینک‌ها` },
+  { command: 'rename', description: `${EMOJI.tag} تغییر نام موضوع` },
+  { command: 'help', description: `${EMOJI.book} دستورها و راهنما` },
+  { command: 'privacy', description: `${EMOJI.lock} چه چیزی ذخیره می‌شود` },
+  { command: 'about', description: `${EMOJI.info} نسخه و منبع` },
 ];
 
 const DESCRIPTION_EN =

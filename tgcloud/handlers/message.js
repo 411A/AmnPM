@@ -85,6 +85,21 @@ async function createLink(ownerKey, chatId, memo, now) {
   }
 }
 
+// Numbered defaults: "main 1", "main 2", reusing the lowest free number after a revoke.
+async function nextDefaultMemo(ownerKey) {
+  const used = new Set();
+  for (const link of await store.listLinks(ownerKey)) {
+    const memo = await linkMemo(link);
+    const rest = memo.slice(CONFIG.defaultMemo.length + 1);
+    if (memo.startsWith(`${CONFIG.defaultMemo} `) && /^\d+$/.test(rest)) {
+      used.add(Number(rest));
+    }
+  }
+  let n = 1;
+  while (used.has(n)) n += 1;
+  return `${CONFIG.defaultMemo} ${n}`;
+}
+
 async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, lang, messageId, threadId, current, now) {
   const payload = {
     link_id: link.id,
@@ -121,7 +136,7 @@ async function startOwner(msg, lang, now) {
     return;
   }
 
-  const link = await createLink(ownerKey, chatId, CONFIG.defaultMemo, now);
+  const link = await createLink(ownerKey, chatId, await nextDefaultMemo(ownerKey), now);
   if (!link) {
     await sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
     return;
@@ -170,7 +185,7 @@ async function newLink(msg, arg, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
   await store.ensureOwner(ownerKey, now, lang);
-  const link = await createLink(ownerKey, chatId, arg, now);
+  const link = await createLink(ownerKey, chatId, arg || await nextDefaultMemo(ownerKey), now);
   if (!link) return sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
   const url = await deepLink(await linkToken(link));
   return sendHere(msg, render.linkIntro(lang, url, await linkMemo(link)), {
@@ -242,6 +257,7 @@ async function command(msg, lang, now) {
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/links') return listLinks(msg, lang, now);
   if (head === '/help') return sendHere(msg, t(lang, 'help'));
+  if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
   if (head === '/about') return sendHere(msg, render.about(lang));
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {

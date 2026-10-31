@@ -79,7 +79,7 @@ async function sendControls(link, payload, sentIds, now) {
   const message = {
     chat_id: payload.chat_id,
     ...(payload.thread_id ? { message_thread_id: payload.thread_id } : {}),
-    text: payload.header,
+    text: `${payload.header}\n${t(lang, 'controlsGuide')}`,
     parse_mode: 'HTML',
     reply_markup: ownerKeyboard({
       answer: t(lang, 'btnAnswer'),

@@ -89,6 +89,15 @@ test('bot metadata config runs once', async () => {
   assert.equal(callsOf('setChatMenuButton').length, 1);
   assert.equal(callsOf('setMyProfilePhoto').length, 1);
 
+  const commands = callsOf('setMyCommands')[0].args.commands;
+  assert.deepEqual(
+    commands.map((entry) => entry.command),
+    ['start', 'newlink', 'links', 'rename', 'help', 'privacy', 'about'],
+  );
+  assert.ok(commands.every((entry) => !entry.description.includes('\n')));
+  assert.match(commands[0].description, /^🔰 /);
+  assert.match(commands[6].description, /^ℹ️ /);
+
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
   assert.equal(callsOf('setMyProfilePhoto').length, 1);
@@ -108,12 +117,28 @@ test('owner start creates a link and repeats only the welcome', async () => {
   assert.match(sent[1].args.text, /t\.me\/test_bot\?start=/);
 
   const link = rawDb().prepare('SELECT * FROM links').get();
-  assert.equal(await linkMemo(link), 'main');
+  assert.equal(await linkMemo(link), 'main 1');
   assert.match(link.memo, /^enc:/);
   assert.equal(link.state, 'active');
 
   await onMessage(message('/start', 100));
   assert.equal(callsOf('sendMessage').length, 3);
+});
+
+test('new links use numbered default memos and keep explicit ones', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
+  await onMessage(message('/newlink custom', 100));
+
+  const links = rawDb().prepare('SELECT * FROM links ORDER BY id').all();
+  assert.deepEqual(await Promise.all(links.map(linkMemo)), ['main 1', 'main 2', 'custom']);
+});
+
+test('privacy command explains what is stored', async () => {
+  await onMessage(message('/privacy', 100));
+  const text = callsOf('sendMessage').at(-1).args.text;
+  assert.match(text, /No message content is stored/);
+  assert.match(text, /<blockquote expandable>/);
 });
 
 test('a stranger reaches the owner anonymously', async () => {
@@ -123,6 +148,7 @@ test('a stranger reaches the owner anonymously', async () => {
   assert.ok(callsOf('sendMessage').at(-1).args.message_thread_id);
 
   const controls = await deliverAnonymous();
+  assert.match(controls.args.text, /^👽 Anonymous · main 1/);
 
   const copies = callsOf('copyMessages');
   assert.equal(copies.length, 1);
@@ -131,7 +157,7 @@ test('a stranger reaches the owner anonymously', async () => {
   assert.equal(copies[0].args.message_ids.length, 1);
 
   const ownerTopic = callsOf('createForumTopic').find((call) => call.args.name.includes('Anonymous'));
-  assert.equal(ownerTopic.args.name, '\u200E⬇️ 😶‍🌫️ Anonymous · main');
+  assert.equal(ownerTopic.args.name, '\u200E⬇️ 😶‍🌫️ Anonymous · main 1');
   assert.ok(controls.args.reply_markup.inline_keyboard.flat().some((b) => b.callback_data.startsWith('A|')));
 
   const sent = callsOf('editMessageText').find((call) => call.args.text?.startsWith('😶‍🌫️'));
@@ -180,7 +206,7 @@ test('history mode keeps one topic and a stable indicator', async () => {
 
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.equal(ownerTopics.length, 1);
-  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main$/);
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️💬 [a-z]+-[a-z]+ · main 1$/);
   const historySent = callsOf('editMessageText')
     .filter((call) => String(call.args.text).includes('Sent with history')).at(-1);
   assert.ok(historySent);
@@ -196,7 +222,7 @@ test('forward mode forwards the profile into its own topic', async () => {
 
   assert.equal(callsOf('forwardMessages').length, 1);
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
-  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😎 V · main$/);
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😎 V · main 1$/);
 });
 
 test('answer copies the owner reply back to the sender topic', async () => {
@@ -580,7 +606,7 @@ test('owners can rename a topic and keep the mandatory emoji prefix', async () =
   await onMessage(message('/rename Cool stuff', 100, { message_thread_id: thread }));
 
   const edit = callsOf('editForumTopic').at(-1);
-  assert.equal(edit.args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · main');
+  assert.equal(edit.args.name, '\u200E⬇️ 😶‍🌫️ Cool stuff · main 1');
   assert.match(rawDb().prepare('SELECT name FROM topics WHERE thread_id = ?').get(thread).name, /^enc:/);
   assert.equal(callsOf('sendMessage').at(-1).args.message_thread_id, thread);
 });
@@ -607,7 +633,7 @@ test('a renamed forward topic keeps its memo and follows memo changes', async ()
   assert.ok(thread);
 
   await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
-  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · main');
+  assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · main 1');
 
   await onMessage(message('/links', 100));
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
@@ -675,7 +701,7 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
   await click(confirmData, 100);
 
   const finalEdit = callsOf('editMessageText').at(-1);
-  assert.match(finalEdit.args.text, /🗑 <s>https:\/\/t\.me\/test_bot\?start=/);
+  assert.match(finalEdit.args.text, /❌ <s>https:\/\/t\.me\/test_bot\?start=/);
   assert.equal(finalEdit.args.reply_markup.inline_keyboard.length, 0);
 
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);

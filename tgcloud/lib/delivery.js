@@ -54,7 +54,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     if (created && !thread) {
       await api.sendMessage({ chat_id: ownerChat, text: t(lang, 'topicsDisabled') });
     }
-    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.ninja} Anonymous · ${memo}` };
+    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.alien} Anonymous · ${memo}` };
   }
 
   const conversation = await conversationFor(link, senderKey, mode, firstName, senderId, now);

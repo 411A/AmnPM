@@ -1,13 +1,38 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as render from '../tgcloud/lib/render.js';
+import { t } from '../tgcloud/lib/i18n.js';
 import { BUILD } from '../tgcloud/lib/build.js';
 
-test('welcome stays within five lines in both languages', () => {
+const COMMANDS = ['/start', '/newlink', '/links', '/rename', '/help', '/privacy', '/about'];
+
+test('welcome lists every command once in the required order', () => {
+  const expected = ['🔰 /start', '🔗 /newlink', '⛓️ /links', '🏷 /rename', '📖 /help', '🔏 /privacy', 'ℹ️ /about'];
   for (const lang of ['en', 'fa']) {
     const text = render.welcome(lang);
-    assert.ok(text.split('\n').length <= 5, text);
+    assert.deepEqual(text.split('\n').filter((line) => line.includes(' /')), expected);
+    assert.ok(text.split('\n').length <= 13, text);
     assert.match(text, /http/);
+  }
+});
+
+test('help lists every command once in the required order', () => {
+  for (const lang of ['en', 'fa']) {
+    const text = t(lang, 'help');
+    const positions = COMMANDS.map((command) => text.indexOf(command));
+    assert.deepEqual([...positions].sort((a, b) => a - b), positions, lang);
+    assert.equal(
+      text.split('\n').filter((line) => !line.includes('<blockquote') && COMMANDS.some((command) => line.includes(command))).length,
+      7,
+    );
+  }
+});
+
+test('button screens include a collapsed guide', () => {
+  for (const lang of ['en', 'fa']) {
+    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'chooseMode', 'controlsGuide']) {
+      assert.match(t(lang, key), /<blockquote expandable>[\s\S]*<\/blockquote>/, `${lang}:${key}`);
+    }
   }
 });
 
