@@ -1,5 +1,5 @@
 Anonymous link-based Telegram bot.
 
-Bundle hash: 453b6df6034a3dc6883d0ed8be0a89c3dfbbc774fb45417c3346d53bab816398
+Bundle hash: ff3af5880be4f2d38fb0d410decc3254a81744e1d6566ed98c4fe0e2106c4cfc
 
-Code commit: e6cec28
+Code commit: 1f10ab8
