@@ -315,12 +315,12 @@ async function revokePrompt(q, opened, lang, now) {
     text: t(lang, 'revokeConfirm', { memo: ids.escapeHtml(memoText) }),
     keyboard: {
       inline_keyboard: [
-        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
         [{
           text: t(lang, 'confirm'),
           callback_data: `${CALLBACK.REVOKE_OK}${CALLBACK.SEP}${confirm.prefix}${CALLBACK.SEP}${confirm.suffix}`,
           style: 'danger',
         }],
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.LINKS }],
       ],
     },
   });

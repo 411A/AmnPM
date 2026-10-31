@@ -788,6 +788,8 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
   await click(menuData, 100);
   const revokeData = buttons().find((entry) => entry.startsWith('V|'));
   await click(revokeData, 100);
+  const confirmMenu = callsOf('editMessageText').at(-1);
+  assert.equal(confirmMenu.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:links');
   const confirmData = buttons().find((entry) => entry.startsWith('K|'));
   await click(confirmData, 100);
 
