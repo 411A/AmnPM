@@ -20,15 +20,17 @@ test('welcome explains the bot and modes without listing commands', () => {
   }
 });
 
-test('help lists every command once in the required order and inside a collapsed block', () => {
+test('help lists every command once in the required order inside collapsed details', () => {
   for (const lang of ['en', 'fa']) {
     const text = t(lang, 'help');
     const positions = COMMANDS.map((command) => text.indexOf(command));
     assert.deepEqual([...positions].sort((a, b) => a - b), positions, lang);
-    const commands = text.match(/<blockquote expandable><b>[^<]+<\/b>([\s\S]*?)<\/blockquote>/)?.[1] ?? '';
+    const commands = text.match(/<details><summary><b>[^<]+<\/b><\/summary>([\s\S]*?)<\/details>/)?.[1] ?? '';
     for (const command of COMMANDS) {
       assert.equal(commands.split('\n').filter((line) => line.includes(command)).length, 1, `${lang}: ${command}`);
     }
+    assert.match(text, /<details><summary>/);
+    assert.doesNotMatch(text, /<details open>/);
   }
 });
 
@@ -47,10 +49,13 @@ test('mode keyboard only shows enabled modes', () => {
   assert.match(keyboard.inline_keyboard[0][0].text, /✓$/);
 });
 
-test('about stays within five lines in both languages', () => {
+test('about uses a rich table for bot and source', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.about(lang);
-    assert.ok(text.split('\n').length <= 5, text);
+    assert.match(text, /<table bordered striped compact>/, text);
+    assert.match(text, /@AmnPMBot/);
+    assert.match(text, /GitHub/);
+    assert.doesNotMatch(text, /<blockquote>/);
   }
 });
 

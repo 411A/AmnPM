@@ -117,6 +117,19 @@ export async function editMenu(q, menu) {
   }
 }
 
+export async function editRichMenu(q, html, keyboard) {
+  try {
+    await api.editMessageText({
+      chat_id: q.message.chat.id,
+      message_id: q.message.message_id,
+      rich_message: { html },
+      ...(keyboard ? { reply_markup: keyboard } : {}),
+    });
+  } catch (err) {
+    if (!/not modified/i.test(String(err?.description ?? err))) throw err;
+  }
+}
+
 // Sends the memo prompt into the owner chat and remembers it, so it can be
 // removed once the memo arrives. Replaces any prompt still pending.
 export async function requestMemo(link, lang) {

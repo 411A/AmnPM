@@ -18,32 +18,30 @@ const en = {
   help:
     '{e.book} <b>Help</b>\n' +
     'Tap a section to expand it.\n' +
-    '<blockquote expandable><b>Commands</b>\n' +
-    '{e.start} /start\n' +
-    'Welcome & your main link.\n' +
-    '{e.link} /newlink [note]\n' +
-    'Create a link; the note is its label.\n' +
-    '{e.control} /settings\n' +
-    'Manage links, receive modes, help & about.\n' +
-    '{e.tag} /rename name\n' +
-    'Rename the topic you are writing in.\n' +
-    '{e.book} /help\n' +
-    'Show this guide.\n' +
-    '{e.lock} /privacy\n' +
-    'Explain what is stored.\n' +
-    '{e.info} /about\n' +
-    'Show version, source & verification.</blockquote>\n' +
-    '<blockquote expandable><b>Send modes</b>\n' +
-    '{e.anon} Full anonymous\n' +
-    'No name or history is shared; replies still reach your topic.\n' +
-    '{e.history} With history\n' +
-    'A stable alias per link; the owner can reply to you.\n' +
-    '{e.forward} Forward\n' +
-    'Your Telegram profile is shown with the message.</blockquote>\n' +
-    '<blockquote expandable><b>Topics & naming</b>\n' +
-    'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.</blockquote>\n' +
-    '<blockquote expandable><b>Managing links</b>\n' +
-    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays.</blockquote>',
+    '<details><summary><b>Commands</b></summary>\n' +
+    '<ul>\n' +
+    '<li><b>{e.start} /start</b><br>Welcome & your main link.</li>\n' +
+    '<li><b>{e.link} /newlink [note]</b><br>Create a link; the note is its label.</li>\n' +
+    '<li><b>{e.control} /settings</b><br>Manage links, receive modes, help & about.</li>\n' +
+    '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in.</li>\n' +
+    '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
+    '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
+    '<li><b>{e.info} /about</b><br>Show version, source & verification.</li>\n' +
+    '</ul>\n' +
+    '</details>\n' +
+    '<details><summary><b>Send modes</b></summary>\n' +
+    '<ul>\n' +
+    '<li><b>{e.anon} Full anonymous</b><br>No name or history is shared; replies still reach your topic.</li>\n' +
+    '<li><b>{e.history} With history</b><br>A stable alias per link; the owner can reply to you.</li>\n' +
+    '<li><b>{e.forward} Forward</b><br>Your Telegram profile is shown with the message.</li>\n' +
+    '</ul>\n' +
+    '</details>\n' +
+    '<details><summary><b>Topics & naming</b></summary>\n' +
+    'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.\n' +
+    '</details>\n' +
+    '<details><summary><b>Managing links</b></summary>\n' +
+    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays.\n' +
+    '</details>',
   privacy:
     '{e.lock} <b>Privacy</b>\n' +
     'No message content is stored.\n' +
@@ -88,8 +86,12 @@ const en = {
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
   about:
     '{e.info} <b>AmnPM</b>\n' +
-    '<a href="{contact}">Bot</a> · <a href="{repo}">Source</a>\n' +
     '{verify}\n' +
+    '<table bordered striped compact>\n' +
+    '<tr><th>Resource</th><th>Link</th></tr>\n' +
+    '<tr><td>Bot</td><td><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
+    '<tr><td>Source</td><td><a href="{repo}">GitHub</a></td></tr>\n' +
+    '</table>\n' +
     'No message content is stored.',
   linksTitle:
     '{e.chain} <b>My links</b>\n' +
@@ -189,32 +191,30 @@ const fa = {
   help:
     '{e.book} <b>راهنما</b>\n' +
     'برای باز کردن، روی هر بخش بزنید.\n' +
-    '<blockquote expandable><b>دستورات</b>\n' +
-    '{e.start} /start\n' +
-    'صفحه خوش‌آمد و لینک اصلی.\n' +
-    '{e.link} /newlink [یادداشت]\n' +
-    'ساخت لینک؛ یادداشت برچسب آن است.\n' +
-    '{e.control} /settings\n' +
-    'مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.\n' +
-    '{e.tag} /rename نام\n' +
-    'تغییر نام موضوعی که در آن می‌نویسید.\n' +
-    '{e.book} /help\n' +
-    'نمایش این راهنما.\n' +
-    '{e.lock} /privacy\n' +
-    'توضیح اینکه چه چیزی ذخیره می‌شود.\n' +
-    '{e.info} /about\n' +
-    'نمایش نسخه، منبع و تأیید.</blockquote>\n' +
-    '<blockquote expandable><b>حالت‌های ارسال</b>\n' +
-    '{e.anon} کاملاً ناشناس\n' +
-    'هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود؛ پاسخ‌ها همچنان به موضوع شما می‌رسند.\n' +
-    '{e.history} با سابقه\n' +
-    'نام مستعار ثابت برای هر لینک؛ صاحب لینک می‌تواند پاسخ دهد.\n' +
-    '{e.forward} هدایت\n' +
-    'پروفایل تلگرام شما همراه پیام دیده می‌شود.</blockquote>\n' +
-    '<blockquote expandable><b>موضوع‌ها و نام‌گذاری</b>\n' +
-    'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.</blockquote>\n' +
-    '<blockquote expandable><b>مدیریت لینک‌ها</b>\n' +
-    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند.</blockquote>',
+    '<details><summary><b>دستورات</b></summary>\n' +
+    '<ul>\n' +
+    '<li><b>{e.start} /start</b><br>صفحه خوش‌آمد و لینک اصلی.</li>\n' +
+    '<li><b>{e.link} /newlink [یادداشت]</b><br>ساخت لینک؛ یادداشت برچسب آن است.</li>\n' +
+    '<li><b>{e.control} /settings</b><br>مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.</li>\n' +
+    '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید.</li>\n' +
+    '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
+    '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
+    '<li><b>{e.info} /about</b><br>نمایش نسخه، منبع و تأیید.</li>\n' +
+    '</ul>\n' +
+    '</details>\n' +
+    '<details><summary><b>حالت‌های ارسال</b></summary>\n' +
+    '<ul>\n' +
+    '<li><b>{e.anon} کاملاً ناشناس</b><br>هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود؛ پاسخ‌ها همچنان به موضوع شما می‌رسند.</li>\n' +
+    '<li><b>{e.history} با سابقه</b><br>نام مستعار ثابت برای هر لینک؛ صاحب لینک می‌تواند پاسخ دهد.</li>\n' +
+    '<li><b>{e.forward} هدایت</b><br>پروفایل تلگرام شما همراه پیام دیده می‌شود.</li>\n' +
+    '</ul>\n' +
+    '</details>\n' +
+    '<details><summary><b>موضوع‌ها و نام‌گذاری</b></summary>\n' +
+    'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.\n' +
+    '</details>\n' +
+    '<details><summary><b>مدیریت لینک‌ها</b></summary>\n' +
+    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند.\n' +
+    '</details>',
   privacy:
     '{e.lock} <b>حریم خصوصی</b>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.\n' +
@@ -259,8 +259,12 @@ const fa = {
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
   about:
     '{e.info} <b>AmnPM</b>\n' +
-    '<a href="{contact}">ربات</a> · <a href="{repo}">منبع</a>\n' +
     '{verify}\n' +
+    '<table bordered striped compact>\n' +
+    '<tr><th>مورد</th><th>لینک</th></tr>\n' +
+    '<tr><td>ربات</td><td><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
+    '<tr><td>منبع</td><td><a href="{repo}">GitHub</a></td></tr>\n' +
+    '</table>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
   linksTitle:
     '{e.chain} <b>لینک‌های من</b>\n' +

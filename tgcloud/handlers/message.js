@@ -27,6 +27,21 @@ function send(chatId, text, extra = {}) {
   });
 }
 
+function sendRich(chatId, html, extra = {}) {
+  return api.sendRichMessage({
+    chat_id: chatId,
+    rich_message: { html },
+    ...extra,
+  });
+}
+
+function sendRichHere(msg, html, extra = {}) {
+  return sendRich(msg.chat.id, html, {
+    ...(msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {}),
+    ...extra,
+  });
+}
+
 function sendHere(msg, text, extra = {}) {
   return send(msg.chat.id, text, {
     ...(msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {}),
@@ -254,9 +269,9 @@ async function command(msg, lang, now) {
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/settings') return settingsPage(msg, lang);
-  if (head === '/help') return sendHere(msg, t(lang, 'help'));
+  if (head === '/help') return sendRichHere(msg, t(lang, 'help'));
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
-  if (head === '/about') return sendHere(msg, render.about(lang));
+  if (head === '/about') return sendRichHere(msg, render.about(lang));
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
     const session = await store.getSession(await sessionKeyFor(chatId));

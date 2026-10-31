@@ -96,6 +96,10 @@ export const api = {
     record('sendMessage', args);
     return { message_id: nextId++, chat: { id: args.chat_id }, text: args.text };
   },
+  async sendRichMessage(args) {
+    record('sendRichMessage', args);
+    return { message_id: nextId++, chat: { id: args.chat_id }, rich_message: args.rich_message };
+  },
   async copyMessage(args) {
     record('copyMessage', args);
     return { message_id: nextId++, chat: { id: args.chat_id } };

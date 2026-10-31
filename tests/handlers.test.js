@@ -120,9 +120,18 @@ test('bot metadata config runs once', async () => {
 
 test('help mentions the manual topic rename limitation', async () => {
   await onMessage(message('/help', 100));
-  const sent = callsOf('sendMessage').at(-1);
-  assert.match(sent.args.text, /Telegram UI renames/);
-  assert.match(sent.args.text, /only \/rename/);
+  const sent = callsOf('sendRichMessage').at(-1);
+  assert.match(sent.args.rich_message.html, /Telegram UI renames/);
+  assert.match(sent.args.rich_message.html, /only \/rename/);
+  assert.equal(sent.args.reply_markup, undefined);
+});
+
+test('about renders bot and source as a rich table', async () => {
+  await onMessage(message('/about', 100));
+  const sent = callsOf('sendRichMessage').at(-1);
+  assert.match(sent.args.rich_message.html, /<table/);
+  assert.match(sent.args.rich_message.html, /@AmnPMBot/);
+  assert.match(sent.args.rich_message.html, /GitHub/);
   assert.equal(sent.args.reply_markup, undefined);
 });
 
@@ -179,7 +188,7 @@ test('help opened from settings edits the message with a back button last', asyn
   const before = callsOf('sendMessage').length;
   await click('m:help', 100);
   const edit = callsOf('editMessageText').at(-1);
-  assert.match(edit.args.text, /Commands/);
+  assert.match(edit.args.rich_message.html, /Commands/);
   assert.equal(edit.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:home');
   assert.equal(callsOf('sendMessage').length, before);
 });
@@ -190,7 +199,8 @@ test('about opened from settings edits the message with a back button last', asy
   const before = callsOf('sendMessage').length;
   await click('m:about', 100);
   const edit = callsOf('editMessageText').at(-1);
-  assert.match(edit.args.text, /No message content is stored/);
+  assert.match(edit.args.rich_message.html, /<table/);
+  assert.match(edit.args.rich_message.html, /No message content is stored/);
   assert.equal(edit.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:home');
   assert.equal(callsOf('sendMessage').length, before);
 });
@@ -823,7 +833,7 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
 
 test('topic commands answer in the same thread', async () => {
   await onMessage(message('/help', 100, { message_thread_id: 42 }));
-  const sent = callsOf('sendMessage').at(-1);
+  const sent = callsOf('sendRichMessage').at(-1);
   assert.equal(sent.args.message_thread_id, 42);
 });
 

@@ -7,7 +7,7 @@ import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
-import { homeMenu, linksMenu, linkMenu, editMenu, requestMemo, modesMenu } from '../lib/menu.js';
+import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
 import * as render from '../lib/render.js';
@@ -412,16 +412,14 @@ async function menu(q, data, lang, now) {
     return answer(q);
   }
   if (data === CALLBACK.HELP) {
-    await editMenu(q, {
-      text: t(lang, 'help'),
-      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
+    await editRichMenu(q, t(lang, 'help'), {
+      inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]],
     });
     return answer(q);
   }
   if (data === CALLBACK.ABOUT) {
-    await editMenu(q, {
-      text: render.about(lang),
-      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
+    await editRichMenu(q, render.about(lang), {
+      inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]],
     });
     return answer(q);
   }
