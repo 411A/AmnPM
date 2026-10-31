@@ -49,7 +49,10 @@ const en = {
   topicFailed: '{e.warn} Could not create your topic. Open the link again to retry.',
   chooseMode:
     '{e.send} How should this reach the owner?\n' +
-    '<blockquote expandable>{e.anon} Anonymous — no identity shown\n{e.history} With history — a stable alias per link\n{e.forward} Forward — your Telegram profile is shown</blockquote>',
+    '<blockquote expandable>{guide}</blockquote>',
+  modeGuideAnon: '{e.anon} Anonymous — no identity shown',
+  modeGuideHistory: '{e.history} With history — a stable alias per link',
+  modeGuideForward: '{e.forward} Forward — your Telegram profile is shown',
   modeAnon: '{e.anon} Anonymous',
   modeHistory: '{e.history} With history',
   modeForward: '{e.forward} Forward',
@@ -74,10 +77,17 @@ const en = {
   homeTitle:
     '{e.home} <b>AmnPM</b>\n' +
     'Choose an option.\n' +
-    '<blockquote expandable>{e.link} My links — manage and share\n{e.tool} Help — commands and topic rules\n{e.info} About — version and privacy</blockquote>',
+    '<blockquote expandable>{e.link} My links — manage and share\n{e.settings} Receive modes — choose allowed send modes\n{e.tool} Help — commands and topic rules\n{e.info} About — version and privacy</blockquote>',
   homeLinks: '{e.link} My links',
+  homeModes: '{e.settings} Receive modes',
   homeHelp: '{e.tool} Help',
   homeAbout: '{e.info} About',
+  modesTitle:
+    '{e.settings} <b>Receive modes</b>\n' +
+    'Choose what senders can use on all your links.\n' +
+    '<blockquote expandable>Tap a row to toggle it. Enabled modes appear as buttons after a sender writes. At least one mode must stay on.</blockquote>',
+  modesKeepOne: '{e.warn} Keep at least one mode enabled.',
+  modeUnavailable: '{e.warn} This mode is no longer available.',
   back: '{e.back} Back',
   open: '{e.link} Open',
   share: '{e.share} Share',
@@ -177,7 +187,10 @@ const fa = {
   topicFailed: '{e.warn} ساخت موضوع ممکن نشد. لینک را دوباره باز کنید تا تلاش شود.',
   chooseMode:
     '{e.send} این پیام چطور به صاحب لینک برسد؟\n' +
-    '<blockquote expandable>{e.anon} ناشناس — بدون نمایش هویت\n{e.history} با سابقه — نام مستعار ثابت برای هر لینک\n{e.forward} هدایت — پروفایل تلگرام شما دیده می‌شود</blockquote>',
+    '<blockquote expandable>{guide}</blockquote>',
+  modeGuideAnon: '{e.anon} ناشناس — بدون نمایش هویت',
+  modeGuideHistory: '{e.history} با سابقه — نام مستعار ثابت برای هر لینک',
+  modeGuideForward: '{e.forward} هدایت — پروفایل تلگرام شما دیده می‌شود',
   modeAnon: '{e.anon} ناشناس',
   modeHistory: '{e.history} با سابقه',
   modeForward: '{e.forward} هدایت',
@@ -202,10 +215,17 @@ const fa = {
   homeTitle:
     '{e.home} <b>AmnPM</b>\n' +
     'یک گزینه را انتخاب کنید.\n' +
-    '<blockquote expandable>{e.link} لینک‌های من — مدیریت و اشتراک\n{e.tool} راهنما — دستورها و قواعد\n{e.info} درباره — نسخه و حریم خصوصی</blockquote>',
+    '<blockquote expandable>{e.link} لینک‌های من — مدیریت و اشتراک\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.tool} راهنما — دستورها و قواعد\n{e.info} درباره — نسخه و حریم خصوصی</blockquote>',
   homeLinks: '{e.link} لینک‌های من',
+  homeModes: '{e.settings} حالت‌های دریافت',
   homeHelp: '{e.tool} راهنما',
   homeAbout: '{e.info} درباره',
+  modesTitle:
+    '{e.settings} <b>حالت‌های دریافت</b>\n' +
+    'انتخاب کنید فرستنده‌ها روی همه لینک‌های شما از چه حالت‌هایی استفاده کنند.\n' +
+    '<blockquote expandable>برای تغییر، روی هر ردیف بزنید. حالت‌های فعال بعد از نوشتن فرستنده به‌صورت دکمه نشان داده می‌شوند. حداقل یک حالت باید روشن بماند.</blockquote>',
+  modesKeepOne: '{e.warn} حداقل یک حالت باید روشن بماند.',
+  modeUnavailable: '{e.warn} این حالت دیگر در دسترس نیست.',
   back: '{e.back} بازگشت',
   open: '{e.link} باز کردن',
   share: '{e.share} اشتراک',

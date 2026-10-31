@@ -34,6 +34,14 @@ function buttons() {
     .filter(Boolean);
 }
 
+function lastMenuButtons() {
+  return callsOf('editMessageText').at(-1)?.args.reply_markup?.inline_keyboard?.flat() ?? [];
+}
+
+function modeToggle(mode) {
+  return lastMenuButtons().find((entry) => entry.callback_data.startsWith(`T|${mode}|`)).callback_data;
+}
+
 function tokenOfFirstLink() {
   const sent = callsOf('sendMessage').filter((call) => String(call.args.text).includes('?start='));
   return sent.at(-1)?.args.text.match(/\?start=([0-9a-z]+)/)?.[1];
@@ -139,6 +147,56 @@ test('privacy command explains what is stored', async () => {
   const text = callsOf('sendMessage').at(-1).args.text;
   assert.match(text, /No message content is stored/);
   assert.match(text, /<blockquote expandable>/);
+});
+
+test('the owner can hide send modes and senders see only the rest', async () => {
+  await onMessage(message('/start', 100));
+  const token = tokenOfFirstLink();
+  await click('m:modes', 100);
+  await click(modeToggle('history'), 100);
+  await click(modeToggle('forward'), 100);
+
+  await onMessage(message(`/start ${token}`, 200));
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+
+  const chooser = callsOf('sendMessage').filter((call) =>
+    call.args.reply_markup?.inline_keyboard?.flat()
+      .some((button) => String(button.callback_data).startsWith('M|'))).at(-1);
+  assert.equal(chooser.args.reply_markup.inline_keyboard.length, 1);
+  assert.match(chooser.args.text, /Anonymous/);
+  assert.doesNotMatch(chooser.args.text, /With history|Forward/);
+});
+
+test('a stale chooser cannot use a mode the owner disabled', async () => {
+  await onMessage(message('/start', 100));
+  const token = tokenOfFirstLink();
+  await onMessage(message(`/start ${token}`, 200));
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+
+  const forward = callsOf('sendMessage').filter((call) =>
+    call.args.reply_markup?.inline_keyboard?.flat()
+      .some((button) => String(button.callback_data).startsWith('F|'))).at(-1)
+    .args.reply_markup.inline_keyboard.flat()
+    .find((button) => String(button.callback_data).startsWith('F|'));
+
+  await click('m:modes', 100);
+  await click(modeToggle('forward'), 100);
+  await click(forward.callback_data, 200);
+
+  assert.equal(callsOf('copyMessages').length, 0);
+  assert.match(callsOf('answerCallbackQuery').filter((call) => call.args.text).at(-1).args.text, /no longer available/);
+});
+
+test('the last enabled mode cannot be disabled', async () => {
+  await onMessage(message('/start', 100));
+  await click('m:modes', 100);
+  await click(modeToggle('anon'), 100);
+  await click(modeToggle('history'), 100);
+  await click(modeToggle('forward'), 100);
+
+  const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
+  assert.match(alerts.at(-1).args.text, /at least one mode/);
+  assert.match(lastMenuButtons().find((button) => button.callback_data.startsWith('T|forward|')).text, /^✓/);
 });
 
 test('a stranger reaches the owner anonymously', async () => {

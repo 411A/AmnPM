@@ -30,6 +30,14 @@ test('owner cap is atomic and released', async () => {
   assert.equal(await store.claimSlot(key, 2, 1), 0);
 });
 
+test('receive modes default to all and can be narrowed', async () => {
+  const key = 'owner-modes';
+  await store.ensureOwner(key, 1);
+  assert.equal((await store.getOwner(key)).modes, 'anon,history,forward');
+  await store.setOwnerModes(key, ['forward']);
+  assert.equal((await store.getOwner(key)).modes, 'forward');
+});
+
 test('links are stored, found, listed and deleted', async () => {
   const inserted = await store.insertLink({
     token_lookup: 'lookup-1',

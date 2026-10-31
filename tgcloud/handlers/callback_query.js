@@ -7,8 +7,9 @@ import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
-import { homeMenu, linksMenu, linkMenu, editMenu, requestMemo } from '../lib/menu.js';
+import { homeMenu, linksMenu, linkMenu, editMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, userKeyFor } from '../lib/links.js';
+import { parseModes } from '../lib/modes.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
 import { CALLBACK, EMOJI } from '../lib/constants.js';
@@ -82,6 +83,12 @@ async function mode(q, k, opened, lang, now) {
   const link = opened.link;
   if (link.state !== 'active') return answer(q, t(lang, 'linkInactive'));
 
+  const chosen = k === CALLBACK.MODE_ANON ? 'anon' : k === CALLBACK.MODE_HISTORY ? 'history' : 'forward';
+  const owner = await store.getOwner(link.owner_key);
+  if (!parseModes(owner?.modes).includes(chosen)) {
+    return answer(q, t(lang, 'modeUnavailable'), true);
+  }
+
   if (await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_id))) {
     await store.clearPending(p.user_key, p.group_key);
     await store.deleteActionToken(opened.row.prefix);
@@ -100,7 +107,6 @@ async function mode(q, k, opened, lang, now) {
   // Stop the button spinner now; delivery and cleanup continue behind it.
   await answer(q);
 
-  const chosen = k === CALLBACK.MODE_ANON ? 'anon' : k === CALLBACK.MODE_HISTORY ? 'history' : 'forward';
   const session = await store.getSession(p.user_key);
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
@@ -371,11 +377,34 @@ async function memoPrompt(q, opened, lang, now) {
   return answer(q);
 }
 
+async function toggleMode(q, mode, desired, lang) {
+  if (!q.message?.chat?.id || !q.message?.message_id) return answer(q);
+  if (!['anon', 'history', 'forward'].includes(mode)) return answer(q);
+  if (desired !== '0' && desired !== '1') return answer(q);
+  const ownerKey = await userKeyFor(q.message.chat.id);
+  const owner = await store.getOwner(ownerKey);
+  if (!owner) return answer(q);
+  const current = parseModes(owner.modes);
+  const next = desired === '1'
+    ? [...new Set([...current, mode])]
+    : current.filter((entry) => entry !== mode);
+  if (!next.length) return answer(q, t(lang, 'modesKeepOne'), true);
+  await store.setOwnerModes(ownerKey, next);
+  await editMenu(q, modesMenu(lang, next));
+  return answer(q);
+}
+
 async function menu(q, data, lang, now) {
   if (!q.message?.chat?.id || !q.message?.message_id) return answer(q);
 
   if (data === CALLBACK.HOME) {
     await editMenu(q, homeMenu(lang));
+    return answer(q);
+  }
+  if (data === CALLBACK.MODES) {
+    const owner = await store.getOwner(await userKeyFor(q.message.chat.id));
+    if (!owner) return answer(q);
+    await editMenu(q, modesMenu(lang, parseModes(owner.modes)));
     return answer(q);
   }
   if (data === CALLBACK.LINKS) {
@@ -408,6 +437,7 @@ export default async function onCallback(update) {
     const [k, prefix, suffix] = String(q.data).split(CALLBACK.SEP);
 
     if (k.startsWith(CALLBACK.MENU_PREFIX)) return await menu(q, k, lang, now);
+    if (k === CALLBACK.MODE_TOGGLE) return await toggleMode(q, prefix, suffix, lang);
     if (k === CALLBACK.CANCEL) {
       if (q.message?.chat?.id) {
         await store.closeReplyWindow(await userKeyFor(q.message.chat.id));

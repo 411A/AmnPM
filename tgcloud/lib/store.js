@@ -35,6 +35,10 @@ export async function getOwner(ownerKey) {
   return db.get(sql`SELECT * FROM owners WHERE owner_key = ${ownerKey}`);
 }
 
+export async function setOwnerModes(ownerKey, modes) {
+  await db.run(sql`UPDATE owners SET modes = ${modes.join(',')} WHERE owner_key = ${ownerKey}`);
+}
+
 // One read covers the memo prompt, the reply window, and owner detection.
 export async function getOwnerState(ownerKey) {
   return db.get(sql`SELECT o.owner_key, o.memo_link_id, o.memo_message_id,

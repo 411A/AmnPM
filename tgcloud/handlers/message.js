@@ -12,6 +12,7 @@ import { drain } from '../lib/queue.js';
 import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
+import { parseModes } from '../lib/modes.js';
 import { linksMenu, requestMemo } from '../lib/menu.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -110,15 +111,21 @@ async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, 
     first_name: firstName,
     thread_id: threadId,
   };
-  // One sealed token backs all three buttons; the mode letter is the only difference.
+  // One sealed token backs every visible button; the mode letter is the only difference.
   const sealed = await sealAction(link, 'mode', payload, now, CONFIG.modeTtlSeconds);
   const data = `${sealed.prefix}${CALLBACK.SEP}${sealed.suffix}`;
-  await send(senderId, t(lang, 'chooseMode'), {
+  const modes = parseModes((await store.getOwner(link.owner_key))?.modes);
+  const guide = modes.map((mode) => t(lang, {
+    anon: 'modeGuideAnon',
+    history: 'modeGuideHistory',
+    forward: 'modeGuideForward',
+  }[mode])).join('\n');
+  await send(senderId, t(lang, 'chooseMode', { guide }), {
     reply_markup: render.modeKeyboard(lang, {
       anon: `${CALLBACK.MODE_ANON}${CALLBACK.SEP}${data}`,
       history: `${CALLBACK.MODE_HISTORY}${CALLBACK.SEP}${data}`,
       forward: `${CALLBACK.MODE_FORWARD}${CALLBACK.SEP}${data}`,
-    }, current),
+    }, current, modes),
     reply_to_message_id: messageId,
     ...(threadId ? { message_thread_id: threadId } : {}),
   });
@@ -129,10 +136,13 @@ async function startOwner(msg, lang, now) {
   void configureBotOnce();
   const ownerKey = await userKeyFor(chatId);
   const created = await store.ensureOwner(ownerKey, now, lang);
-  await sendHere(msg, render.welcome(lang));
+  const reply_markup = {
+    inline_keyboard: [[{ text: t(lang, 'homeModes'), callback_data: CALLBACK.MODES }]],
+  };
+  await sendHere(msg, render.welcome(lang), { reply_markup });
   if (!created) {
     const links = await store.listLinks(ownerKey);
-    if (!links.length) await sendHere(msg, t(lang, 'noLinks'));
+    if (!links.length) await sendHere(msg, t(lang, 'noLinks'), { reply_markup });
     return;
   }
 

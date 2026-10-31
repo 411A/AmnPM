@@ -30,10 +30,17 @@ test('help lists every command once in the required order', () => {
 
 test('button screens include a collapsed guide', () => {
   for (const lang of ['en', 'fa']) {
-    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'chooseMode', 'controlsGuide']) {
+    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'chooseMode', 'controlsGuide', 'modesTitle']) {
       assert.match(t(lang, key), /<blockquote expandable>[\s\S]*<\/blockquote>/, `${lang}:${key}`);
     }
   }
+});
+
+test('mode keyboard only shows enabled modes', () => {
+  const callbacks = { anon: 'M|a', history: 'H|a', forward: 'F|a' };
+  const keyboard = render.modeKeyboard('en', callbacks, 'history', ['history', 'forward']);
+  assert.deepEqual(keyboard.inline_keyboard.map((row) => row[0].callback_data), ['H|a', 'F|a']);
+  assert.match(keyboard.inline_keyboard[0][0].text, /✓$/);
 });
 
 test('about stays within five lines in both languages', () => {

@@ -14,8 +14,27 @@ export function homeMenu(lang) {
     keyboard: {
       inline_keyboard: [
         [{ text: t(lang, 'homeLinks'), callback_data: CALLBACK.LINKS }],
+        [{ text: t(lang, 'homeModes'), callback_data: CALLBACK.MODES }],
         [{ text: t(lang, 'homeHelp'), callback_data: CALLBACK.HELP }],
         [{ text: t(lang, 'homeAbout'), callback_data: CALLBACK.ABOUT }],
+      ],
+    },
+  };
+}
+
+export function modesMenu(lang, modes) {
+  const row = (mode, label) => [{
+    text: `${modes.includes(mode) ? EMOJI.selected : EMOJI.unselected} ${label}`,
+    callback_data: `${CALLBACK.MODE_TOGGLE}${CALLBACK.SEP}${mode}${CALLBACK.SEP}${modes.includes(mode) ? '0' : '1'}`,
+  }];
+  return {
+    text: t(lang, 'modesTitle'),
+    keyboard: {
+      inline_keyboard: [
+        row('anon', t(lang, 'modeAnon')),
+        row('history', t(lang, 'modeHistory')),
+        row('forward', t(lang, 'modeForward')),
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }],
       ],
     },
   };

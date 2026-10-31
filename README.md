@@ -159,6 +159,13 @@ your own public JPG. If the photo call fails, the core metadata is still applied
 retried on a later `/start`. If the Bot API does not support `setMyProfilePhoto` on the platform,
 the profile photo can be set manually in @BotFather.
 
+## Receive modes
+
+Each owner chooses which delivery modes senders can use. `/start` shows a **Receive modes** button;
+the setting is stored on the owner row and applies to all their links. Disabled modes are removed
+from the sender's mode buttons and rejected if an old chooser is clicked. At least one mode must
+stay enabled.
+
 ## Retention
 
 `retired_tokens` is the only table that grows without bound: an 8-byte fingerprint per revoked

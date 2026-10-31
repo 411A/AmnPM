@@ -3,6 +3,7 @@ import { BUILD } from './build.js';
 import { t } from './i18n.js';
 import { escapeHtml, cleanLabel } from './ids.js';
 import { EMOJI, LTR_MARK } from './constants.js';
+import { MODES } from './modes.js';
 
 const ltr = (name) => `${LTR_MARK}${name}`;
 
@@ -75,15 +76,18 @@ export function senderTopicName(token) {
   return ltr(`${EMOJI.up} ${cleanLabel(token, 40)}`);
 }
 
-export function modeKeyboard(lang, callbacks, current) {
-  const mark = (mode, label) => (current === mode ? `${label} ${EMOJI.selected}` : label);
-  return {
-    inline_keyboard: [
-      [{ text: mark('anon', t(lang, 'modeAnon')), callback_data: callbacks.anon }],
-      [{ text: mark('history', t(lang, 'modeHistory')), callback_data: callbacks.history }],
-      [{ text: mark('forward', t(lang, 'modeForward')), callback_data: callbacks.forward }],
-    ],
+export function modeKeyboard(lang, callbacks, current, modes = MODES) {
+  const labels = {
+    anon: t(lang, 'modeAnon'),
+    history: t(lang, 'modeHistory'),
+    forward: t(lang, 'modeForward'),
   };
+  const mark = (mode) => (current === mode ? `${labels[mode]} ${EMOJI.selected}` : labels[mode]);
+  const rows = [];
+  for (const mode of MODES.filter((entry) => modes.includes(entry))) {
+    rows.push([{ text: mark(mode), callback_data: callbacks[mode] }]);
+  }
+  return { inline_keyboard: rows };
 }
 
 export function ownerKeyboard(labels) {
