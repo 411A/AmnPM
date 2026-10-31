@@ -167,8 +167,15 @@ const en = {
   blockedNotice: '{e.block} You are blocked by the owner.',
   throttle: '{e.hourglass} Too fast — wait a moment.',
   albumPartial: '{e.warn} Part of the album was deleted; the rest was delivered.',
-  deleteNotice: '{e.trash} Stored data deleted. Only this chat history remains.',
-  topicClosed: '{e.cross} This topic is closed because the link was revoked.',
+  deleteNotice:
+    '{e.trash} Link unavailable\n' +
+    'The owner revoked this link, so the bot deleted all data it stored for it. You can no longer send messages or answer anyone from this link. Telegram keeps its own chat history.',
+  topicDeleted:
+    '{e.trash} This topic is closed\n' +
+    'The link was revoked, so the bot deleted all data it stored for it. You can no longer send messages or answer anyone in this topic. Telegram keeps this chat history.',
+  topicClosed:
+    '{e.cross} Topic closed\n' +
+    'The link was revoked, so the bot deleted its stored data for this link. This topic no longer accepts messages or answers. Telegram keeps its own chat history.',
   topicsDisabled: '{e.info} Enable Topics for this bot in @BotFather to get separate threads.',
   preparing: '{e.hourglass} Preparing your topic — tap the mode again in a moment.',
   failed: '{e.warn} Delivery failed. Try again.',
@@ -341,8 +348,15 @@ const fa = {
   blockedNotice: '{e.block} شما توسط صاحب لینک مسدود شده‌اید.',
   throttle: '{e.hourglass} خیلی سریع — کمی صبر کنید.',
   albumPartial: '{e.warn} بخشی از آلبوم حذف شده بود؛ بقیه ارسال شد.',
-  deleteNotice: '{e.trash} داده‌های ذخیره‌شده پاک شد. فقط تاریخچه همین گفتگو می‌ماند.',
-  topicClosed: '{e.cross} این موضوع بسته شد چون لینک حذف شده است.',
+  deleteNotice:
+    '{e.trash} لینک در دسترس نیست\n' +
+    'صاحب لینک آن را حذف کرده است؛ بنابراین ربات همه داده‌های ذخیره‌شده مربوط به آن را پاک کرد. دیگر نمی‌توانید از این لینک پیام بفرستید یا به کسی پاسخ دهید. تاریخچه گفتگو در تلگرام باقی می‌ماند.',
+  topicDeleted:
+    '{e.trash} این موضوع بسته شده است\n' +
+    'لینک حذف شده و ربات همه داده‌های ذخیره‌شده مربوط به آن را پاک کرده است. دیگر نمی‌توانید در این موضوع پیام بفرستید یا به کسی پاسخ دهید. تاریخچه همین گفتگو در تلگرام باقی می‌ماند.',
+  topicClosed:
+    '{e.cross} موضوع بسته شد\n' +
+    'لینک حذف شده و ربات داده‌های ذخیره‌شده آن را پاک کرده است. این موضوع دیگر پیام یا پاسخ نمی‌پذیرد. تاریخچه گفتگو در تلگرام باقی می‌ماند.',
   topicsDisabled: '{e.info} برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
   preparing: '{e.hourglass} موضوع در حال آماده‌سازی است — لحظه‌ای بعد دوباره حالت را بزنید.',
   failed: '{e.warn} ارسال نشد. دوباره تلاش کنید.',

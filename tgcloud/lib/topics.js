@@ -3,6 +3,7 @@ import * as store from './store.js';
 import { t } from './i18n.js';
 import { topicName, senderTopicName, customTopicName } from './render.js';
 import { linkMemo, conversationLabel, linkToken, topicLabel } from './keys.js';
+import { EMOJI } from './constants.js';
 
 const STALE_SECONDS = 60;
 
@@ -53,22 +54,21 @@ export async function ensureTopic(link, chatId, kind, conversationId, name) {
   }
 }
 
+async function topicDisplayName(link, topic, memoText) {
+  const custom = await topicLabel(link, topic);
+  if (custom) return customTopicName(topic.kind, custom, memoText);
+  if (topic.kind === 'anon') return topicName('anon', memoText);
+  const conversation = await store.getConversationById(topic.conversation_id);
+  const label = conversation ? await conversationLabel(link, conversation) : '';
+  return topicName(topic.kind, memoText, label);
+}
+
 export async function renameTopics(link, chatId) {
   const memoText = await linkMemo(link);
   const topics = await store.listTopics(link.id);
   for (const topic of topics) {
     if (!topic.thread_id) continue;
-    const custom = await topicLabel(link, topic);
-    let name;
-    if (custom) {
-      name = customTopicName(topic.kind, custom, memoText);
-    } else if (topic.kind === 'anon') {
-      name = topicName('anon', memoText);
-    } else {
-      const conversation = await store.getConversationById(topic.conversation_id);
-      const label = conversation ? await conversationLabel(link, conversation) : '';
-      name = topicName(topic.kind, memoText, label);
-    }
+    const name = await topicDisplayName(link, topic, memoText);
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: topic.thread_id, name });
       await store.updateTopic(
@@ -163,6 +163,7 @@ export async function recreateSenderTopic(link, chatId, senderKey, now) {
 
 export async function closeLinkTopics(link, chatId, lang) {
   const topics = await store.listTopics(link.id);
+  const memoText = await linkMemo(link);
   for (const topic of topics) {
     if (!topic.thread_id) continue;
     try {
@@ -178,7 +179,19 @@ export async function closeLinkTopics(link, chatId, lang) {
       await api.closeForumTopic({ chat_id: chatId, message_thread_id: topic.thread_id });
       await store.updateTopic(topic.id, topic.thread_id, '', 'closed');
     } catch {
-      // close is not available in every chat; leave it open
+      // closeForumTopic is supergroup-only. In a private bot chat, mark the
+      // topic name instead so it still reads as closed; the bot rejects writes.
+      try {
+        const name = await topicDisplayName(link, topic, memoText);
+        await api.editForumTopic({
+          chat_id: chatId,
+          message_thread_id: topic.thread_id,
+          name: `${name} · ${EMOJI.cross}`,
+        });
+        await store.updateTopic(topic.id, topic.thread_id, '', 'closed');
+      } catch {
+        // leave it open if both close and rename fail
+      }
     }
   }
 }

@@ -497,7 +497,7 @@ async function plain(msg, lang, now) {
 
     const talk = await senderTopicFor(base, msg.message_thread_id);
     if (!talk?.link || talk.link.state !== 'active') {
-      return sendHere(msg, t(lang, 'deleteNotice'));
+      return sendHere(msg, t(lang, 'topicDeleted'));
     }
     link = talk.link;
     senderKey = talk.senderKey;

@@ -841,7 +841,22 @@ test('revoke deletes every link-scoped row and retires the token', async () => {
   assert.equal(callsOf('closeForumTopic').length, 1);
 
   await onMessage(message(`/start ${token}`, 300));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /Stored data deleted/);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Link unavailable/);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /can no longer send messages/);
+});
+
+test('a topic is marked closed when Telegram cannot close it', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  failNext('closeForumTopic', new Error('not available in private chats'));
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('V|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('K|')), 100);
+
+  const edit = callsOf('editForumTopic').at(-1);
+  assert.match(edit.args.name, / · ❌$/);
 });
 
 test('topic commands answer in the same thread', async () => {
@@ -862,6 +877,7 @@ test('a sender is told about deletion when returning to a revoked topic', async 
 
   await onMessage(message('after', 200, { message_thread_id: senderThread }));
   const sent = callsOf('sendMessage').at(-1);
-  assert.match(sent.args.text, /Stored data deleted/);
+  assert.match(sent.args.text, /This topic is closed/);
+  assert.match(sent.args.text, /answer anyone in this topic/);
   assert.equal(sent.args.message_thread_id, senderThread);
 });
