@@ -16,7 +16,8 @@
 
 </div>
 
-> [!NOTE]
+> **The name**
+>
 > *<b>Amn</b> (<span dir="rtl">امن</span>) is a Persian/Arabic word meaning safe, secure, protected, or free from danger. <b>PM</b> stands for Private Message.*
 
 AmnPM turns one link into a private inbox. Share the link and anyone can message you without seeing your Telegram identity. Senders choose how much you see about them: nothing, a stable alias, or their Telegram profile.
