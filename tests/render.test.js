@@ -34,7 +34,7 @@ test('help lists every command once in the required order and inside a collapsed
 
 test('button screens include a collapsed guide', () => {
   for (const lang of ['en', 'fa']) {
-    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'linkGuide', 'chooseMode', 'controlsGuide', 'modesTitle']) {
+    for (const key of ['homeTitle', 'linksTitle', 'linkMenuTitle', 'linkGuide', 'chooseMode', 'controlsGuide', 'modesTitle', 'revokeConfirm']) {
       assert.match(t(lang, key), /<blockquote expandable>[\s\S]*<\/blockquote>/, `${lang}:${key}`);
     }
   }
@@ -60,7 +60,7 @@ test('link intro puts the note on its own line and the link in its own block', (
     assert.match(text, /📝 <b>work<\/b>/);
     assert.match(text, /\n\n<code>https:\/\/t\.me\/bot\?start=amber_fox_k7m2p<\/code>\n\n/);
     assert.match(text, /<blockquote expandable>/);
-    assert.ok(text.split('\n').length <= 10, text);
+    assert.ok(text.split('\n').length <= 13, text);
   }
 });
 

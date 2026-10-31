@@ -120,9 +120,10 @@ test('bot metadata config runs once', async () => {
 
 test('help mentions the manual topic rename limitation', async () => {
   await onMessage(message('/help', 100));
-  const text = callsOf('sendMessage').at(-1).args.text;
-  assert.match(text, /Telegram UI renames/);
-  assert.match(text, /only \/rename/);
+  const sent = callsOf('sendMessage').at(-1);
+  assert.match(sent.args.text, /Telegram UI renames/);
+  assert.match(sent.args.text, /only \/rename/);
+  assert.equal(sent.args.reply_markup, undefined);
 });
 
 test('owner start shows one main-link button only after a link exists', async () => {
@@ -172,13 +173,26 @@ test('/settings opens the home menu without a back button', async () => {
   );
 });
 
-test('help opened from settings has no buttons', async () => {
+test('help opened from settings edits the message with a back button last', async () => {
   await onMessage(message('/start', 100));
   await onMessage(message('/settings', 100));
+  const before = callsOf('sendMessage').length;
   await click('m:help', 100);
-  const sent = callsOf('sendMessage').at(-1);
-  assert.match(sent.args.text, /Commands/);
-  assert.equal(sent.args.reply_markup, undefined);
+  const edit = callsOf('editMessageText').at(-1);
+  assert.match(edit.args.text, /Commands/);
+  assert.equal(edit.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:home');
+  assert.equal(callsOf('sendMessage').length, before);
+});
+
+test('about opened from settings edits the message with a back button last', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/settings', 100));
+  const before = callsOf('sendMessage').length;
+  await click('m:about', 100);
+  const edit = callsOf('editMessageText').at(-1);
+  assert.match(edit.args.text, /No message content is stored/);
+  assert.equal(edit.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:home');
+  assert.equal(callsOf('sendMessage').length, before);
 });
 
 test('the owner can hide send modes and senders see only the rest', async () => {
@@ -194,7 +208,7 @@ test('the owner can hide send modes and senders see only the rest', async () => 
     call.args.reply_markup?.inline_keyboard?.flat()
       .some((button) => String(button.callback_data).startsWith('M|'))).at(-1);
   assert.equal(chooser.args.reply_markup.inline_keyboard.length, 1);
-  assert.match(chooser.args.text, /Anonymous/);
+  assert.match(chooser.args.text, /Full anonymous/);
   assert.doesNotMatch(chooser.args.text, /With history|Forward/);
 });
 

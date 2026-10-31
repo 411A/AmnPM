@@ -42,16 +42,6 @@ function answer(q, text, alert = false) {
   });
 }
 
-async function sendStandalone(q, text) {
-  await api.sendMessage({
-    chat_id: q.message.chat.id,
-    ...(q.message.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
-    text,
-    parse_mode: 'HTML',
-    link_preview_options: { is_disabled: true },
-  });
-}
-
 async function removeReadButton(q) {
   if (!q.message?.reply_markup?.inline_keyboard) return;
   const keyboard = q.message.reply_markup.inline_keyboard
@@ -422,11 +412,17 @@ async function menu(q, data, lang, now) {
     return answer(q);
   }
   if (data === CALLBACK.HELP) {
-    await sendStandalone(q, t(lang, 'help'));
+    await editMenu(q, {
+      text: t(lang, 'help'),
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
+    });
     return answer(q);
   }
   if (data === CALLBACK.ABOUT) {
-    await sendStandalone(q, render.about(lang));
+    await editMenu(q, {
+      text: render.about(lang),
+      keyboard: { inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]] },
+    });
     return answer(q);
   }
   return answer(q);

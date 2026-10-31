@@ -59,7 +59,7 @@ const en = {
     'Rename a topic with <code>/rename name</code> inside it.\n' +
     '{guide}',
   linkGuide:
-    '<blockquote expandable>{e.link} Open — open your link\n{e.share} Share — send it to someone</blockquote>',
+    '<blockquote expandable>{e.link} Open — open your own link to test the sender view.\n{e.share} Share — send it to someone.\n\nThe note above labels this link & its owner topics. Change it later in /settings → My links.</blockquote>',
   linkInactive: '{e.warn} This link is no longer active.',
   linkNotFound: '{e.warn} Link not found.',
   ownLink: '{e.upside} This is your own link. Share it instead.',
@@ -75,10 +75,10 @@ const en = {
   topicFailed: '{e.warn} Could not create your topic. Open the link again to retry.',
   chooseMode:
     '{e.send} How should this reach the owner?\n' +
-    '<blockquote expandable>{guide}</blockquote>',
-  modeGuideAnon: '{e.anon} Anonymous — no identity shown',
-  modeGuideHistory: '{e.history} With history — a stable alias per link',
-  modeGuideForward: '{e.forward} Forward — your Telegram profile is shown',
+    '<blockquote expandable>{guide}\n\nThe mode only changes what the owner sees about you; every mode still delivers to the owner.</blockquote>',
+  modeGuideAnon: '{e.anon} Full anonymous — no name or history is shared. Replies still reach your topic.',
+  modeGuideHistory: '{e.history} With history — a stable alias per link keeps your replies connected without revealing your profile.',
+  modeGuideForward: '{e.forward} Forward — your Telegram profile is shown with the message.',
   modeAnon: '{e.anon} Anonymous',
   modeHistory: '{e.history} With history',
   modeForward: '{e.forward} Forward',
@@ -94,16 +94,20 @@ const en = {
   linksTitle:
     '{e.chain} <b>My links</b>\n' +
     'Pick one to manage.\n' +
-    '<blockquote expandable>Each button opens one link — open, share, rename, or revoke it.\n{e.back} Back — settings</blockquote>',
+    '<blockquote expandable>Tap a link to open its controls.\n\nInside, you can open the link, share it, change its note, or revoke it.\n\nRevoking is permanent for the bot: the link stops working and its stored data is removed. Telegram history stays.\n\n{e.back} Back returns to settings.</blockquote>',
   noLinks: '{e.feather} No links yet. /newlink creates your first one.',
   linkMenuTitle:
     '{e.link} <b>{memo}</b>\n' +
     '<code>{token}</code>\n' +
-    '<blockquote expandable>{e.back} Back — link list\n{e.link} Open — open your link\n{e.share} Share — send it to someone\n{e.memo} Memo — rename this link\n{e.cross} Revoke — delete the link and its data</blockquote>',
+    '<blockquote expandable>{e.link} Open — open your link in Telegram; use it to test the sender view.\n{e.share} Share — send the link to someone.\n{e.memo} Memo — change the note for this link; owner topic names update too.\n{e.cross} Revoke — stop the link, delete the bot’s stored data, & close its topics. This cannot be undone.\n{e.back} Back — return to My links.</blockquote>',
   homeTitle:
     '{e.control} <b>Settings</b>\n' +
-    'Manage links & choose what senders can use.\n' +
-    '<blockquote expandable>{e.chain} My links — open, share, rename, revoke\n{e.settings} Receive modes — choose allowed send modes\n{e.book} Help — commands & guides\n{e.info} About — version, source & verification</blockquote>',
+    'Manage your links & choose how senders can reach you.\n' +
+    '<blockquote expandable><b>What each option does</b>\n' +
+    '{e.chain} My links — see every active link. Open it, share it, change its note, or revoke it.\n' +
+    '{e.settings} Receive modes — turn anonymous, history, or forward on or off for senders. At least one stays on.\n' +
+    '{e.book} Help — command reference & short guides for modes, topics, and link management.\n' +
+    '{e.info} About — bot version, source code & the running-code check.</blockquote>',
   homeLinks: '{e.chain} My links',
   homeModes: '{e.settings} Receive modes',
   homeHelp: '{e.book} Help',
@@ -112,7 +116,7 @@ const en = {
   modesTitle:
     '{e.settings} <b>Receive modes</b>\n' +
     'Choose what senders can use on all your links.\n' +
-    '<blockquote expandable>Tap a row to toggle it. Enabled modes appear as buttons after a sender writes. At least one mode must stay on.</blockquote>',
+    '<blockquote expandable>Tap a mode to turn it on or off. Senders only see enabled modes.\n\n{e.anon} Anonymous — hides the sender name & history.\n{e.history} With history — a stable alias per link; replies can reach the sender.\n{e.forward} Forward — shows the sender’s Telegram profile.\n\nAt least one mode must stay on. Changes apply to new messages; already-delivered messages are unchanged.</blockquote>',
   modesKeepOne: '{e.warn} Keep at least one mode enabled.',
   modeUnavailable: '{e.warn} This mode is no longer available.',
   back: '{e.back} Back',
@@ -121,7 +125,9 @@ const en = {
   revoke: '{e.cross} Revoke',
   changeMemo: '{e.memo} Memo',
   confirm: '{e.check} Confirm',
-  revokeConfirm: '{e.warn} Revoke <b>{memo}</b>? Stored data is deleted; Telegram history stays.',
+  revokeConfirm:
+    '{e.warn} Revoke <b>{memo}</b>?\n' +
+    '<blockquote expandable>The link stops working immediately. All data the bot stored for this link is deleted, including its topics and reply targets. Telegram chat history remains. This cannot be undone.</blockquote>',
   revoked: '{e.cross} <s>{link}</s>\nLink revoked. Data cleared.',
   revokedShort: 'Revoked.',
   memoPrompt: '{e.memo} Send the new memo (max {max} characters).',
@@ -145,7 +151,7 @@ const en = {
   btnAnswer: '{e.answer} Answer',
   btnRead: '{e.eyes} Read',
   controlsGuide:
-    '<blockquote expandable>{e.answer} Answer — reply to this sender\n{e.eyes} Read — send a read receipt\n{e.block} Block here — block on this link\n{e.globe} Block everywhere — block on all your links</blockquote>',
+    '<blockquote expandable>{e.answer} Answer — reply to this sender; the reply appears in their link topic.\n{e.eyes} Read — send a read receipt.\n{e.block} Block here — stop this sender on this link.\n{e.globe} Block everywhere — stop this sender on all your links.\n\nBlocking hides future messages from this sender. Use the same buttons to unblock.</blockquote>',
   btnBlockLink: '{e.block} Block here',
   btnBlockAll: '{e.globe} Block everywhere',
   btnUnblockLink: '{e.dove} Unblock here',
@@ -224,7 +230,7 @@ const fa = {
     'نام موضوع را با <code>/rename نام</code> داخل آن تغییر دهید.\n' +
     '{guide}',
   linkGuide:
-    '<blockquote expandable>{e.link} باز کردن — باز کردن لینک\n{e.share} اشتراک — ارسال برای دیگران</blockquote>',
+    '<blockquote expandable>{e.link} باز کردن — باز کردن لینک خودتان برای آزمودن نمای فرستنده.\n{e.share} اشتراک — ارسال برای دیگران.\n\nیادداشت بالا برچسب این لینک و موضوع‌های صاحب است. بعداً از /settings → لینک‌های من تغییرش دهید.</blockquote>',
   linkInactive: '{e.warn} این لینک دیگر فعال نیست.',
   linkNotFound: '{e.warn} لینک پیدا نشد.',
   ownLink: '{e.upside} این لینک خودتان است. آن را به اشتراک بگذارید.',
@@ -240,10 +246,10 @@ const fa = {
   topicFailed: '{e.warn} ساخت موضوع ممکن نشد. لینک را دوباره باز کنید تا تلاش شود.',
   chooseMode:
     '{e.send} این پیام چطور به صاحب لینک برسد؟\n' +
-    '<blockquote expandable>{guide}</blockquote>',
-  modeGuideAnon: '{e.anon} ناشناس — بدون نمایش هویت',
-  modeGuideHistory: '{e.history} با سابقه — نام مستعار ثابت برای هر لینک',
-  modeGuideForward: '{e.forward} هدایت — پروفایل تلگرام شما دیده می‌شود',
+    '<blockquote expandable>{guide}\n\nحالت فقط چیزی را تغییر می‌دهد که صاحب لینک از شما می‌بیند؛ همه حالت‌ها پیام را به صاحب لینک می‌رسانند.</blockquote>',
+  modeGuideAnon: '{e.anon} کاملاً ناشناس — هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود. پاسخ‌ها همچنان به موضوع شما می‌رسند.',
+  modeGuideHistory: '{e.history} با سابقه — نام مستعار ثابت برای هر لینک، بدون نمایش پروفایل شما، ارتباط پاسخ‌ها را حفظ می‌کند.',
+  modeGuideForward: '{e.forward} هدایت — پروفایل تلگرام شما همراه پیام دیده می‌شود.',
   modeAnon: '{e.anon} ناشناس',
   modeHistory: '{e.history} با سابقه',
   modeForward: '{e.forward} هدایت',
@@ -259,16 +265,20 @@ const fa = {
   linksTitle:
     '{e.chain} <b>لینک‌های من</b>\n' +
     'یکی را برای مدیریت انتخاب کنید.\n' +
-    '<blockquote expandable>هر دکمه یک لینک را باز می‌کند — باز کردن، اشتراک، تغییر نام یا حذف.\n{e.back} بازگشت — تنظیمات</blockquote>',
+    '<blockquote expandable>برای دیدن کنترل‌ها روی یک لینک بزنید.\n\nداخل آن می‌توانید لینک را باز کنید، به اشتراک بگذارید، یادداشتش را تغییر دهید یا حذفش کنید.\n\nحذف برای ربات دائمی است: لینک از کار می‌افتد و داده‌های ذخیره‌شده پاک می‌شوند. تاریخچه تلگرام می‌ماند.\n\n{e.back} بازگشت به تنظیمات.</blockquote>',
   noLinks: '{e.feather} هنوز لینکی ندارید. با /newlink اولین لینک را بسازید.',
   linkMenuTitle:
     '{e.link} <b>{memo}</b>\n' +
     '<code>{token}</code>\n' +
-    '<blockquote expandable>{e.back} بازگشت — فهرست لینک‌ها\n{e.link} باز کردن — باز کردن لینک\n{e.share} اشتراک — ارسال برای دیگران\n{e.memo} یادداشت — تغییر نام این لینک\n{e.cross} حذف — پاک کردن لینک و داده‌ها</blockquote>',
+    '<blockquote expandable>{e.link} باز کردن — باز کردن لینک در تلگرام؛ برای آزمودن نمای فرستنده.\n{e.share} اشتراک — ارسال لینک برای دیگران.\n{e.memo} یادداشت — تغییر یادداشت این لینک؛ نام موضوع‌های صاحب هم به‌روز می‌شود.\n{e.cross} حذف — توقف لینک، پاک کردن داده‌های ذخیره‌شده و بستن موضوع‌ها. قابل بازگشت نیست.\n{e.back} بازگشت — فهرست لینک‌ها.</blockquote>',
   homeTitle:
     '{e.control} <b>تنظیمات</b>\n' +
-    'مدیریت لینک‌ها و انتخاب حالت‌های مجاز.\n' +
-    '<blockquote expandable>{e.chain} لینک‌های من — باز کردن، اشتراک، تغییر نام، حذف\n{e.settings} حالت‌های دریافت — انتخاب حالت‌های مجاز\n{e.book} راهنما — دستورات و قواعد\n{e.info} درباره — نسخه، منبع و تأیید</blockquote>',
+    'لینک‌ها را مدیریت کنید و انتخاب کنید فرستنده‌ها چطور به شما برسند.\n' +
+    '<blockquote expandable><b>هر گزینه چه می‌کند</b>\n' +
+    '{e.chain} لینک‌های من — همه لینک‌های فعال. باز کردن، اشتراک، تغییر یادداشت یا حذف.\n' +
+    '{e.settings} حالت‌های دریافت — روشن یا خاموش کردن ناشناس، با سابقه یا هدایت برای فرستنده‌ها. حداقل یکی روشن می‌ماند.\n' +
+    '{e.book} راهنما — فهرست دستورات و راهنمای کوتاه حالت‌ها، موضوع‌ها و مدیریت لینک‌ها.\n' +
+    '{e.info} درباره — نسخه ربات، کد منبع و بررسی کد در حال اجرا.</blockquote>',
   homeLinks: '{e.chain} لینک‌های من',
   homeModes: '{e.settings} حالت‌های دریافت',
   homeHelp: '{e.book} راهنما',
@@ -277,7 +287,7 @@ const fa = {
   modesTitle:
     '{e.settings} <b>حالت‌های دریافت</b>\n' +
     'انتخاب کنید فرستنده‌ها روی همه لینک‌های شما از چه حالت‌هایی استفاده کنند.\n' +
-    '<blockquote expandable>برای تغییر، روی هر ردیف بزنید. حالت‌های فعال بعد از نوشتن فرستنده به‌صورت دکمه نشان داده می‌شوند. حداقل یک حالت باید روشن بماند.</blockquote>',
+    '<blockquote expandable>برای روشن یا خاموش کردن، روی هر حالت بزنید. فرستنده‌ها فقط حالت‌های فعال را می‌بینند.\n\n{e.anon} ناشناس — نام و سابقه فرستنده پنهان می‌شود.\n{e.history} با سابقه — نام مستعار ثابت برای هر لینک، تا پاسخ‌ها به فرستنده برسد.\n{e.forward} هدایت — پروفایل تلگرام فرستنده نمایش داده می‌شود.\n\nحداقل یک حالت باید روشن بماند. تغییرات روی پیام‌های جدید اثر می‌کند؛ پیام‌های ارسال‌شده تغییر نمی‌کنند.</blockquote>',
   modesKeepOne: '{e.warn} حداقل یک حالت باید روشن بماند.',
   modeUnavailable: '{e.warn} این حالت دیگر در دسترس نیست.',
   back: '{e.back} بازگشت',
@@ -286,7 +296,9 @@ const fa = {
   revoke: '{e.cross} حذف',
   changeMemo: '{e.memo} یادداشت',
   confirm: '{e.check} تأیید',
-  revokeConfirm: '{e.warn} لینک <b>{memo}</b> حذف شود؟ داده‌های ذخیره‌شده پاک می‌شوند؛ تاریخچه تلگرام می‌ماند.',
+  revokeConfirm:
+    '{e.warn} لینک <b>{memo}</b> حذف شود؟\n' +
+    '<blockquote expandable>لینک بلافاصله از کار می‌افتد. همه داده‌های ذخیره‌شده ربات برای این لینک، از جمله موضوع‌ها و مقصدهای پاسخ، پاک می‌شوند. تاریخچه تلگرام می‌ماند. این کار قابل بازگشت نیست.</blockquote>',
   revoked: '{e.cross} <s>{link}</s>\nلینک حذف شد. داده‌ها پاک شد.',
   revokedShort: 'حذف شد.',
   memoPrompt: '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
@@ -310,7 +322,7 @@ const fa = {
   btnAnswer: '{e.answer} پاسخ',
   btnRead: '{e.eyes} خواندن',
   controlsGuide:
-    '<blockquote expandable>{e.answer} پاسخ — پاسخ به همین فرستنده\n{e.eyes} خواندن — ارسال رسید خواندن\n{e.block} مسدود در این لینک — فقط همین لینک\n{e.globe} مسدود در همه لینک‌ها — همه لینک‌ها</blockquote>',
+    '<blockquote expandable>{e.answer} پاسخ — پاسخ به همین فرستنده؛ پاسخ در موضوع لینک او نمایش داده می‌شود.\n{e.eyes} خواندن — ارسال رسید خواندن.\n{e.block} مسدود در این لینک — توقف این فرستنده فقط در این لینک.\n{e.globe} مسدود در همه لینک‌ها — توقف این فرستنده در همه لینک‌ها.\n\nمسدودکردن پیام‌های بعدی این فرستنده را پنهان می‌کند. از همین دکمه‌ها می‌توانید رفع مسدودی کنید.</blockquote>',
   btnBlockLink: '{e.block} مسدود در این لینک',
   btnBlockAll: '{e.globe} مسدود در همه لینک‌ها',
   btnUnblockLink: '{e.dove} رفع در این لینک',
