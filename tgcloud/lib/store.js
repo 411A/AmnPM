@@ -444,12 +444,13 @@ export async function failJob(id) {
   await db.run(sql`DELETE FROM jobs WHERE id = ${id}`);
 }
 
-export async function bumpRate(linkId, senderKey, now) {
+export async function bumpRate(linkId, senderKey, now, amount = 1) {
   const cutoff = now - 60;
   await db.run(sql`INSERT INTO rate_limits (link_id, sender_key, window_start, count)
-    VALUES (${linkId}, ${senderKey}, ${now}, 1)
+    VALUES (${linkId}, ${senderKey}, ${now}, ${amount})
     ON CONFLICT(link_id, sender_key) DO UPDATE SET
-      count = CASE WHEN rate_limits.window_start <= ${cutoff} THEN 1 ELSE rate_limits.count + 1 END,
+      count = CASE WHEN rate_limits.window_start <= ${cutoff} THEN ${amount}
+        ELSE rate_limits.count + ${amount} END,
       window_start = CASE WHEN rate_limits.window_start <= ${cutoff} THEN ${now}
         ELSE rate_limits.window_start END`);
   const row = await db.get(sql`SELECT count FROM rate_limits

@@ -8,7 +8,7 @@ import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, seal
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
-import { deepLink, userKeyFor } from '../lib/links.js';
+import { deepLink, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
@@ -104,6 +104,24 @@ async function mode(q, k, opened, lang, now) {
     return answer(q, t(lang, 'answerExpired'));
   }
 
+  // Intake was counted when the messages arrived; count the cash-in by message
+  // count (albums included) so a stockpiled chooser cannot release a day of
+  // messages in one burst.
+  if (CONFIG.deliverPerMinute > 0) {
+    const delivered = await store.bumpRate(link.id, `out:${p.sender_key}`, now, pending.length);
+    if (delivered > CONFIG.deliverPerMinute) {
+      await store.releasePending(p.user_key, p.group_key);
+      return answer(q, t(lang, 'throttle'));
+    }
+  }
+  if (CONFIG.ownerPerMinute > 0) {
+    const accepted = await store.bumpRate(0, link.owner_key, now, pending.length);
+    if (accepted > CONFIG.ownerPerMinute) {
+      await store.releasePending(p.user_key, p.group_key);
+      return answer(q, t(lang, 'throttle'));
+    }
+  }
+
   // Stop the button spinner now; delivery and cleanup continue behind it.
   await answer(q);
 
@@ -176,6 +194,10 @@ async function mode(q, k, opened, lang, now) {
 async function replyWindow(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
+  if (p.sender_key
+    && await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_chat_id))) {
+    return answer(q, t(lang, 'blockedReply'), true);
+  }
   if (await store.getMemoState(link.owner_key)) {
     return answer(q, t(lang, 'memoBusy'), true);
   }
@@ -246,6 +268,15 @@ async function replyWindow(q, opened, lang, now) {
 
 async function read(q, opened, lang) {
   const p = opened.payload;
+  const senderKey = await senderKeyFor(opened.link, p.sender_chat_id);
+  if (await store.isBlockedBy(
+    opened.link.owner_key,
+    opened.link.id,
+    senderKey,
+    await userKeyFor(p.sender_chat_id),
+  )) {
+    return answer(q, t(lang, 'blockedReply'), true);
+  }
   try {
     await api.setMessageReaction({
       chat_id: p.sender_chat_id,

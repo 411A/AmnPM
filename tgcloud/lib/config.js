@@ -2,6 +2,10 @@
 export const CONFIG = {
   maxLinksPerOwner: 10,
   throttlePerMinute: 30,
+  // Delivery is counted when a stockpiled mode choice is cashed in, not only
+  // at intake. The owner cap is the backstop against many senders at once.
+  deliverPerMinute: 30,
+  ownerPerMinute: 120,
   maxAttempts: 5,
   maxMemoLength: 32,
   actionTtlSeconds: 2_592_000,

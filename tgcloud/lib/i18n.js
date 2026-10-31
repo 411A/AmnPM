@@ -165,6 +165,7 @@ const en = {
   unblockedAll: '{e.dove} Unblocked on all links.',
   readFailed: '{e.warn} Sender deleted the message; the read receipt could not be delivered.',
   blockedNotice: '{e.block} You are blocked by the owner.',
+  blockedReply: '{e.block} You blocked this sender. Unblock them to reply.',
   throttle: '{e.hourglass} Too fast — wait a moment.',
   albumPartial: '{e.warn} Part of the album was deleted; the rest was delivered.',
   deleteNotice:
@@ -346,6 +347,7 @@ const fa = {
   unblockedLink: '{e.dove} در این لینک رفع مسدودی شد.',
   unblockedAll: '{e.dove} در همه لینک‌ها رفع مسدودی شد.',
   blockedNotice: '{e.block} شما توسط صاحب لینک مسدود شده‌اید.',
+  blockedReply: '{e.block} شما این فرستنده را مسدود کرده‌اید. برای پاسخ، ابتدا رفع مسدودی کنید.',
   throttle: '{e.hourglass} خیلی سریع — کمی صبر کنید.',
   albumPartial: '{e.warn} بخشی از آلبوم حذف شده بود؛ بقیه ارسال شد.',
   deleteNotice:

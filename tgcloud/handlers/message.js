@@ -165,9 +165,12 @@ async function startOwner(msg, lang, now) {
 async function openLink(msg, token, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
-  const link = await store.findLinkByLookup(await tokenLookupFor(token.trim().toLowerCase()));
+  // One normalized form for both checks, or case and spacing reveal whether a
+  // token was revoked instead of never existing.
+  const normalized = token.trim().toLowerCase();
+  const link = await store.findLinkByLookup(await tokenLookupFor(normalized));
   if (!link) {
-    const retired = await store.isRetired(await ids.tokenFp(token));
+    const retired = await store.isRetired(await ids.tokenFp(normalized));
     return sendHere(msg, t(lang, retired ? 'deleteNotice' : 'linkNotFound'));
   }
   if (link.state !== 'active') return sendHere(msg, t(lang, 'linkInactive'));
@@ -357,6 +360,13 @@ async function replyToWindow(msg, window, lang, now) {
   ));
 
   const senderKey = await senderKeyFor(link, target.chatId);
+  if (await store.isBlockedBy(link.owner_key, link.id, senderKey, await userKeyFor(target.chatId))) {
+    await store.closeReplyWindow(window.owner_key);
+    if (window.reply_prompt_id) {
+      await api.deleteMessage({ chat_id: msg.chat.id, message_id: window.reply_prompt_id }).catch(() => {});
+    }
+    return sendHere(msg, t(lang, 'blockedReply'));
+  }
   let thread = target.threadId;
   if (!thread) {
     const talk = await ensureSenderTopic(link, target.chatId, senderKey, now);
@@ -403,6 +413,9 @@ async function directReply(msg, link, conversation, lang, now) {
     return sendHere(msg, t(lang, 'answerOnly'));
   }
   if (!targetChat) return sendHere(msg, t(lang, 'answerOnly'));
+  if (await store.isBlockedBy(link.owner_key, link.id, conversation.sender_key, await userKeyFor(targetChat))) {
+    return sendHere(msg, t(lang, 'blockedReply'));
+  }
 
   const talk = await ensureSenderTopic(link, targetChat, conversation.sender_key, now);
   if (talk.pending) return sendHere(msg, t(lang, 'preparing'));

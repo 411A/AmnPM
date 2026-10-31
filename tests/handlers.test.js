@@ -6,6 +6,7 @@ import * as schema from '../tgcloud/schema.js';
 import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
 import { linkMemo } from '../tgcloud/lib/keys.js';
+import { tokenFp } from '../tgcloud/lib/ids.js';
 import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
 import * as store from '../tgcloud/lib/store.js';
 import { deliver } from '../tgcloud/lib/delivery.js';
@@ -929,4 +930,133 @@ test('a sender is told about deletion when returning to a revoked topic', async 
   assert.match(sent.args.text, /This topic is closed/);
   assert.match(sent.args.text, /answer anyone in this topic/);
   assert.equal(sent.args.message_thread_id, senderThread);
+});
+
+test('a revoked token is recognized regardless of case', async () => {
+  const token = await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  await store.insertRetired(await tokenFp(token), 1);
+  await store.deleteLinkRow(link.id);
+
+  const variant = token.replace(/[a-z]/, (char) => char.toUpperCase());
+  assert.notEqual(variant, token);
+
+  await onMessage(message(`/start ${variant}`, 300));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Link unavailable/);
+});
+
+test('a blocked sender does not receive direct owner replies', async () => {
+  await setupLink();
+  const senderThread = firstSenderThread();
+  await onMessage(message('hello', 200, {
+    first_name: 'V',
+    message_thread_id: senderThread,
+    message_id: 55,
+  }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+
+  const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+  const controls = callsOf('sendMessage').filter((call) => call.args.reply_markup).at(-1);
+  const blockData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+  await click(blockData, 100, controls.args.reply_markup);
+
+  const before = callsOf('copyMessage').length;
+  await onMessage(message('direct reply', 100, {
+    message_thread_id: ownerThread,
+    message_id: 666,
+  }));
+
+  assert.equal(callsOf('copyMessage').length, before);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /blocked this sender/i);
+
+  const readData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('R|')).callback_data;
+  const reactions = callsOf('setMessageReaction').length;
+  await click(readData, 100, controls.args.reply_markup);
+  assert.equal(callsOf('setMessageReaction').length, reactions);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /blocked this sender/i);
+});
+
+test('a reply window opened before a block cannot deliver', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const answerData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('A|')).callback_data;
+  const blockData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+
+  await click(answerData, 100, controls.args.reply_markup, 104);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 1);
+
+  await click(blockData, 100, controls.args.reply_markup);
+  const before = callsOf('copyMessage').length;
+  await onMessage(message('late reply', 100, { message_thread_id: 104, message_id: 777 }));
+
+  assert.equal(callsOf('copyMessage').length, before);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 0);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /blocked this sender/i);
+});
+
+test('a stockpiled mode choice pays the delivery rate limit', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 30; i += 1) await store.bumpRate(link.id, `out:${senderKey}`, now);
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  const before = callsOf('copyMessages').length;
+  await click(data);
+
+  assert.equal(callsOf('copyMessages').length, before);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /Too fast/);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 1);
+});
+
+test('an album pays its message count against the delivery rate limit', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 29; i += 1) await store.bumpRate(link.id, `out:${senderKey}`, now);
+
+  await onMessage(message(undefined, 200, {
+    media_group_id: 'g1',
+    message_id: 10,
+    caption: 'one',
+    first_name: 'V',
+    message_thread_id: firstSenderThread(),
+  }));
+  await onMessage(message(undefined, 200, {
+    media_group_id: 'g1',
+    message_id: 11,
+    caption: 'two',
+    first_name: 'V',
+    message_thread_id: firstSenderThread(),
+  }));
+
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  const before = callsOf('copyMessages').length;
+  await click(data);
+
+  assert.equal(callsOf('copyMessages').length, before);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /Too fast/);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 2);
+});
+
+test('owner delivery has a burst cap across senders', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 120; i += 1) await store.bumpRate(0, link.owner_key, now);
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  const before = callsOf('copyMessages').length;
+  await click(data);
+
+  assert.equal(callsOf('copyMessages').length, before);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /Too fast/);
 });
