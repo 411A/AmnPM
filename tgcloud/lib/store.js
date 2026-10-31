@@ -385,6 +385,17 @@ export async function putActionToken(row) {
     VALUES (${row.prefix}, ${row.body}, ${row.nonce}, ${row.link_id}, ${row.kind}, ${row.expires_at})`);
 }
 
+export async function putActionTokens(rows) {
+  if (!rows.length) return;
+  let query = sql`INSERT INTO action_tokens (prefix, body, nonce, link_id, kind, expires_at) VALUES `;
+  for (let i = 0; i < rows.length; i += 1) {
+    if (i) query = sql`${query}, `;
+    const row = rows[i];
+    query = sql`${query}(${row.prefix}, ${row.body}, ${row.nonce}, ${row.link_id}, ${row.kind}, ${row.expires_at})`;
+  }
+  await db.run(query);
+}
+
 export async function getActionToken(prefix) {
   return db.get(sql`SELECT * FROM action_tokens WHERE prefix = ${prefix}`);
 }
@@ -433,6 +444,12 @@ export async function finishJob(id) {
 export async function retryJob(id, nextAt) {
   await db.run(sql`UPDATE jobs SET state = 'pending', claim = NULL, attempts = attempts + 1,
     next_at = ${nextAt} WHERE id = ${id}`);
+}
+
+// A Telegram 429 is not a delivery failure; defer without spending the budget.
+export async function deferJob(id, nextAt) {
+  await db.run(sql`UPDATE jobs SET state = 'pending', claim = NULL, next_at = ${nextAt}
+    WHERE id = ${id}`);
 }
 
 export async function failJob(id) {

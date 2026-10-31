@@ -6,7 +6,10 @@ export function sql(strings, ...values) {
     if (i >= values.length) continue;
     const value = values[i];
     if (value && typeof value === 'object' && '__raw' in value) text += value.__raw;
-    else {
+    else if (value && typeof value === 'object' && 'text' in value && Array.isArray(value.params)) {
+      text += value.text;
+      params.push(...value.params);
+    } else {
       text += '?';
       params.push(value);
     }

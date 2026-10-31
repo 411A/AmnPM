@@ -1,6 +1,6 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
-import { openJob, ownerChatId, sealAction, linkDek } from './keys.js';
+import { openJob, ownerChatId, sealActions, linkDek } from './keys.js';
 import * as store from './store.js';
 import { ownerKeyboard } from './render.js';
 import { t } from './i18n.js';
@@ -36,12 +36,11 @@ async function send(job, payload) {
 }
 
 async function sendControls(link, payload, sentIds, now, blockedLink = false, blockedAll = false) {
-  const owner = await store.getOwner(link.owner_key);
-  const lang = owner?.lang ?? 'en';
+  const lang = payload.lang ?? (await store.getOwner(link.owner_key))?.lang ?? 'en';
 
   const dek = await linkDek(link);
-  const [answer, read, blockLink, blockAll] = await Promise.all([
-    sealAction(link, 'answer', {
+  const [answer, read, blockLink, blockAll] = await sealActions(link, [
+    { kind: 'answer', payload: {
       link_id: link.id,
       sender_chat_id: payload.from_chat_id,
       sender_key: payload.sender_key,
@@ -49,27 +48,27 @@ async function sendControls(link, payload, sentIds, now, blockedLink = false, bl
       owner_thread_id: payload.thread_id ?? 0,
       conversation_id: payload.conversation_id ?? 0,
       original_id: payload.message_ids[0],
-    }, now, CONFIG.actionTtlSeconds, dek),
-    sealAction(link, 'read', {
+    } },
+    { kind: 'read', payload: {
       link_id: link.id,
       sender_chat_id: payload.from_chat_id,
       message_id: payload.message_ids[0],
-    }, now, CONFIG.actionTtlSeconds, dek),
-    sealAction(link, 'block', {
+    } },
+    { kind: 'block', payload: {
       link_id: link.id,
       sender_key: payload.sender_key,
       sender_chat_id: payload.from_chat_id,
       scope: 'link',
       blocked: !blockedLink,
-    }, now, CONFIG.actionTtlSeconds, dek),
-    sealAction(link, 'block', {
+    } },
+    { kind: 'block', payload: {
       link_id: link.id,
       sender_key: payload.sender_key,
       sender_chat_id: payload.from_chat_id,
       scope: 'all',
       blocked: !blockedAll,
-    }, now, CONFIG.actionTtlSeconds, dek),
-  ]);
+    } },
+  ], now, CONFIG.actionTtlSeconds, dek);
 
   const message = {
     chat_id: payload.chat_id,
@@ -102,11 +101,11 @@ async function notifyFailure(job) {
   });
 }
 
-export async function drain() {
+export async function drain(maxJobs = 3) {
   const started = Date.now();
   let sent = 0;
 
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < maxJobs; i += 1) {
     if (Date.now() - started > 3500) break;
     const job = await store.claimJob(nowSec());
     if (!job) break;
@@ -145,11 +144,13 @@ export async function drain() {
           await store.setJobSent(job.id, JSON.stringify(sentIds));
         }
         if (Array.isArray(result) && result.length < opened.payload.message_ids.length) {
-          const owner = await store.getOwner(opened.link.owner_key);
+          const lang = opened.payload.lang
+            ?? (await store.getOwner(opened.link.owner_key))?.lang
+            ?? 'en';
           await api.sendMessage({
             chat_id: opened.payload.chat_id,
             ...(opened.payload.thread_id ? { message_thread_id: opened.payload.thread_id } : {}),
-            text: t(owner?.lang ?? 'en', 'albumPartial'),
+            text: t(lang, 'albumPartial'),
           });
         }
       }
@@ -171,6 +172,13 @@ export async function drain() {
       await store.finishJob(job.id);
       sent += 1;
     } catch (err) {
+      const retryAfter = err?.parameters?.retry_after;
+      // A 429 is backpressure, not a failed delivery. Keep the attempt budget
+      // so a busy bot does not drop messages after a short rate-limit burst.
+      if (retryAfter != null && Number.isFinite(Number(retryAfter))) {
+        await store.deferJob(job.id, nowSec() + Math.max(1, Math.floor(Number(retryAfter))));
+        continue;
+      }
       const attempts = job.attempts + 1;
       if (attempts >= CONFIG.maxAttempts) {
         await store.failJob(job.id);
@@ -180,8 +188,7 @@ export async function drain() {
           // best effort; the job is already failed
         }
       } else {
-        const retryAfter = err?.parameters?.retry_after;
-        const backoff = retryAfter ?? Math.min(60, 2 ** attempts);
+        const backoff = Math.min(60, 2 ** attempts);
         await store.retryJob(job.id, nowSec() + backoff);
       }
     }

@@ -115,7 +115,7 @@ export async function ownerChatId(link) {
   );
 }
 
-export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
+async function prepareAction(link, kind, payload, now, ttl, dek) {
   const key = dek ?? (await linkDek(link));
   const { ct, nonce } = await c.encrypt(
     key,
@@ -123,15 +123,33 @@ export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTt
     `link:${link.id}:action:${kind}:v1`,
   );
   const parts = c.split(ct);
-  await store.putActionToken({
+  return {
+    row: {
+      prefix: parts.prefix,
+      body: parts.body,
+      nonce,
+      link_id: link.id,
+      kind,
+      expires_at: now + ttl,
+    },
     prefix: parts.prefix,
-    body: parts.body,
-    nonce,
-    link_id: link.id,
-    kind,
-    expires_at: now + ttl,
-  });
-  return { prefix: parts.prefix, suffix: parts.suffix };
+    suffix: parts.suffix,
+  };
+}
+
+export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
+  const prepared = await prepareAction(link, kind, payload, now, ttl, dek);
+  await store.putActionToken(prepared.row);
+  return { prefix: prepared.prefix, suffix: prepared.suffix };
+}
+
+export async function sealActions(link, specs, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
+  const key = dek ?? (await linkDek(link));
+  const prepared = await Promise.all(
+    specs.map(({ kind, payload }) => prepareAction(link, kind, payload, now, ttl, key)),
+  );
+  await store.putActionTokens(prepared.map((item) => item.row));
+  return prepared.map(({ prefix, suffix }) => ({ prefix, suffix }));
 }
 
 export async function openAction(prefix, suffix) {

@@ -132,7 +132,7 @@ async function mode(q, k, opened, lang, now) {
   let target;
   try {
     target = await deliver(link, p.sender_id, p.sender_key, chosen,
-      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt);
+      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt, owner);
   } catch {
     await store.releasePending(p.user_key, p.group_key);
     await api.sendMessage({
@@ -462,6 +462,7 @@ async function menu(q, data, lang, now) {
 }
 
 export default async function onCallback(update) {
+  let drainLimit = 3;
   try {
     const q = update;
     if (!q?.data || !q.from) return;
@@ -513,6 +514,8 @@ export default async function onCallback(update) {
     }
 
     if (k === CALLBACK.MODE_ANON || k === CALLBACK.MODE_HISTORY || k === CALLBACK.MODE_FORWARD) {
+      // A mode tap enqueues exactly one job; the next update can drain backlog.
+      drainLimit = 1;
       return await mode(q, k, opened, lang, now);
     }
     if (k === CALLBACK.ANSWER) return await replyWindow(q, opened, lang, now);
@@ -530,7 +533,7 @@ export default async function onCallback(update) {
     return undefined;
   } finally {
     try {
-      await drain();
+      await drain(drainLimit);
     } catch {
       // the platform records failures; the bot writes no logs
     }

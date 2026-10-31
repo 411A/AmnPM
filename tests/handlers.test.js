@@ -652,6 +652,21 @@ test('a job queued before a block is dropped at drain time', async () => {
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
 });
 
+test('a 429 defers a job without spending its retry budget', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
+
+  failNext('copyMessages', { errorCode: 429, parameters: { retry_after: 7 } });
+  await drain();
+
+  const job = rawDb().prepare('SELECT state, attempts, next_at FROM jobs LIMIT 1').get();
+  assert.equal(job.state, 'pending');
+  assert.equal(job.attempts, 0);
+  assert.ok(job.next_at > 0);
+});
+
 test('a forwarded mode keyboard does not deliver for another user', async () => {
   await setupLink();
   await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));

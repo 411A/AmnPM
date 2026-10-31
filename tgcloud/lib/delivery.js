@@ -37,11 +37,11 @@ async function conversationFor(link, senderKey, mode, firstName, senderId, now) 
   return store.getConversation(link.id, senderKey, mode);
 }
 
-async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now) {
+async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now, owner = null) {
   const memoText = await linkMemo(link);
   const memo = ids.escapeHtml(memoText);
-  const owner = await store.getOwner(link.owner_key);
-  const lang = owner?.lang ?? 'en';
+  const ownerRow = owner ?? await store.getOwner(link.owner_key);
+  const lang = ownerRow?.lang ?? 'en';
 
   if (mode === 'anon') {
     const { thread, created, pending } = await ensureTopic(
@@ -55,7 +55,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     if (created && !thread) {
       await api.sendMessage({ chat_id: ownerChat, text: t(lang, 'topicsDisabled') });
     }
-    return { kind: 'copy', thread, indicator: null, header: `${EMOJI.anon} Anonymous · ${memo}` };
+    return { kind: 'copy', thread, indicator: null, lang, header: `${EMOJI.anon} Anonymous · ${memo}` };
   }
 
   const conversation = await conversationFor(link, senderKey, mode, firstName, senderId, now);
@@ -78,13 +78,14 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     thread,
     conversation_id: conversation.id,
     indicator: label,
+    lang,
     header: `${mode === 'history' ? EMOJI.history : EMOJI.forward} ${ids.escapeHtml(label)} · ${memo}`,
   };
 }
 
-export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0, salt = null) {
+export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0, salt = null, owner = null) {
   const ownerChat = await ownerChatId(link);
-  const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now);
+  const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now, owner);
   if (target.pending) return target;
   await sealJob(link, target.kind, {
     chat_id: ownerChat,
@@ -95,6 +96,7 @@ export async function deliver(link, senderId, senderKey, mode, messageIds, first
     sender_key: senderKey,
     sender_thread_id: senderThread,
     global_key: await userKeyFor(senderId, salt),
+    lang: target.lang,
     header: target.header,
   }, now);
   return target;
