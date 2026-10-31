@@ -18,6 +18,13 @@ jobs:
         with:
           node-version: 24
 
+      - name: 🚫 No secrets tracked
+        run: |
+          if git ls-files | grep -Eq '(^|/)(secret\.js|\.env)$|^\.tgcloud/'; then
+            echo "Runtime secrets or deploy state are tracked in git."
+            exit 1
+          fi
+
       - name: 🔐 Crypto primitives
         id: crypto
         continue-on-error: true

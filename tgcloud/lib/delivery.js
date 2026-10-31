@@ -4,6 +4,7 @@ import * as ids from './ids.js';
 import * as render from './render.js';
 import { t } from './i18n.js';
 import { ownerChatId, sealJob, linkMemo, sealConversationLabel, conversationLabel, sealConversationChat } from './keys.js';
+import { userKeyFor } from './links.js';
 import { ensureTopic } from './topics.js';
 import { EMOJI } from './constants.js';
 
@@ -77,9 +78,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
     thread,
     conversation_id: conversation.id,
     indicator: label,
-    header: mode === 'history'
-      ? `${EMOJI.history} ${label} · ${memo}`
-      : `${EMOJI.forward} ${ids.escapeHtml(label)} · ${memo}`,
+    header: `${mode === 'history' ? EMOJI.history : EMOJI.forward} ${ids.escapeHtml(label)} · ${memo}`,
   };
 }
 
@@ -95,6 +94,7 @@ export async function deliver(link, senderId, senderKey, mode, messageIds, first
     message_ids: messageIds,
     sender_key: senderKey,
     sender_thread_id: senderThread,
+    global_key: await userKeyFor(senderId),
     header: target.header,
   }, now);
   return target;

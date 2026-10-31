@@ -38,3 +38,11 @@ test('split and join reconstruct the ciphertext', async () => {
 test('fingerprints are short and fixed width', async () => {
   assert.match(await c.sha256Fp('token'), /^[0-9a-f]{16}$/);
 });
+
+test('invalid hex is rejected instead of becoming an all-zero key', () => {
+  assert.equal(c.unhex('11ff').length, 2);
+  assert.throws(() => c.unhex('zz'), /invalid hex/);
+  assert.throws(() => c.unhex('0g'), /invalid hex/);
+  assert.throws(() => c.unhex('0'), /invalid hex/);
+  assert.throws(() => c.unhex(null), /invalid hex/);
+});

@@ -1,7 +1,16 @@
 import { CONFIG } from './config.js';
 import * as c from './crypto.js';
 import * as store from './store.js';
-import { KEYS } from './secret.js';
+import { KEYS, CURRENT_KEK_VERSION } from './secret.js';
+
+// Fail at boot, not on the first message: a mistyped or placeholder KEK must
+// never become a silent all-zero AES key.
+for (const [version, key] of Object.entries(KEYS)) {
+  if (typeof key !== 'string' || !/^[0-9a-fA-F]{64}$/.test(key) || /^0+$/.test(key)) {
+    throw new Error(`KEK ${version} must be 32 nonzero bytes of hex`);
+  }
+}
+if (!KEYS[CURRENT_KEK_VERSION]) throw new Error(`missing current KEK version ${CURRENT_KEK_VERSION}`);
 
 export async function linkDek(link) {
   const kek = KEYS[link.kek_version];
@@ -133,7 +142,7 @@ export async function openAction(prefix, suffix) {
     return null;
   }
   const link = await store.getLink(row.link_id);
-  if (!link) {
+  if (!link || link.state !== 'active') {
     await store.deleteActionToken(prefix);
     return null;
   }

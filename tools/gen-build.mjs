@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../tgcloud/', import.meta.url));
+const repo = fileURLToPath(new URL('../', import.meta.url));
 const args = {};
 for (let i = 2; i < process.argv.length; i += 1) {
   if (process.argv[i].startsWith('--')) args[process.argv[i].slice(2)] = process.argv[i + 1];
@@ -23,6 +25,18 @@ for (const file of files) {
   hash.update(relative(root, file).split(sep).join('/'));
   hash.update('\0');
   hash.update(readFileSync(file));
+}
+
+// Only a clean, committed tree may claim the deployed source was verified.
+if (args.verified === 'true') {
+  const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim();
+  if (dirty) throw new Error('refusing --verified true: the working tree is dirty');
+  try {
+    execFileSync('git', ['rev-parse', '--verify', `${args.commit}^{commit}`], { cwd: repo, stdio: 'ignore' });
+    execFileSync('git', ['merge-base', '--is-ancestor', args.commit, 'HEAD'], { cwd: repo, stdio: 'ignore' });
+  } catch {
+    throw new Error('refusing --verified true: --commit must be an ancestor of HEAD');
+  }
 }
 
 const build = {

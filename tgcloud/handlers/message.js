@@ -574,6 +574,7 @@ export default async function onMessage(update) {
       await Promise.all([
         store.sweepActionTokens(now),
         store.sweepPending(now - 86_400),
+        store.sweepRateLimits(now - 86_400),
       ]);
     }
     const lang = normalizeLang(msg.from.language_code);

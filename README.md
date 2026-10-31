@@ -58,24 +58,29 @@ cp tools/secret.example.js tgcloud/lib/secret.js   # fill in real keys; never co
 node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified false
 tgcloud push
 tgcloud pull --force
-node tools/verify-deployed.mjs --github
+node tools/verify-deployed.mjs --github --preflight
 ```
 
 `verify-deployed.mjs` compares the pulled deployed bundle, the local source, the release
 manifest, and the GitHub release asset. Publish `release/manifest.json` as the GitHub release
-asset for the tag before running it. Only after it prints `MATCH`, stamp the same build with
-`--verified true` and deploy `tgcloud/lib/build.js` again:
+asset for the tag before running it. `--preflight` checks the hashes before the stamp exists.
+Only after it prints `PREFLIGHT MATCH`, stamp the same build with `--verified true` and deploy
+`tgcloud/lib/build.js` again:
 
 ```bash
 node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified true
 tgcloud push
 tgcloud migrate --yes
+node tools/verify-deployed.mjs --github
 tgcloud status
 ```
 
-The bundle hash is unchanged by the stamp because `build.js` is excluded from it. The bot links
-the label to the release page and shows `running code matches source` only while the stamp is
-true; it never prints the hash. Keep `--verified false` for ordinary deploys.
+The final run has no `--preflight`: it prints `MATCH` only when the deployed build, the local
+manifest, and the GitHub asset are all marked verified. `gen-build` refuses `--verified true`
+on a dirty tree or a commit that is not an ancestor of `HEAD`. The bundle hash is unchanged by
+the stamp because `build.js` is excluded from it. The bot links the label to the release page
+and shows `running code matches source` only while the stamp is true; it never prints the hash.
+Keep `--verified false` for ordinary deploys.
 
 `tgcloud/lib/secret.js` is gitignored and deployed as code. Generate it once per deployment;
 losing it makes every stored link undecryptable. Rotating a key means adding a new version and
@@ -109,8 +114,9 @@ are asked to reopen the link; owner delivery falls back to unthreaded messages w
   stored.
 - **Keys outside the repository.** Key-encryption keys live in `tgcloud/lib/secret.js`, which is
   gitignored and created once per deployment. The KEK ring is versioned so a rotation keeps old
-  links readable while new links use the new key. Encryption protects a leaked database or
-  backup, not the platform operator who can read deployed code.
+  links readable while new links use the new key; the app refuses to boot unless every key is
+  32 nonzero bytes of hex, so a typo cannot become a silent all-zero key. Encryption protects a
+  leaked database or backup, not the platform operator who can read deployed code.
 - **Optional DB brute-force cost.** By default a database dump alone cannot test guessed chat
   ids because the install salt is encrypted under the KEK. With the deployment key, candidates
   are testable at HMAC speed. Setting `CONFIG.kdfIterations` above zero makes each candidate cost

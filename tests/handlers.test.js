@@ -7,6 +7,10 @@ import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
 import { linkMemo } from '../tgcloud/lib/keys.js';
 import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
+import * as store from '../tgcloud/lib/store.js';
+import { deliver } from '../tgcloud/lib/delivery.js';
+import { drain } from '../tgcloud/lib/queue.js';
+import { senderKeyFor, userKeyFor } from '../tgcloud/lib/links.js';
 
 beforeEach(() => {
   resetDb();
@@ -235,6 +239,23 @@ test('the owner can hide send modes and senders see only the rest', async () => 
   assert.doesNotMatch(chooser.args.text, /With history|Forward/);
 });
 
+test('a menu pressed from another chat cannot change owner modes', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/settings', 100));
+  await click('m:modes', 100);
+  const data = modeToggle('history');
+  const before = rawDb().prepare('SELECT modes FROM owners').get().modes;
+
+  await onCallback({
+    id: 'cb-other-chat',
+    from: { id: 300, first_name: 'X', language_code: 'en' },
+    message: { message_id: 999, chat: { id: 100 } },
+    data,
+  });
+
+  assert.equal(rawDb().prepare('SELECT modes FROM owners').get().modes, before);
+});
+
 test('a stale chooser cannot use a mode the owner disabled', async () => {
   await setupLink();
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
@@ -349,6 +370,20 @@ test('forward mode forwards the profile into its own topic', async () => {
   assert.equal(callsOf('forwardMessages').length, 1);
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😎 V · main 1$/);
+});
+
+test('profile labels are escaped in the owner HTML header', async () => {
+  await setupLink();
+  await onMessage(message('hi', 200, { first_name: '<b>V</b>', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('F|')));
+
+  const controls = callsOf('sendMessage')
+    .filter((call) => call.args.parse_mode === 'HTML'
+      && call.args.reply_markup?.inline_keyboard?.flat()
+        .some((button) => String(button.callback_data).startsWith('B|')))
+    .at(-1);
+  assert.match(controls.args.text, /&lt;b&gt;V&lt;\/b&gt;/);
+  assert.doesNotMatch(controls.args.text, /<b>V<\/b>/);
 });
 
 test('answer copies the owner reply back to the sender topic', async () => {
@@ -600,6 +635,20 @@ test('block refuses the next message', async () => {
   await onMessage(message('again', 200, { message_thread_id: firstSenderThread() }));
 
   assert.match(callsOf('sendMessage').at(-1).args.text, /blocked/);
+});
+
+test('a job queued before a block is dropped at drain time', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 1);
+
+  await store.setBlock(link.owner_key, 0, await userKeyFor(200), 100);
+  await drain();
+
+  assert.equal(callsOf('copyMessages').length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
 });
 
 test('a forwarded mode keyboard does not deliver for another user', async () => {

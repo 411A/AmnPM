@@ -36,7 +36,7 @@ async function send(job, payload) {
 }
 
 async function sendControls(link, payload, sentIds, now) {
-  const globalKey = await userKeyFor(payload.from_chat_id);
+  const globalKey = payload.global_key ?? await userKeyFor(payload.from_chat_id);
   const [owner, blockedLink, blockedAll] = await Promise.all([
     store.getOwner(link.owner_key),
     store.hasBlock(link.owner_key, link.id, payload.sender_key),
@@ -121,6 +121,21 @@ export async function drain() {
       if (!opened || opened.link.state !== 'active') {
         await store.finishJob(job.id);
         continue;
+      }
+
+      // The owner may block between enqueue and drain; re-check here so a
+      // queued message does not slip through.
+      if (opened.payload.sender_key && opened.payload.from_chat_id) {
+        const globalKey = opened.payload.global_key
+          ?? await userKeyFor(opened.payload.from_chat_id);
+        const [blockedLink, blockedAll] = await Promise.all([
+          store.hasBlock(opened.link.owner_key, opened.link.id, opened.payload.sender_key),
+          store.hasBlock(opened.link.owner_key, 0, globalKey),
+        ]);
+        if (blockedLink || blockedAll) {
+          await store.finishJob(job.id);
+          continue;
+        }
       }
 
       let sentIds = job.sent_ids ? JSON.parse(job.sent_ids) : null;

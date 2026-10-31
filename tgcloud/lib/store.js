@@ -457,6 +457,10 @@ export async function bumpRate(linkId, senderKey, now) {
   return Number(row?.count ?? 0);
 }
 
+export async function sweepRateLimits(cutoff) {
+  await db.run(sql`DELETE FROM rate_limits WHERE window_start <= ${cutoff}`);
+}
+
 export async function openReplyWindow(row) {
   const result = await db.run(sql`INSERT INTO reply_windows
     (owner_key, link_id, target_ct, target_nonce, thread_id, prompt_message_id, original_id, expires_at)

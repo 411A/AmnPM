@@ -40,7 +40,11 @@ export function hex(bytes) {
 }
 
 export function unhex(text) {
-  if (text.length % 2) throw new Error('invalid hex');
+  // parseInt('zz', 16) is NaN, which Uint8Array turns into 0; a typo would
+  // silently produce an all-zero key. Reject anything but hex.
+  if (typeof text !== 'string' || text.length % 2 || !/^[0-9a-fA-F]*$/.test(text)) {
+    throw new Error('invalid hex');
+  }
   const out = new Uint8Array(text.length / 2);
   for (let i = 0; i < out.length; i += 1) out[i] = parseInt(text.slice(i * 2, i * 2 + 2), 16);
   return out;

@@ -20,13 +20,16 @@ function walk(dir) {
 test('application source has no logging, environment reads, or outbound network calls', () => {
   for (const file of walk(root)) {
     const text = readFileSync(file, 'utf8');
-    assert.doesNotMatch(text, /\bconsole\s*\./, `${file}: console`);
-    assert.doesNotMatch(text, /\bprocess\s*\.\s*(stdout|stderr|env)\b/, `${file}: process`);
-    assert.doesNotMatch(text, /\b(fetch|XMLHttpRequest|WebSocket)\s*\(/, `${file}: network`);
+    assert.doesNotMatch(text, /\bconsole\b/, `${file}: console`);
+    assert.doesNotMatch(text, /\bprocess\b/, `${file}: process`);
+    assert.doesNotMatch(text, /\bglobalThis\b/, `${file}: globalThis`);
+    assert.doesNotMatch(text, /\b(fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, `${file}: network`);
+    assert.doesNotMatch(text, /\bimport\s*\(/, `${file}: dynamic import`);
+    assert.doesNotMatch(text, /\b(eval|Function)\s*\(/, `${file}: dynamic code`);
     assert.doesNotMatch(text, /\brequire\s*\(/, `${file}: require`);
     assert.doesNotMatch(
       text,
-      /from\s+['"](node:)?(fs|http|https|net|tls|dgram|child_process)['"]/,
+      /from\s+['"](node:)?(fs|http|https|net|tls|dgram|child_process|worker_threads|vm|module|inspector|http2|dns|os)['"]/,
       `${file}: node network/fs`,
     );
   }

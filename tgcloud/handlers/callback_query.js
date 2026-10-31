@@ -137,7 +137,7 @@ async function mode(q, k, opened, lang, now) {
   const text = chosen === 'anon'
     ? t(lang, 'sentAnon')
     : chosen === 'history'
-      ? t(lang, 'sentHistory', { indicator: target.indicator })
+      ? t(lang, 'sentHistory', { indicator: ids.escapeHtml(target.indicator) })
       : t(lang, 'sentForward');
 
   const fallback = () => api.sendMessage({
@@ -433,6 +433,13 @@ export default async function onCallback(update) {
     const now = nowSec();
     const lang = normalizeLang(q.from.language_code);
     const [k, prefix, suffix] = String(q.data).split(CALLBACK.SEP);
+
+    // Unsealed menu buttons are only meaningful in the chat that owns them.
+    // Sealed actions below are separately bound to their sender or owner.
+    const unsealed = k.startsWith(CALLBACK.MENU_PREFIX)
+      || k === CALLBACK.MODE_TOGGLE
+      || k === CALLBACK.CANCEL;
+    if (unsealed && Number(q.from.id) !== Number(q.message?.chat?.id)) return await answer(q);
 
     if (k.startsWith(CALLBACK.MENU_PREFIX)) return await menu(q, k, lang, now);
     if (k === CALLBACK.MODE_TOGGLE) return await toggleMode(q, prefix, suffix, lang);

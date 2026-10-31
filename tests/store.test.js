@@ -90,6 +90,8 @@ test('rate limit counts and resets after a minute', async () => {
   for (let i = 0; i < 30; i += 1) assert.equal(await store.bumpRate(1, 's', 100), i + 1);
   assert.equal(await store.bumpRate(1, 's', 100), 31);
   assert.equal(await store.bumpRate(1, 's', 161), 1);
+  await store.sweepRateLimits(161);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM rate_limits').get().n, 0);
 });
 
 test('jobs are claimed once, retried, and failed jobs leave no payload', async () => {
