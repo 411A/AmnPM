@@ -43,7 +43,7 @@ check('deployed commit = release commit', build.commit === manifest.commit, buil
 check('deployed release = release name', build.release === manifest.release, build.release);
 
 if (process.argv.includes('--github')) {
-  const url = 'https://github.com/411A/AmnPM/releases/latest/download/manifest.json';
+  const url = `https://github.com/411A/AmnPM/releases/latest/download/manifest.json?cb=${Date.now()}`;
   const response = await fetch(url, { redirect: 'follow' });
   if (!response.ok) {
     check('GitHub release manifest reachable', false, `${response.status} ${response.statusText}`);
