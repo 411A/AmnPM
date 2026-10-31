@@ -3,8 +3,8 @@ import { EMOJI } from './constants.js';
 const en = {
   welcome:
     '{e.brand} <b>AmnPM</b> — a private inbox, one link away.\n' +
-    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about\n' +
-    '{verify} · <a href="{repo}">source</a>',
+    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about · <a href="{repo}">source</a>\n' +
+    '{verify}',
   help:
     '{e.tool} <b>Help</b>\n' +
     '/newlink [memo] · /links · /about\n' +
@@ -99,8 +99,8 @@ const en = {
 const fa = {
   welcome:
     '{e.brand} <b>AmnPM</b> — صندوق خصوصی، فقط با یک لینک.\n' +
-    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about\n' +
-    '{verify} · <a href="{repo}">منبع</a>',
+    '{e.plus} /newlink   {e.link} /links   {e.tool} /help   {e.info} /about · <a href="{repo}">منبع</a>\n' +
+    '{verify}',
   help:
     '{e.tool} <b>راهنما</b>\n' +
     '/newlink [یادداشت] · /links · /about\n' +

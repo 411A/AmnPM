@@ -1,4 +1,4 @@
-name: test
+name: CI
 
 on:
   push:
@@ -10,10 +10,76 @@ permissions:
 
 jobs:
   test:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm test
+
+      - name: Test · crypto
+        id: crypto
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/crypto.test.js
+
+      - name: Test · ids
+        id: ids
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/ids.test.js
+
+      - name: Test · store
+        id: store
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/store.test.js
+
+      - name: Test · handlers
+        id: handlers
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/handlers.test.js
+
+      - name: Test · render
+        id: render
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/render.test.js
+
+      - name: Test · source
+        id: source
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js
+
+      - name: Test · topics
+        id: topics
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/topics.test.js
+
+      - name: Test summary
+        if: always()
+        run: |
+          {
+            echo "## AmnPM test results"
+            echo ""
+            echo "| Section | Result |"
+            echo "| --- | --- |"
+            echo "| crypto | ${{ steps.crypto.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| ids | ${{ steps.ids.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| store | ${{ steps.store.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| handlers | ${{ steps.handlers.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| render | ${{ steps.render.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| source | ${{ steps.source.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| topics | ${{ steps.topics.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.crypto.outcome }}" != "success" ] \
+            || [ "${{ steps.ids.outcome }}" != "success" ] \
+            || [ "${{ steps.store.outcome }}" != "success" ] \
+            || [ "${{ steps.handlers.outcome }}" != "success" ] \
+            || [ "${{ steps.render.outcome }}" != "success" ] \
+            || [ "${{ steps.source.outcome }}" != "success" ] \
+            || [ "${{ steps.topics.outcome }}" != "success" ]; then
+            echo "Some sections failed. Open the red step above for details." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "All sections passed." >> "$GITHUB_STEP_SUMMARY"

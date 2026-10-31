@@ -36,14 +36,14 @@ test('verification renders both states with the release page and hash', () => {
   let text = render.verifyLine();
   assert.match(text, /unverified/);
   assert.match(text, /https:\/\/github\.com\/411A\/AmnPM\/releases"/);
-  assert.match(text, new RegExp(`<code>${hash}</code>`));
+  assert.match(text, new RegExp(`<blockquote>${hash}</blockquote>`));
 
   BUILD.verified = true;
   BUILD.release = 'v1.0.0';
   text = render.verifyLine();
   assert.match(text, /verified/);
   assert.match(text, /releases\/tag\/v1\.0\.0/);
-  assert.match(text, new RegExp(`<code>${hash}</code>`));
+  assert.match(text, new RegExp(`<blockquote>${hash}</blockquote>`));
 
   BUILD.verified = previousVerified;
   BUILD.release = previousRelease;

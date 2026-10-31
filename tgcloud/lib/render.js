@@ -15,7 +15,7 @@ export function verifyLine() {
   const label = BUILD.verified
     ? `${EMOJI.check} <a href="${link}">verified · ${escapeHtml(BUILD.release)}</a>`
     : `${EMOJI.unverified} <a href="${link}">unverified release</a>`;
-  return `${label}\n<code>${escapeHtml(BUILD.bundleHash)}</code>`;
+  return `${label}\n<blockquote>${escapeHtml(BUILD.bundleHash)}</blockquote>`;
 }
 
 export function shareUrl(link) {
