@@ -167,6 +167,8 @@ test('privacy command explains what is stored', async () => {
   await onMessage(message('/privacy', 100));
   const text = callsOf('sendMessage').at(-1).args.text;
   assert.match(text, /No message content is stored/);
+  assert.match(text, /Telegram Serverless/);
+  assert.match(text, /core\.telegram\.org\/bots\/serverless/);
   assert.match(text, /<blockquote expandable>/);
 });
 

@@ -52,7 +52,11 @@ test('mode keyboard only shows enabled modes', () => {
 test('about uses a rich table for bot and source', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.about(lang);
+    assert.match(text, /AmnPM<\/b><br>/, text);
+    assert.match(text, /running code matches source<\/a><br>/, text);
     assert.match(text, /<table bordered striped compact>/, text);
+    assert.match(text, /<th align="center">/);
+    assert.match(text, /<td align="center" valign="middle">/);
     assert.match(text, /@AmnPMBot/);
     assert.match(text, /GitHub/);
     assert.doesNotMatch(text, /<blockquote>/);

@@ -46,6 +46,7 @@ const en = {
     '{e.lock} <b>Privacy</b>\n' +
     'No message content is stored.\n' +
     'Links, memos, and sender ids are encrypted at rest.\n' +
+    'Runs securely inside Telegram’s own infrastructure (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>).\n' +
     '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Telegram keeps its own copy of messages. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
@@ -85,12 +86,12 @@ const en = {
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
   about:
-    '{e.info} <b>AmnPM</b>\n' +
-    '{verify}\n' +
+    '{e.info} <b>AmnPM</b><br>\n' +
+    '{verify}<br>\n' +
     '<table bordered striped compact>\n' +
-    '<tr><th>Resource</th><th>Link</th></tr>\n' +
-    '<tr><td>Bot</td><td><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
-    '<tr><td>Source</td><td><a href="{repo}">GitHub</a></td></tr>\n' +
+    '<tr><th align="center">Resource</th><th align="center">Link</th></tr>\n' +
+    '<tr><td align="center" valign="middle">Bot</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
+    '<tr><td align="center" valign="middle">Source</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
     'No message content is stored.',
   linksTitle:
@@ -219,6 +220,7 @@ const fa = {
     '{e.lock} <b>حریم خصوصی</b>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.\n' +
     'لینک‌ها، یادداشت‌ها و شناسه فرستنده‌ها در حالت سکون رمزنگاری می‌شوند.\n' +
+    'به‌صورت امن داخل زیرساخت خود تلگرام (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>) اجرا می‌شود.\n' +
     '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
@@ -258,12 +260,12 @@ const fa = {
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
   about:
-    '{e.info} <b>AmnPM</b>\n' +
-    '{verify}\n' +
+    '{e.info} <b>AmnPM</b><br>\n' +
+    '{verify}<br>\n' +
     '<table bordered striped compact>\n' +
-    '<tr><th>مورد</th><th>لینک</th></tr>\n' +
-    '<tr><td>ربات</td><td><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
-    '<tr><td>منبع</td><td><a href="{repo}">GitHub</a></td></tr>\n' +
+    '<tr><th align="center">مورد</th><th align="center">لینک</th></tr>\n' +
+    '<tr><td align="center" valign="middle">ربات</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
+    '<tr><td align="center" valign="middle">منبع</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
   linksTitle:
