@@ -207,6 +207,17 @@ test('about opened from settings edits the message with a back button last', asy
   assert.equal(callsOf('sendMessage').length, before);
 });
 
+test('my links shows two link buttons per row', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
+  await onMessage(message('/newlink', 100));
+  await openLinkList();
+  const keyboard = callsOf('editMessageText').at(-1).args.reply_markup.inline_keyboard;
+  assert.equal(keyboard[0].length, 2);
+  assert.ok(keyboard[0].every((button) => button.callback_data.startsWith('D|')));
+  assert.equal(keyboard.at(-1)[0].callback_data, 'm:home');
+});
+
 test('the owner can hide send modes and senders see only the rest', async () => {
   await setupLink();
   await onMessage(message('/settings', 100));

@@ -51,15 +51,17 @@ export async function linksMenu(lang, ownerKey, now) {
     };
   }
 
+  const buttons = [];
   for (const link of links) {
     await store.deleteActionTokens(link.id, 'menu');
     const menu = await sealAction(link, 'menu', { link_id: link.id }, now);
     const label = await linkMemo(link);
-    rows.push([{
-      text: `${EMOJI.link} ${ids.cleanLabel(label, 30)}`,
+    buttons.push({
+      text: `${EMOJI.link} ${ids.cleanLabel(label, 18)}`,
       callback_data: `${CALLBACK.MENU_LINK}${CALLBACK.SEP}${menu.prefix}${CALLBACK.SEP}${menu.suffix}`,
-    }]);
+    });
   }
+  for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
   rows.push([{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]);
   return { text: t(lang, 'linksTitle'), keyboard: { inline_keyboard: rows } };
 }
