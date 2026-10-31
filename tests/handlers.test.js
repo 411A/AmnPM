@@ -916,7 +916,7 @@ test('topic commands answer in the same thread', async () => {
 });
 
 test('a sender is told about deletion when returning to a revoked topic', async () => {
-  const token = await setupLink();
+  await setupLink();
   await deliverAnonymous();
   const senderThread = rawDb().prepare('SELECT thread_id FROM sender_topics ORDER BY id LIMIT 1').get().thread_id;
 

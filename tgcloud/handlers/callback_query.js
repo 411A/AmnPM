@@ -8,7 +8,7 @@ import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, seal
 import { closeLinkTopics } from '../lib/topics.js';
 import { deliver } from '../lib/delivery.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
-import { deepLink, senderKeyFor, userKeyFor } from '../lib/links.js';
+import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
@@ -89,7 +89,8 @@ async function mode(q, k, opened, lang, now) {
     return answer(q, t(lang, 'modeUnavailable'), true);
   }
 
-  if (await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_id))) {
+  const salt = await ownerSalt();
+  if (await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_id, salt))) {
     await store.clearPending(p.user_key, p.group_key);
     await store.deleteActionToken(opened.row.prefix);
     return answer(q, t(lang, 'blockedNotice'));
@@ -131,7 +132,7 @@ async function mode(q, k, opened, lang, now) {
   let target;
   try {
     target = await deliver(link, p.sender_id, p.sender_key, chosen,
-      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0);
+      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt);
   } catch {
     await store.releasePending(p.user_key, p.group_key);
     await api.sendMessage({
@@ -194,9 +195,11 @@ async function mode(q, k, opened, lang, now) {
 async function replyWindow(q, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
-  if (p.sender_key
-    && await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_chat_id))) {
-    return answer(q, t(lang, 'blockedReply'), true);
+  if (p.sender_key) {
+    const salt = await ownerSalt();
+    if (await store.isBlockedBy(link.owner_key, link.id, p.sender_key, await userKeyFor(p.sender_chat_id, salt))) {
+      return answer(q, t(lang, 'blockedReply'), true);
+    }
   }
   if (await store.getMemoState(link.owner_key)) {
     return answer(q, t(lang, 'memoBusy'), true);
@@ -268,12 +271,13 @@ async function replyWindow(q, opened, lang, now) {
 
 async function read(q, opened, lang) {
   const p = opened.payload;
-  const senderKey = await senderKeyFor(opened.link, p.sender_chat_id);
+  const salt = await ownerSalt();
+  const senderKey = await senderKeyFor(opened.link, p.sender_chat_id, salt);
   if (await store.isBlockedBy(
     opened.link.owner_key,
     opened.link.id,
     senderKey,
-    await userKeyFor(p.sender_chat_id),
+    await userKeyFor(p.sender_chat_id, salt),
   )) {
     return answer(q, t(lang, 'blockedReply'), true);
   }

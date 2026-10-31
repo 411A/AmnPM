@@ -1,0 +1,64 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { CONFIG } from '../tgcloud/lib/config.js';
+import { BUILD } from '../tgcloud/lib/build.js';
+import { CALLBACK, EMOJI } from '../tgcloud/lib/constants.js';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const read = (file) => readFileSync(join(root, file), 'utf8');
+
+test('release metadata, build stamp, and notes agree', () => {
+  const manifest = JSON.parse(read('release/manifest.json'));
+  const notes = read('release/notes.md');
+  assert.equal(manifest.name, 'AmnPM');
+  assert.equal(manifest.release, BUILD.release);
+  assert.equal(manifest.commit, BUILD.commit);
+  assert.equal(manifest.bundleHash, BUILD.bundleHash);
+  assert.equal(typeof manifest.verified, 'boolean');
+  assert.match(notes, new RegExp(manifest.bundleHash));
+  assert.match(notes, new RegExp(manifest.commit));
+});
+
+test('runtime secrets and deploy state are gitignored', () => {
+  const ignore = read('.gitignore');
+  assert.match(ignore, /^tgcloud\/lib\/secret\.js$/m);
+  assert.match(ignore, /^\.tgcloud\/$/m);
+  assert.match(ignore, /^\.env$/m);
+});
+
+test('callback tokens and emoji tokens are unique and present', () => {
+  const callbacks = Object.values(CALLBACK);
+  assert.equal(new Set(callbacks).size, callbacks.length);
+  for (const value of callbacks) {
+    assert.equal(typeof value, 'string');
+    assert.ok(value.length > 0 && value.length <= 64);
+  }
+  // kind + separator + 12-char prefix + separator + 12-char suffix
+  assert.ok(1 + CALLBACK.SEP.length + 12 + CALLBACK.SEP.length + 12 <= 64);
+  for (const [name, value] of Object.entries(EMOJI)) {
+    assert.equal(typeof value, 'string', name);
+    assert.ok(value.length > 0, name);
+  }
+});
+
+test('limits keep delivery below the owner burst cap', () => {
+  assert.ok(CONFIG.maxLinksPerOwner >= 1);
+  assert.ok(CONFIG.maxAttempts >= 1);
+  assert.ok(CONFIG.maxMemoLength >= 1);
+  assert.ok(CONFIG.deliverPerMinute > 0);
+  assert.ok(CONFIG.ownerPerMinute >= CONFIG.deliverPerMinute);
+  assert.ok(CONFIG.actionTtlSeconds > 0);
+  assert.ok(CONFIG.modeTtlSeconds > 0);
+});
+
+test('the test script stays inside the tests directory', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(pkg.scripts.test, /tests\/\*\.test\.js/);
+});
+
+test('the bot never configures its profile photo', () => {
+  assert.doesNotMatch(read('tgcloud/lib/bot-config.js'), /setMyProfilePhoto/);
+});

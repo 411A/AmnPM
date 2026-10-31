@@ -82,7 +82,7 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
   };
 }
 
-export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0) {
+export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0, salt = null) {
   const ownerChat = await ownerChatId(link);
   const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now);
   if (target.pending) return target;
@@ -94,7 +94,7 @@ export async function deliver(link, senderId, senderKey, mode, messageIds, first
     message_ids: messageIds,
     sender_key: senderKey,
     sender_thread_id: senderThread,
-    global_key: await userKeyFor(senderId),
+    global_key: await userKeyFor(senderId, salt),
     header: target.header,
   }, now);
   return target;

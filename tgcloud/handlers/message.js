@@ -9,7 +9,7 @@ import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, c
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic, recreateSenderTopic } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
-import { deepLink, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
+import { deepLink, ownerSalt, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
 import { parseModes } from '../lib/modes.js';
@@ -164,11 +164,12 @@ async function startOwner(msg, lang, now) {
 
 async function openLink(msg, token, lang, now) {
   const chatId = msg.chat.id;
-  const ownerKey = await userKeyFor(chatId);
+  const salt = await ownerSalt();
+  const ownerKey = await userKeyFor(chatId, salt);
   // One normalized form for both checks, or case and spacing reveal whether a
   // token was revoked instead of never existing.
   const normalized = token.trim().toLowerCase();
-  const link = await store.findLinkByLookup(await tokenLookupFor(normalized));
+  const link = await store.findLinkByLookup(await tokenLookupFor(normalized, salt));
   if (!link) {
     const retired = await store.isRetired(await ids.tokenFp(normalized));
     return sendHere(msg, t(lang, retired ? 'deleteNotice' : 'linkNotFound'));
@@ -176,7 +177,7 @@ async function openLink(msg, token, lang, now) {
   if (link.state !== 'active') return sendHere(msg, t(lang, 'linkInactive'));
   if (link.owner_key === ownerKey) return sendHere(msg, t(lang, 'ownLink'));
 
-  const base = await chatKeyFor(chatId);
+  const base = await chatKeyFor(chatId, salt);
   await store.upsertSession(await sessionKeyFrom(base), link.id, now);
   const senderKey = await senderKeyFrom(base, link.id);
   const talk = await ensureSenderTopic(link, chatId, senderKey, now);
@@ -229,7 +230,8 @@ async function renameTopic(msg, arg, lang) {
   const label = ids.cleanLabel(stripTopicPrefix(arg), 60);
   if (!label) return send(chatId, t(lang, 'renameUsage'), { message_thread_id: threadId });
 
-  const ownerKey = await userKeyFor(chatId);
+  const salt = await ownerSalt();
+  const ownerKey = await userKeyFor(chatId, salt);
   const topic = await store.getOwnedTopicByThread(ownerKey, threadId);
   if (topic) {
     const link = await store.getLink(topic.link_id);
@@ -245,7 +247,7 @@ async function renameTopic(msg, arg, lang) {
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
   }
 
-  const base = await chatKeyFor(chatId);
+  const base = await chatKeyFor(chatId, salt);
   for (const row of await store.getSenderTopicsByThread(threadId)) {
     if (await senderKeyFrom(base, row.link_id) !== row.sender_key) continue;
     const link = await store.getLink(row.link_id);
@@ -359,8 +361,9 @@ async function replyToWindow(msg, window, lang, now) {
     `link:${link.id}:reply:v1`,
   ));
 
-  const senderKey = await senderKeyFor(link, target.chatId);
-  if (await store.isBlockedBy(link.owner_key, link.id, senderKey, await userKeyFor(target.chatId))) {
+  const salt = await ownerSalt();
+  const senderKey = await senderKeyFor(link, target.chatId, salt);
+  if (await store.isBlockedBy(link.owner_key, link.id, senderKey, await userKeyFor(target.chatId, salt))) {
     await store.closeReplyWindow(window.owner_key);
     if (window.reply_prompt_id) {
       await api.deleteMessage({ chat_id: msg.chat.id, message_id: window.reply_prompt_id }).catch(() => {});
@@ -444,7 +447,8 @@ async function senderTopicFor(base, threadId) {
 
 async function plain(msg, lang, now) {
   const chatId = msg.chat.id;
-  const ownerKey = await userKeyFor(chatId);
+  const salt = await ownerSalt();
+  const ownerKey = await userKeyFor(chatId, salt);
   const state = await store.getOwnerState(ownerKey);
 
   if (state?.memo_link_id) {
@@ -488,7 +492,7 @@ async function plain(msg, lang, now) {
     }
   }
 
-  const base = await chatKeyFor(chatId);
+  const base = await chatKeyFor(chatId, salt);
   const sessionKey = await sessionKeyFrom(base);
   let link;
   let senderKey;

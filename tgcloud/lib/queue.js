@@ -35,13 +35,8 @@ async function send(job, payload) {
   });
 }
 
-async function sendControls(link, payload, sentIds, now) {
-  const globalKey = payload.global_key ?? await userKeyFor(payload.from_chat_id);
-  const [owner, blockedLink, blockedAll] = await Promise.all([
-    store.getOwner(link.owner_key),
-    store.hasBlock(link.owner_key, link.id, payload.sender_key),
-    store.hasBlock(link.owner_key, 0, globalKey),
-  ]);
+async function sendControls(link, payload, sentIds, now, blockedLink = false, blockedAll = false) {
+  const owner = await store.getOwner(link.owner_key);
   const lang = owner?.lang ?? 'en';
 
   const dek = await linkDek(link);
@@ -124,11 +119,13 @@ export async function drain() {
       }
 
       // The owner may block between enqueue and drain; re-check here so a
-      // queued message does not slip through.
+      // queued message does not slip through. Reuse the result for the buttons.
+      let blockedLink = false;
+      let blockedAll = false;
       if (opened.payload.sender_key && opened.payload.from_chat_id) {
         const globalKey = opened.payload.global_key
           ?? await userKeyFor(opened.payload.from_chat_id);
-        const [blockedLink, blockedAll] = await Promise.all([
+        [blockedLink, blockedAll] = await Promise.all([
           store.hasBlock(opened.link.owner_key, opened.link.id, opened.payload.sender_key),
           store.hasBlock(opened.link.owner_key, 0, globalKey),
         ]);
@@ -169,7 +166,7 @@ export async function drain() {
       }
 
       if ((job.kind === 'copy' || job.kind === 'forward') && sentIds.length) {
-        await sendControls(opened.link, opened.payload, sentIds, nowSec());
+        await sendControls(opened.link, opened.payload, sentIds, nowSec(), blockedLink, blockedAll);
       }
       await store.finishJob(job.id);
       sent += 1;

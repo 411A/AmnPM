@@ -18,6 +18,12 @@ jobs:
         with:
           node-version: 24
 
+      - name: Syntax check
+        run: node tools/check.mjs
+
+      - name: Lint
+        run: npx --yes oxlint@1.90.0 --deny-warnings tgcloud tests tools
+
       - name: 🚫 No secrets tracked
         run: |
           if git ls-files | grep -Eq '(^|/)(secret\.js|\.env)$|^\.tgcloud/'; then
@@ -60,6 +66,16 @@ jobs:
         continue-on-error: true
         run: node --import ./tests/register.mjs --test --test-reporter=spec tests/topics.test.js
 
+      - name: Policy invariants
+        id: policy
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/policy.test.js
+
+      - name: Plan invariants
+        id: plan
+        continue-on-error: true
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/plan.test.js
+
       - name: 📊 Test summary
         if: always()
         run: |
@@ -75,6 +91,8 @@ jobs:
             echo "| 🎨 Rendering & text | ${{ steps.render.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo "| 🛡️ Source guardrails | ${{ steps.source.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo "| 🧵 Topic coordination | ${{ steps.topics.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 📜 Policy invariants | ${{ steps.policy.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🗺️ Plan invariants | ${{ steps.plan.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -84,7 +102,9 @@ jobs:
             || [ "${{ steps.handlers.outcome }}" != "success" ] \
             || [ "${{ steps.render.outcome }}" != "success" ] \
             || [ "${{ steps.source.outcome }}" != "success" ] \
-            || [ "${{ steps.topics.outcome }}" != "success" ]; then
+            || [ "${{ steps.topics.outcome }}" != "success" ] \
+            || [ "${{ steps.policy.outcome }}" != "success" ] \
+            || [ "${{ steps.plan.outcome }}" != "success" ]; then
             echo "Some sections failed. Open the red step above for details." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi

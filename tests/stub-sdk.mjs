@@ -19,6 +19,10 @@ function assertRead(text) {
 export const db = {
   async run(query) {
     const { text, params } = wrap(query);
+    if (/\breturning\b/i.test(text)) {
+      const rows = database.prepare(text).all(...params);
+      return { rowsAffected: rows.length, lastInsertRowid: 0, rows };
+    }
     const result = database.prepare(text).run(...params);
     return { rowsAffected: Number(result.changes), lastInsertRowid: Number(result.lastInsertRowid), rows: [] };
   },

@@ -144,13 +144,12 @@ export async function setSessionMode(userKey, mode, now) {
 }
 
 export async function addPending(row) {
-  const existing = await db.get(sql`SELECT 1 AS hit FROM pending
-    WHERE user_key = ${row.user_key} AND group_key = ${row.group_key}
-      AND message_id = ${row.message_id}`);
-  await db.run(sql`INSERT OR IGNORE INTO pending
+  // The unique index makes the insert itself the duplicate check. One statement
+  // per message instead of a SELECT followed by a write.
+  const result = await db.run(sql`INSERT OR IGNORE INTO pending
     (user_key, link_id, group_key, message_id, created_at)
     VALUES (${row.user_key}, ${row.link_id}, ${row.group_key}, ${row.message_id}, ${row.created_at})`);
-  return !existing;
+  return (result.rowsAffected ?? result.changes) > 0;
 }
 
 // First caller wins the group; a concurrent second tap gets no rows.
@@ -412,18 +411,15 @@ export async function enqueueJob(row) {
 }
 
 export async function claimJob(now) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const row = await db.get(sql`SELECT id FROM jobs
-      WHERE state = 'pending' AND next_at <= ${now} ORDER BY id LIMIT 1`);
-    if (!row) return undefined;
-    const claim = randomHex(8);
-    await db.run(sql`UPDATE jobs SET state = 'sending', claim = ${claim}
-      WHERE id = ${row.id} AND state = 'pending'`);
-    const claimed = await db.get(sql`SELECT id, link_id, kind, payload_ct, payload_nonce, attempts, sent_ids
-      FROM jobs WHERE id = ${row.id} AND state = 'sending' AND claim = ${claim}`);
-    if (claimed) return claimed;
-  }
-  return undefined;
+  // One atomic claim. The subquery and the update see the same write lock, so
+  // a concurrent drain cannot claim the same row twice.
+  const claim = randomHex(8);
+  const result = await db.run(sql`UPDATE jobs SET state = 'sending', claim = ${claim}
+    WHERE id = (SELECT id FROM jobs
+      WHERE state = 'pending' AND next_at <= ${now} ORDER BY id LIMIT 1)
+      AND state = 'pending'
+    RETURNING id, link_id, kind, payload_ct, payload_nonce, attempts, sent_ids`);
+  return result.rows?.[0];
 }
 
 export async function setJobSent(id, sentIds) {

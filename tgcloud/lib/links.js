@@ -13,7 +13,7 @@ async function sealOwnerSalt(salt) {
 // never reuse a salt cached in a surviving isolate.
 let usernameCache = null;
 
-async function ownerSalt() {
+export async function ownerSalt() {
   const stored = await store.getMeta('install_salt');
   if (!stored) {
     // The first writer wins; every isolate must use the same installation salt.
@@ -31,15 +31,17 @@ async function ownerSalt() {
   return stored;
 }
 
-export async function userKeyFor(chatId) {
-  return crypto.hmacHex(await ownerSalt(), String(chatId));
+// Each handler reads the salt once and passes it to every derivation, so one
+// update never pays for the same meta row more than once.
+export async function userKeyFor(chatId, salt = null) {
+  return crypto.hmacHex(salt ?? await ownerSalt(), String(chatId));
 }
 
 // One lookup per incoming message; HMAC by default, optional PBKDF2 cost barrier.
-export async function chatKeyFor(chatId) {
-  const salt = await ownerSalt();
-  if (CONFIG.kdfIterations <= 0) return crypto.hmacHex(salt, `chat:${chatId}`);
-  return crypto.pbkdf2Hex(salt, `chat:${chatId}`, CONFIG.kdfIterations);
+export async function chatKeyFor(chatId, salt = null) {
+  const key = salt ?? await ownerSalt();
+  if (CONFIG.kdfIterations <= 0) return crypto.hmacHex(key, `chat:${chatId}`);
+  return crypto.pbkdf2Hex(key, `chat:${chatId}`, CONFIG.kdfIterations);
 }
 
 export function sessionKeyFrom(base) {
@@ -50,16 +52,16 @@ export function senderKeyFrom(base, linkId) {
   return crypto.hmacHex(base, `sender:${linkId}`);
 }
 
-export async function sessionKeyFor(chatId) {
-  return sessionKeyFrom(await chatKeyFor(chatId));
+export async function sessionKeyFor(chatId, salt = null) {
+  return sessionKeyFrom(await chatKeyFor(chatId, salt));
 }
 
-export async function senderKeyFor(link, chatId) {
-  return senderKeyFrom(await chatKeyFor(chatId), link.id);
+export async function senderKeyFor(link, chatId, salt = null) {
+  return senderKeyFrom(await chatKeyFor(chatId, salt), link.id);
 }
 
-export async function tokenLookupFor(token) {
-  return crypto.hmacHex(await ownerSalt(), `token:${token}`);
+export async function tokenLookupFor(token, salt = null) {
+  return crypto.hmacHex(salt ?? await ownerSalt(), `token:${token}`);
 }
 
 export async function botUsername() {

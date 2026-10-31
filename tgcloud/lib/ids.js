@@ -31,6 +31,8 @@ export async function makeIndicator(salt, firstName) {
 
 export function cleanLabel(text, max = 40) {
   return String(text ?? '')
+    // Control characters are exactly what this line removes.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

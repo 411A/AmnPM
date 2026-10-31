@@ -3,7 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import ./tests/register.mjs --test",
-    "build": "node tools/gen-build.mjs"
+    "test": "node --import ./tests/register.mjs --test \"tests/*.test.js\"",
+    "check": "node tools/check.mjs",
+    "lint": "npx --yes oxlint@1.90.0 --deny-warnings tgcloud tests tools",
+    "build": "node tools/gen-build.mjs",
+    "bench": "node --import ./tests/register.mjs tools/bench.mjs",
+    "bench:cloud": "node tools/bench-cloud.mjs"
   }
 }
