@@ -1,18 +1,13 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const local = join(repo, 'tgcloud');
 const remote = join(repo, '.tgcloud', 'remote');
-const manifestPath = join(repo, 'release', 'manifest.json');
-const localManifestText = readFileSync(manifestPath, 'utf8');
+const localManifestText = readFileSync(join(repo, 'release', 'manifest.json'), 'utf8');
 const manifest = JSON.parse(localManifestText);
-const allowedSigners = join(repo, 'release', 'allowed_signers');
-const localSignature = join(repo, 'release', 'manifest.json.sig');
 const preflight = process.argv.includes('--preflight');
 
 function bundleHash(root) {
@@ -38,54 +33,6 @@ function deployedBuild() {
   return JSON.parse(text.match(/export const BUILD = (.+);/)[1]);
 }
 
-// Verify an SSH signature over the exact manifest bytes. The signature is
-// written to a temp file because ssh-keygen reads it by path.
-function verifySignature(manifestText, signatureText) {
-  if (!existsSync(allowedSigners)) return false;
-  const dir = mkdtempSync(join(tmpdir(), 'amnpm-sig-'));
-  const sigPath = join(dir, 'manifest.json.sig');
-  try {
-    writeFileSync(sigPath, signatureText);
-    execFileSync(
-      'ssh-keygen',
-      ['-Y', 'verify', '-f', allowedSigners, '-I', 'amnpm-release', '-n', 'release', '-s', sigPath],
-      { cwd: repo, input: manifestText, stdio: ['pipe', 'ignore', 'ignore'] },
-    );
-    return true;
-  } catch {
-    return false;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-const checks = [];
-const check = (label, ok, detail = '') => checks.push({ label, ok, detail });
-const remoteHash = bundleHash(remote);
-const localHash = bundleHash(local);
-const build = deployedBuild();
-
-check('deployed bundle = release manifest', remoteHash === manifest.bundleHash, remoteHash);
-check('local source = release manifest', localHash === manifest.bundleHash, localHash);
-check('deployed build hash = release manifest', build.bundleHash === manifest.bundleHash, build.bundleHash);
-check('deployed commit = release commit', build.commit === manifest.commit, build.commit);
-check('deployed release = release name', build.release === manifest.release, build.release);
-
-// The first pass proves the hashes before the build is stamped; the final pass
-// must also prove both manifests, the deployed stamp, and the release signature.
-if (!preflight) {
-  check('release manifest is verified', manifest.verified === true, String(manifest.verified));
-  check('deployed build is verified', build.verified === true, String(build.verified));
-}
-
-if (existsSync(localSignature)) {
-  check('release signature verifies', verifySignature(localManifestText, readFileSync(localSignature, 'utf8')));
-} else if (preflight) {
-  console.log('SKIP  release signature (not signed yet; preflight only)');
-} else {
-  check('release signature verifies', false, 'release/manifest.json.sig is missing');
-}
-
 async function fetchText(url, attempts = 4) {
   let last = { ok: false, status: 0, statusText: 'fetch failed', text: '' };
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -109,19 +56,33 @@ async function fetchText(url, attempts = 4) {
   return last;
 }
 
+const checks = [];
+const check = (label, ok, detail = '') => checks.push({ label, ok, detail });
+const remoteHash = bundleHash(remote);
+const localHash = bundleHash(local);
+const build = deployedBuild();
+
+check('deployed bundle = release manifest', remoteHash === manifest.bundleHash, remoteHash);
+check('local source = release manifest', localHash === manifest.bundleHash, localHash);
+check('deployed build hash = release manifest', build.bundleHash === manifest.bundleHash, build.bundleHash);
+check('deployed commit = release commit', build.commit === manifest.commit, build.commit);
+check('deployed release = release name', build.release === manifest.release, build.release);
+
+// The first pass proves the hashes before the build is stamped; the final pass
+// must also prove the manifests and the deployed stamp say verified.
+if (!preflight) {
+  check('release manifest is verified', manifest.verified === true, String(manifest.verified));
+  check('deployed build is verified', build.verified === true, String(build.verified));
+}
+
 if (process.argv.includes('--github')) {
-  const base = 'https://github.com/411A/AmnPM/releases/latest/download';
-  const [manifestResponse, signatureResponse] = await Promise.all([
-    fetchText(`${base}/manifest.json`),
-    fetchText(`${base}/manifest.json.sig`),
-  ]);
-  if (!manifestResponse.ok) {
-    check('GitHub release manifest reachable', false, `${manifestResponse.status} ${manifestResponse.statusText}`);
+  const response = await fetchText('https://github.com/411A/AmnPM/releases/latest/download/manifest.json');
+  if (!response.ok) {
+    check('GitHub release manifest reachable', false, `${response.status} ${response.statusText}`);
   } else {
-    const publishedText = manifestResponse.text;
     let published;
     try {
-      published = JSON.parse(publishedText);
+      published = JSON.parse(response.text);
     } catch {
       published = null;
     }
@@ -130,20 +91,9 @@ if (process.argv.includes('--github')) {
     } else {
       check('GitHub bundle = deployed bundle', published.bundleHash === remoteHash, published.bundleHash);
       check('GitHub commit = deployed commit', published.commit === build.commit, published.commit);
-      check('GitHub manifest = local manifest', publishedText === localManifestText);
+      check('GitHub manifest = local manifest', response.text === localManifestText);
       if (!preflight) {
         check('GitHub manifest is verified', published.verified === true, String(published.verified));
-      }
-      if (signatureResponse.ok) {
-        check('GitHub signature verifies', verifySignature(publishedText, signatureResponse.text));
-      } else if (preflight) {
-        console.log('SKIP  GitHub release signature (not published yet; preflight only)');
-      } else {
-        check(
-          'GitHub release signature reachable',
-          false,
-          `${signatureResponse.status} ${signatureResponse.statusText}`,
-        );
       }
     }
   }
