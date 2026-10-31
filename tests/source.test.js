@@ -24,12 +24,17 @@ test('application source has no logging, environment reads, or outbound network 
     assert.doesNotMatch(text, /\bprocess\b/, `${file}: process`);
     assert.doesNotMatch(text, /\bglobalThis\b/, `${file}: globalThis`);
     assert.doesNotMatch(text, /\b(fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/, `${file}: network`);
-    assert.doesNotMatch(text, /\bimport\s*\(/, `${file}: dynamic import`);
-    assert.doesNotMatch(text, /\b(eval|Function)\s*\(/, `${file}: dynamic code`);
+    assert.doesNotMatch(text, /(\bimport\s*\(|\bimport\s+['"])/, `${file}: dynamic/bare import`);
+    assert.doesNotMatch(text, /\b(eval\s*\(|Function\s*\()/, `${file}: dynamic code`);
     assert.doesNotMatch(text, /\brequire\s*\(/, `${file}: require`);
     assert.doesNotMatch(
       text,
-      /from\s+['"](node:)?(fs|http|https|net|tls|dgram|child_process|worker_threads|vm|module|inspector|http2|dns|os)['"]/,
+      /['"](node:)[^'"]*['"]/,
+      `${file}: node: import`,
+    );
+    assert.doesNotMatch(
+      text,
+      /from\s+['"](fs|http|https|net|tls|dgram|child_process|worker_threads|vm|module|inspector|http2|dns|os|fs\/promises)(['"/])/,
       `${file}: node network/fs`,
     );
   }

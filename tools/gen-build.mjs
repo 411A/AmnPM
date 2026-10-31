@@ -27,8 +27,11 @@ for (const file of files) {
   hash.update(readFileSync(file));
 }
 
-// Only a clean, committed tree may claim the deployed source was verified.
+// Only a clean tree whose app source still matches --commit may claim the
+// deployed source was verified. Release/stamp commits may follow --commit, but
+// they may not change tgcloud source (build.js is the stamp itself).
 if (args.verified === 'true') {
+  if (!args.commit) throw new Error('refusing --verified true: --commit is required');
   const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim();
   if (dirty) throw new Error('refusing --verified true: the working tree is dirty');
   try {
@@ -36,6 +39,14 @@ if (args.verified === 'true') {
     execFileSync('git', ['merge-base', '--is-ancestor', args.commit, 'HEAD'], { cwd: repo, stdio: 'ignore' });
   } catch {
     throw new Error('refusing --verified true: --commit must be an ancestor of HEAD');
+  }
+  const changed = execFileSync(
+    'git',
+    ['diff', '--name-only', `${args.commit}..HEAD`, '--', 'tgcloud'],
+    { cwd: repo, encoding: 'utf8' },
+  ).trim().split(/\r?\n/).filter((path) => path && path !== 'tgcloud/lib/build.js');
+  if (changed.length) {
+    throw new Error(`refusing --verified true: app source changed after --commit (${changed.join(', ')})`);
   }
 }
 

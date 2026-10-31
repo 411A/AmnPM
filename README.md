@@ -55,20 +55,33 @@ file; feature code imports `EMOJI` and `CALLBACK` directly.
 
 ```bash
 cp tools/secret.example.js tgcloud/lib/secret.js   # fill in real keys; never commit it
-node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified false
+CODE_COMMIT=$(git rev-parse --short HEAD)
+node tools/gen-build.mjs --release v1.0.0 --commit "$CODE_COMMIT" --verified false
+```
+
+Commit `tgcloud/lib/build.js` and `release/manifest.json` (with the printed bundle hash,
+`verified: true`, and `CODE_COMMIT`), then sign the manifest with the offline release key:
+
+```bash
+ssh-keygen -Y sign -f "$HOME/.ssh/amnpm-sign" -n release release/manifest.json
+```
+
+Commit `release/allowed_signers` and `release/signing-key.pub` once; commit the new
+`release/manifest.json.sig` with each release. Publish **both** `release/manifest.json` and
+`release/manifest.json.sig` as GitHub release assets, then deploy and run the preflight:
+
+```bash
 tgcloud push
 tgcloud pull --force
 node tools/verify-deployed.mjs --github --preflight
 ```
 
-`verify-deployed.mjs` compares the pulled deployed bundle, the local source, the release
-manifest, and the GitHub release asset. Publish `release/manifest.json` as the GitHub release
-asset for the tag before running it. `--preflight` checks the hashes before the stamp exists.
-Only after it prints `PREFLIGHT MATCH`, stamp the same build with `--verified true` and deploy
-`tgcloud/lib/build.js` again:
+`--preflight` verifies the deployed/local hashes and the signatures when present; it skips a
+signature that has not been published yet. Only after it prints `PREFLIGHT MATCH`, stamp the
+same build and deploy again:
 
 ```bash
-node tools/gen-build.mjs --release v1.0.0 --commit "$(git rev-parse --short HEAD)" --verified true
+node tools/gen-build.mjs --release v1.0.0 --commit "$CODE_COMMIT" --verified true
 tgcloud push
 tgcloud migrate --yes
 node tools/verify-deployed.mjs --github
@@ -76,11 +89,19 @@ tgcloud status
 ```
 
 The final run has no `--preflight`: it prints `MATCH` only when the deployed build, the local
-manifest, and the GitHub asset are all marked verified. `gen-build` refuses `--verified true`
-on a dirty tree or a commit that is not an ancestor of `HEAD`. The bundle hash is unchanged by
-the stamp because `build.js` is excluded from it. The bot links the label to the release page
-and shows `running code matches source` only while the stamp is true; it never prints the hash.
-Keep `--verified false` for ordinary deploys.
+manifest, and the GitHub asset are all marked verified **and** both the local and published
+manifest signatures verify. A missing or invalid signature fails the final run. `gen-build`
+refuses `--verified true` on a dirty tree, a commit that is not an ancestor of `HEAD`, or any
+`tgcloud` source change after that commit (the generated `build.js` stamp is exempt). The
+bundle hash is unchanged by the stamp because `build.js` is excluded from it. The bot links the
+label to the release page and shows `running code matches source` only while the stamp is true;
+it never prints the hash. Keep `--verified false` for ordinary deploys.
+
+The release private key (`~/.ssh/amnpm-sign`) stays offline and passphrase-protected; only the
+public key and `release/allowed_signers` are committed. The signature covers the manifest bytes;
+the manifest's bundle hash covers the application source, excluding `build.js` and `secret.js`.
+Verification needs the OpenSSH `ssh-keygen` client. If the repository or the verifier itself is
+compromised, re-check `release/allowed_signers` against the key fingerprint you trust.
 
 `tgcloud/lib/secret.js` is gitignored and deployed as code. Generate it once per deployment;
 losing it makes every stored link undecryptable. Rotating a key means adding a new version and
