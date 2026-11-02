@@ -200,10 +200,25 @@ async function openLink(msg, token, lang, now) {
   }
 }
 
+// Memo labels are the visible topic names, so two links must never share one:
+// identical labels make topics indistinguishable and memo edits look broken.
+async function memoInUse(ownerKey, memo, exceptLinkId = 0) {
+  const wanted = String(memo).trim().toLowerCase();
+  if (!wanted) return false;
+  for (const link of await store.listLinks(ownerKey)) {
+    if (link.id === exceptLinkId) continue;
+    if ((await linkMemo(link)).trim().toLowerCase() === wanted) return true;
+  }
+  return false;
+}
+
 async function newLink(msg, arg, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
   await store.ensureOwner(ownerKey, now, lang);
+  if (arg && await memoInUse(ownerKey, ids.sanitizeMemo(arg))) {
+    return sendHere(msg, t(lang, 'memoTaken'));
+  }
   const link = await createLink(ownerKey, chatId, arg || await nextDefaultMemo(ownerKey), now);
   if (!link) return sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
   const url = await deepLink(await linkToken(link));
@@ -581,28 +596,32 @@ async function plain(msg, lang, now) {
       return undefined;
     }
     const link = await store.getLink(state.memo_link_id);
-    if (link) {
-      const memoText = ids.sanitizeMemo(msg.text);
-      const dek = await linkDek(link);
-      const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);
-      await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
-      const updated = await store.getLink(link.id);
-      const chat = await ownerChatId(updated);
-      const renamed = await renameTopics(updated, chat);
-      await Promise.all([
-        state.memo_message_id
-          ? api.deleteMessage({ chat_id: chat, message_id: state.memo_message_id }).catch(() => {})
-          : null,
-        api.deleteMessage({ chat_id: chatId, message_id: msg.message_id }).catch(() => {}),
-        store.clearMemoState(ownerKey),
-      ]);
-      if (renamed.failed > 0) {
-        return sendHere(msg, t(lang, renamed.rights ? 'renameRights' : 'memoPartial', { count: renamed.failed }));
-      }
-    } else {
+    const memoText = ids.sanitizeMemo(msg.text);
+    if (!link) {
       await store.clearMemoState(ownerKey);
+      return sendHere(msg, t(lang, 'deleteNotice'));
     }
-    return sendHere(msg, t(lang, 'memoChanged'));
+    if (await memoInUse(ownerKey, memoText, link.id)) {
+      // Keep the prompt: the owner can send a different label right away.
+      return sendHere(msg, t(lang, 'memoTaken'));
+    }
+    const dek = await linkDek(link);
+    const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);
+    await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
+    const updated = await store.getLink(link.id);
+    const chat = await ownerChatId(updated);
+    const renamed = await renameTopics(updated, chat);
+    await Promise.all([
+      state.memo_message_id
+        ? api.deleteMessage({ chat_id: chat, message_id: state.memo_message_id }).catch(() => {})
+        : null,
+      api.deleteMessage({ chat_id: chatId, message_id: msg.message_id }).catch(() => {}),
+      store.clearMemoState(ownerKey),
+    ]);
+    if (renamed.failed > 0) {
+      return sendHere(msg, t(lang, renamed.rights ? 'renameRights' : 'memoPartial', { count: renamed.failed }));
+    }
+    return sendHere(msg, t(lang, 'memoChanged', { memo: ids.escapeHtml(memoText) }));
   }
 
   if (state?.reply_link_id) {

@@ -980,6 +980,87 @@ test('one unreadable topic name does not block a memo change', async () => {
   assert.match(rawDb().prepare('SELECT memo FROM links LIMIT 1').get().memo, /^enc:/);
 });
 
+test('two links cannot share a memo label', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
+  await onMessage(message('/newlink link 1', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /already uses that name/i);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
+
+  await onMessage(message('/newlink other', 100));
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 2);
+});
+
+test('a memo change cannot reuse another link label', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
+  await onMessage(message('/newlink second', 100));
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('link 1', 100, { message_id: 7777 }));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /already uses that name/i);
+  const memos = rawDb().prepare('SELECT memo FROM links ORDER BY id').all();
+  assert.equal(memos.length, 2);
+  assert.notEqual(memos[0].memo, memos[1].memo);
+});
+
+test('an owner cannot open their own link as a sender', async () => {
+  const token = await setupLink();
+  await onMessage(message(`/start ${token}`, 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /your own link/i);
+});
+
+test('/mode clears the stored mode for the session', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+  assert.ok(rawDb().prepare('SELECT mode FROM sessions LIMIT 1').get().mode);
+
+  await onMessage(message('/mode', 200));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /mode/i);
+  assert.equal(rawDb().prepare('SELECT mode FROM sessions LIMIT 1').get().mode, null);
+});
+
+test('a read receipt reacts to the original sender message', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const readData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('R|')).callback_data;
+  await click(readData, 100, controls.args.reply_markup);
+
+  const reaction = callsOf('setMessageReaction').at(-1);
+  assert.equal(reaction.args.chat_id, 200);
+  assert.equal(typeof reaction.args.message_id, 'number');
+  assert.ok(callsOf('editMessageReplyMarkup').length > 0);
+});
+
+test('blocking is reversible with the refreshed button', async () => {
+  await setupLink();
+  const controls = await deliverAnonymous();
+  const blockData = controls.args.reply_markup.inline_keyboard.flat()
+    .find((button) => button.callback_data.startsWith('B|')).callback_data;
+  await click(blockData, 100, controls.args.reply_markup);
+  const edited = callsOf('editMessageReplyMarkup').at(-1).args.reply_markup.inline_keyboard;
+  const unblockData = edited[1][0].callback_data;
+  await click(unblockData, 100, { inline_keyboard: edited });
+
+  await onMessage(message('again', 200, { message_thread_id: firstSenderThread() }));
+  assert.ok(buttons().some((entry) => entry.startsWith('M|')));
+});
+
+test('the link menu offers open and share actions', async () => {
+  await setupLink();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+
+  const menu = callsOf('editMessageText').at(-1).args.reply_markup.inline_keyboard.flat();
+  assert.ok(menu.some((button) => /t\.me\/test_bot\?start=/.test(String(button.url))));
+  assert.ok(menu.some((button) => /t\.me\/share\/url/.test(String(button.url))));
+});
+
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
   await setupLink();
   await deliverAnonymous();
@@ -1047,6 +1128,26 @@ test('a memo prompt opened from All stays in All', async () => {
 
   const prompt = callsOf('sendMessage').filter((call) => /Send the new memo/.test(call.args.text)).at(-1);
   assert.equal(prompt.args.message_thread_id, undefined);
+});
+
+test('a memo change quotes the new memo and renames every link topic', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  // Add a history topic on the same link so the rename loop has two rows.
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().filter((entry) => entry.startsWith('H|')).at(-1));
+  const topicsBefore = rawDb().prepare('SELECT COUNT(*) AS n FROM topics').get().n;
+  assert.ok(topicsBefore >= 2);
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('awdwadd', 100, { message_id: 7777 }));
+
+  const reply = callsOf('sendMessage').at(-1);
+  assert.match(reply.args.text, /<blockquote>awdwadd<\/blockquote>/);
+  const renamed = callsOf('editForumTopic').filter((call) => /awdwadd/.test(call.args.name ?? ''));
+  assert.equal(renamed.length, topicsBefore);
 });
 
 test('the memo prompt and the memo message are removed after use', async () => {

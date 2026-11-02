@@ -212,9 +212,22 @@ async function mode(q, k, opened, lang, now) {
     try {
       const late = await store.takePending(p.user_key, p.group_key);
       if (late.length) {
-        await deliver(link, p.sender_id, p.sender_key, chosen,
-          late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
-        await drain(1);
+        try {
+          await deliver(link, p.sender_id, p.sender_key, chosen,
+            late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
+          await drain(1);
+        } catch {
+          // put the stragglers back so a retry tap still finds them
+          for (const messageId of late) {
+            await store.addPending({
+              user_key: p.user_key,
+              link_id: link.id,
+              group_key: p.group_key,
+              message_id: messageId,
+              created_at: now,
+            });
+          }
+        }
       }
     } catch {
       // stragglers stay queued for the next drain; the main batch succeeded
