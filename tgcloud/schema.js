@@ -77,6 +77,7 @@ export const conversations = table('conversations', {
   sender_key: text('sender_key').notNull(),
   mode: text('mode').notNull(),
   indicator: text('indicator'),
+  indicator_fp: text('indicator_fp'),
   sender_chat_ct: text('sender_chat_ct'),
   last_message_id: integer('last_message_id').notNull().default(0),
   setup_prompted: integer('setup_prompted').notNull().default(0),
@@ -85,7 +86,13 @@ export const conversations = table('conversations', {
   last_at: integer('last_at').notNull(),
 }, (t) => [
   uniqueIndex('idx_conversations_unique').on(t.link_id, t.sender_key, t.mode),
+  uniqueIndex('idx_conversations_indicator').on(t.link_id, t.indicator_fp),
 ]);
+
+export const retired_aliases = table('retired_aliases', {
+  alias_fp: text('alias_fp').primaryKey(),
+  retired_at: integer('retired_at').notNull(),
+});
 
 export const topics = table('topics', {
   id: integer('id').primaryKey({ autoIncrement: true }),

@@ -5,6 +5,7 @@ import {
   tokenFp,
   sanitizeMemo,
   makeIndicator,
+  aliasFp,
   escapeHtml,
   cleanLabel,
 } from '../tgcloud/lib/ids.js';
@@ -36,7 +37,9 @@ test('indicator is deterministic per link and differs across people', async () =
   const a = await makeIndicator(salt, 'Visitor');
   assert.equal(a, await makeIndicator(salt, 'Visitor'));
   assert.notEqual(a, await makeIndicator(salt, 'Sara'));
-  assert.match(a, /^[a-z]+-[a-z]+$/);
+  assert.notEqual(a, await makeIndicator(salt, 'Visitor', 1));
+  assert.match(a, /^[a-z]+-[a-z]+-[a-z]+$/);
+  assert.equal(await aliasFp(a), await aliasFp(a));
 });
 
 test('html in user text is escaped', () => {

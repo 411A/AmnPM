@@ -229,11 +229,34 @@ export async function getConversation(linkId, senderKey, mode) {
 
 export async function createConversation(row) {
   const result = await db.run(sql`INSERT OR IGNORE INTO conversations
-    (link_id, sender_key, mode, indicator, sender_chat_ct, last_message_id, topic_id, created_at, last_at)
-    VALUES (${row.link_id}, ${row.sender_key}, ${row.mode}, ${row.indicator ?? null},
+    (link_id, sender_key, mode, indicator, indicator_fp, sender_chat_ct, last_message_id, topic_id, created_at, last_at)
+    VALUES (${row.link_id}, ${row.sender_key}, ${row.mode}, ${row.indicator ?? null}, ${row.indicator_fp ?? null},
       ${row.sender_chat_ct ?? null}, ${row.last_message_id ?? 0}, ${row.topic_id ?? 0},
       ${row.created_at}, ${row.last_at})`);
   return result.lastInsertRowid;
+}
+
+export async function conversationFpInUse(linkId, fp) {
+  const row = await db.get(sql`SELECT 1 AS hit FROM conversations
+    WHERE link_id = ${linkId} AND indicator_fp = ${fp}`);
+  return Boolean(row);
+}
+
+export async function insertRetiredAlias(fp, now) {
+  await db.run(sql`INSERT OR IGNORE INTO retired_aliases (alias_fp, retired_at)
+    VALUES (${fp}, ${now})`);
+}
+
+export async function isRetiredAlias(fp) {
+  return Boolean(await db.get(sql`SELECT 1 AS hit FROM retired_aliases WHERE alias_fp = ${fp}`));
+}
+
+// Retired aliases never return: record a link's fingerprints before its
+// conversation rows are deleted, like retired_tokens does for link tokens.
+export async function retireLinkAliases(linkId, now) {
+  await db.run(sql`INSERT OR IGNORE INTO retired_aliases (alias_fp, retired_at)
+    SELECT DISTINCT indicator_fp, ${now} FROM conversations
+    WHERE link_id = ${linkId} AND indicator_fp IS NOT NULL`);
 }
 
 export async function setConversationChat(id, sealed) {

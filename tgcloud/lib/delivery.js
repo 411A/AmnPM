@@ -19,9 +19,10 @@ async function conversationFor(link, senderKey, mode, firstName, senderId, now) 
     }
     return existing;
   }
-  const label = mode === 'history'
-    ? await ids.makeIndicator(senderKey, firstName)
-    : ids.cleanLabel(firstName, 30);
+  const minted = mode === 'history'
+    ? await freshIndicator(link.id, senderKey, firstName)
+    : null;
+  const label = minted?.label ?? ids.cleanLabel(firstName, 30);
   const indicator = await sealConversationLabel(link, label, senderKey, mode);
   const senderChat = await sealConversationChat(link, senderId, senderKey, mode);
   await store.createConversation({
@@ -29,12 +30,30 @@ async function conversationFor(link, senderKey, mode, firstName, senderId, now) 
     sender_key: senderKey,
     mode,
     indicator,
+    indicator_fp: minted?.fp ?? null,
     sender_chat_ct: senderChat,
     topic_id: 0,
     created_at: now,
     last_at: now,
   });
   return store.getConversation(link.id, senderKey, mode);
+}
+
+// Three-word aliases mint from a 68-billion space; a fingerprint check per
+// link plus the retired set keeps every live alias unique and unreused.
+// Collisions only resolve by nonce, so the same sender and name always land
+// on the same alias while any other combination moves on.
+async function freshIndicator(linkId, senderKey, firstName) {
+  for (let nonce = 0; nonce < 8; nonce += 1) {
+    const label = await ids.makeIndicator(senderKey, firstName, nonce);
+    const fp = await ids.aliasFp(label);
+    const [live, retired] = await Promise.all([
+      store.conversationFpInUse(linkId, fp),
+      store.isRetiredAlias(fp),
+    ]);
+    if (!live && !retired) return { label, fp };
+  }
+  throw new Error('alias space exhausted');
 }
 
 async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now, owner = null) {

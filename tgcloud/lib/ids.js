@@ -22,11 +22,16 @@ export function sanitizeMemo(input) {
   return memo ? memo.slice(0, CONFIG.maxMemoLength) : CONFIG.defaultMemo;
 }
 
-export async function makeIndicator(salt, firstName) {
-  const digest = await hmacBytes(salt, `indicator:${firstName ?? ''}`);
+export async function makeIndicator(salt, firstName, nonce = 0) {
+  const digest = await hmacBytes(salt, `indicator:${firstName ?? ''}:${nonce}`);
   const i = ((digest[0] << 8) | digest[1]) % WORDS.length;
   const j = ((digest[2] << 8) | digest[3]) % WORDS.length;
-  return `${WORDS[i]}-${WORDS[j]}`;
+  const k = ((digest[4] << 8) | digest[5]) % WORDS.length;
+  return `${WORDS[i]}-${WORDS[j]}-${WORDS[k]}`;
+}
+
+export async function aliasFp(label) {
+  return sha256Fp(label);
 }
 
 export function cleanLabel(text, max = 40) {

@@ -141,6 +141,20 @@ test('the earliest album row is the sole asker', async () => {
   assert.equal(await store.isFirstPending('u2', 'g', 10), false);
 });
 
+test('retired aliases never return', async () => {
+  await store.createConversation({
+    link_id: 9, sender_key: 's', mode: 'history', indicator: 'a-b-c',
+    indicator_fp: 'fp1', topic_id: 1, created_at: 1, last_at: 1,
+  });
+  assert.equal(await store.conversationFpInUse(9, 'fp1'), true);
+  assert.equal(await store.conversationFpInUse(9, 'fp2'), false);
+  assert.equal(await store.isRetiredAlias('fp1'), false);
+  await store.retireLinkAliases(9, 2);
+  assert.equal(await store.isRetiredAlias('fp1'), true);
+  await store.insertRetiredAlias('fp1', 3);
+  assert.equal(await store.isRetiredAlias('fp1'), true);
+});
+
 test('a pending take is atomic and ordered', async () => {
   await store.addPending({ user_key: 'u3', link_id: 1, group_key: 'g', message_id: 11, created_at: 1 });
   await store.addPending({ user_key: 'u3', link_id: 1, group_key: 'g', message_id: 9, created_at: 1 });

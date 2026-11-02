@@ -7,7 +7,8 @@ import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
 import { CONFIG } from '../tgcloud/lib/config.js';
 import { linkMemo } from '../tgcloud/lib/keys.js';
-import { tokenFp } from '../tgcloud/lib/ids.js';
+import { tokenFp, makeIndicator, aliasFp } from '../tgcloud/lib/ids.js';
+import { conversationLabel } from '../tgcloud/lib/keys.js';
 import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
 import * as store from '../tgcloud/lib/store.js';
 import { deliver } from '../tgcloud/lib/delivery.js';
@@ -376,11 +377,11 @@ test('history mode keeps one topic and a stable indicator', async () => {
 
   const ownerTopics = callsOf('createForumTopic').filter((call) => call.args.name.startsWith('\u200E⬇️'));
   assert.equal(ownerTopics.length, 1);
-  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️ [a-z]+-[a-z]+ · main 1$/);
+  assert.match(ownerTopics[0].args.name, /^\u200E⬇️ 😶‍🌫️ [a-z]+-[a-z]+-[a-z]+ · main 1$/);
   const historySent = callsOf('editMessageText')
     .filter((call) => String(call.args.text).includes('Sent with history')).at(-1);
   assert.ok(historySent);
-  assert.match(historySent.args.text, /<code>[a-z]+-[a-z]+<\/code>/);
+  assert.match(historySent.args.text, /<code>[a-z]+-[a-z]+-[a-z]+<\/code>/);
   assert.equal(callsOf('copyMessages').length, 2);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM conversations').get().n, 1);
 });
@@ -1234,6 +1235,57 @@ test('a failed background delivery edits the confirmation', async () => {
   assert.equal(failedEdits.length, 1);
   assert.equal(failedEdits[0].args.chat_id, 200);
   assert.equal(callsOf('sendMessage').filter((call) => /Delivery failed/.test(call.args.text ?? '')).length, 0);
+});
+
+test('a retired alias is never minted again', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  const now = Math.floor(Date.now() / 1000);
+  await store.insertRetiredAlias(await aliasFp(await makeIndicator(senderKey, 'V', 0)), now);
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+
+  const conv = rawDb().prepare("SELECT * FROM conversations WHERE mode = 'history'").get();
+  const label = await conversationLabel(link, conv);
+  assert.equal(label, await makeIndicator(senderKey, 'V', 1));
+  assert.equal(conv.indicator_fp, await aliasFp(label));
+  assert.match(label, /^[a-z]+-[a-z]+-[a-z]+$/);
+});
+
+test('revoking a link retires its aliases', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+  const fp = rawDb().prepare("SELECT indicator_fp FROM conversations WHERE mode = 'history'").get().indicator_fp;
+  assert.ok(fp);
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('V|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('K|')), 100);
+
+  assert.equal(await store.isRetiredAlias(fp), true);
+});
+
+test('an exhausted alias space fails closed without duplicating', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  const now = Math.floor(Date.now() / 1000);
+  for (let nonce = 0; nonce < 8; nonce += 1) {
+    await store.insertRetiredAlias(await aliasFp(await makeIndicator(senderKey, 'V', nonce)), now);
+  }
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+
+  assert.equal(callsOf('copyMessages').length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM conversations').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 1);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Delivery failed/);
 });
 
 test('a dead anon topic is recreated instead of failing', async () => {

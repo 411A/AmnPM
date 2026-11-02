@@ -421,6 +421,7 @@ async function revoke(q, opened, lang, now) {
   await store.setLinkState(link.id, 'revoked');
   await closeLinkTopics(link, chat, owner?.lang ?? lang);
   await store.insertRetired(await ids.tokenFp(token), now);
+  await store.retireLinkAliases(link.id, now);
   await store.deleteLinkScoped(link.id);
   await store.deleteLinkRow(link.id);
   await store.releaseSlot(link.owner_key, link.slot);
