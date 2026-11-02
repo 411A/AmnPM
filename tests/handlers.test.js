@@ -1206,7 +1206,9 @@ test('a delivery that lands mid-topic-creation is retryable', async () => {
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   const data = buttons().find((entry) => entry.startsWith('M|'));
   await click(data);
-  assert.match(callsOf('sendMessage').at(-1).args.text, /preparing/i);
+  const edits = callsOf('editMessageText');
+  assert.ok(edits.some((call) => /Sent anonymously/.test(call.args.text ?? '')));
+  assert.ok(edits.some((call) => /Preparing/.test(call.args.text ?? '')));
   assert.equal(callsOf('copyMessages').length, 0);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 1);
 
@@ -1215,6 +1217,23 @@ test('a delivery that lands mid-topic-creation is retryable', async () => {
   await click(data);
   assert.equal(callsOf('copyMessages').length, 1);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 0);
+});
+
+test('a failed background delivery edits the confirmation', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  for (let i = 0; i < 5; i += 1) failNext('copyMessages', { errorCode: 400, description: 'boom' });
+  await click(buttons().find((entry) => entry.startsWith('M|')));
+  for (let i = 0; i < 6; i += 1) {
+    rawDb().prepare('UPDATE jobs SET next_at = 0').run();
+    await drain(10);
+  }
+
+  const failedEdits = callsOf('editMessageText')
+    .filter((call) => call.args.message_id === 999 && /Delivery failed/.test(call.args.text ?? ''));
+  assert.equal(failedEdits.length, 1);
+  assert.equal(failedEdits[0].args.chat_id, 200);
+  assert.equal(callsOf('sendMessage').filter((call) => /Delivery failed/.test(call.args.text ?? '')).length, 0);
 });
 
 test('a dead anon topic is recreated instead of failing', async () => {

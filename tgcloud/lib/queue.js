@@ -97,11 +97,26 @@ async function notifyFailure(job) {
   const link = job ? await store.getLink(job.link_id) : null;
   if (!link || !payload?.from_chat_id) return;
   const lang = payload.sender_lang ?? 'en';
+  const text = t(lang, 'failed');
+  // The sender already saw a confirmation for this batch: correct that same
+  // message instead of opening a new one.
+  if (payload.confirm_chat_id && payload.confirm_message_id) {
+    try {
+      await api.editMessageText({
+        chat_id: payload.confirm_chat_id,
+        message_id: payload.confirm_message_id,
+        text,
+      });
+      return;
+    } catch {
+      // the confirmed message is gone; fall back to a new one
+    }
+  }
   try {
     await api.sendMessage({
       chat_id: payload.from_chat_id,
       ...(payload.sender_thread_id ? { message_thread_id: payload.sender_thread_id } : {}),
-      text: t(lang, 'failed'),
+      text,
     });
   } catch {
     // best effort; the job is already failed

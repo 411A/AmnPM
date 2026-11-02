@@ -6,7 +6,7 @@ import * as crypto from '../lib/crypto.js';
 import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { closeLinkTopics } from '../lib/topics.js';
-import { deliver } from '../lib/delivery.js';
+import { deliver, aliasFor } from '../lib/delivery.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
@@ -131,28 +131,68 @@ async function mode(q, k, opened, lang, now) {
     }
   }
 
-  // Stop the button spinner now; delivery and cleanup continue behind it.
+  // Stop the button spinner now; the success confirm below lands before any
+  // delivery call, so the buttons vanish instantly. Any later failure edits
+  // that same message instead of opening a new one.
   await answer(q);
 
   const session = await store.getSession(p.user_key);
   if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
 
-  let target;
-  try {
-    target = await deliver(link, p.sender_id, p.sender_key, chosen,
-      batch, p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
-    // A straggler may have landed mid-delivery; ship it in the same mode
-    // instead of leaving it without a prompt.
+  let indicator = '';
+  if (chosen === 'history') {
     try {
-      const late = await store.takePending(p.user_key, p.group_key);
-      if (late.length) {
-        await deliver(link, p.sender_id, p.sender_key, chosen,
-          late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
-        await drain(1);
-      }
+      indicator = await aliasFor(link, p.sender_key, p.first_name, p.sender_id, now);
     } catch {
-      // stragglers stay queued for the next drain; the main batch succeeded
+      await refund();
+      await api.sendMessage({
+        chat_id: p.sender_id,
+        ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
+        text: t(lang, 'failed'),
+      });
+      return undefined;
     }
+  }
+  const text = chosen === 'anon'
+    ? t(lang, 'sentAnon')
+    : chosen === 'history'
+      ? t(lang, 'sentHistory', { indicator: ids.escapeHtml(indicator) })
+      : t(lang, 'sentForward');
+
+  const fallbackSend = (message) => api.sendMessage({
+    chat_id: q.message?.chat?.id ?? p.sender_id,
+    ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
+    text: message,
+    parse_mode: 'HTML',
+    ...(q.message?.reply_to_message?.message_id
+      ? { reply_to_message_id: q.message.reply_to_message.message_id }
+      : {}),
+  }).then((sent) => ({ chatId: sent.chat?.id ?? q.message?.chat?.id ?? p.sender_id, messageId: sent.message_id }));
+  const confirm = async () => {
+    if (!q.message?.chat?.id || !q.message?.message_id) return fallbackSend(text);
+    try {
+      await api.editMessageText({
+        chat_id: q.message.chat.id,
+        message_id: q.message.message_id,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [] },
+      });
+      return { chatId: q.message.chat.id, messageId: q.message.message_id };
+    } catch {
+      return fallbackSend(text);
+    }
+  };
+  // Any failure from here on edits this same message instead of opening a new one.
+  const failSame = (message) => api.editMessageText({
+    chat_id: confirmIds.chatId,
+    message_id: confirmIds.messageId,
+    text: message,
+  }).catch(() => fallbackSend(message));
+
+  let confirmIds;
+  try {
+    confirmIds = await confirm();
   } catch {
     await refund();
     await api.sendMessage({
@@ -163,51 +203,35 @@ async function mode(q, k, opened, lang, now) {
     return undefined;
   }
 
-  if (target.pending) {
+  let target;
+  try {
+    target = await deliver(link, p.sender_id, p.sender_key, chosen,
+      batch, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
+    // A straggler may have landed mid-delivery; ship it in the same mode
+    // instead of leaving it without a prompt.
+    try {
+      const late = await store.takePending(p.user_key, p.group_key);
+      if (late.length) {
+        await deliver(link, p.sender_id, p.sender_key, chosen,
+          late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
+        await drain(1);
+      }
+    } catch {
+      // stragglers stay queued for the next drain; the main batch succeeded
+    }
+  } catch {
     await refund();
-    await api.sendMessage({
-      chat_id: p.sender_id,
-      ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
-      text: t(lang, 'preparing'),
-    });
+    await failSame(t(lang, 'failed'));
     return undefined;
   }
 
-  const text = chosen === 'anon'
-    ? t(lang, 'sentAnon')
-    : chosen === 'history'
-      ? t(lang, 'sentHistory', { indicator: ids.escapeHtml(target.indicator) })
-      : t(lang, 'sentForward');
+  if (target.pending) {
+    await refund();
+    await failSame(t(lang, 'preparing'));
+    return undefined;
+  }
 
-  const fallback = () => api.sendMessage({
-    chat_id: q.message?.chat?.id ?? p.sender_id,
-    ...(q.message?.message_thread_id ? { message_thread_id: q.message.message_thread_id } : {}),
-    text,
-    parse_mode: 'HTML',
-    ...(q.message?.reply_to_message?.message_id
-      ? { reply_to_message_id: q.message.reply_to_message.message_id }
-      : {}),
-  });
-  const confirm = async () => {
-    if (!q.message?.chat?.id || !q.message?.message_id) return fallback();
-    try {
-      await api.editMessageText({
-        chat_id: q.message.chat.id,
-        message_id: q.message.message_id,
-        text,
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: [] },
-      });
-      return undefined;
-    } catch {
-      return fallback();
-    }
-  };
-
-  await Promise.all([
-    store.deleteActionToken(opened.row.prefix),
-    confirm(),
-  ]);
+  await store.deleteActionToken(opened.row.prefix);
   return undefined;
 }
 

@@ -83,7 +83,14 @@ async function ensureDelivery(link, ownerChat, senderKey, mode, firstName, sende
   };
 }
 
-export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0, salt = null, owner = null, senderLang = 'en') {
+// Alias label without sealing a job, so the UI can confirm success first.
+// deliver() resolves the same row again; the label is identical.
+export async function aliasFor(link, senderKey, firstName, senderId, now) {
+  const conversation = await conversationFor(link, senderKey, 'history', firstName, senderId, now);
+  return conversationLabel(link, conversation);
+}
+
+export async function deliver(link, senderId, senderKey, mode, messageIds, firstName, now, senderThread = 0, salt = null, owner = null, senderLang = 'en', confirm = null) {
   const ownerChat = await ownerChatId(link);
   const target = await ensureDelivery(link, ownerChat, senderKey, mode, firstName, senderId, now, owner);
   if (target.pending) return target;
@@ -100,6 +107,7 @@ export async function deliver(link, senderId, senderKey, mode, messageIds, first
     lang: target.lang,
     sender_lang: senderLang ?? 'en',
     header: target.header,
+    ...(confirm ? { confirm_chat_id: confirm.chatId, confirm_message_id: confirm.messageId } : {}),
   }, now);
   return target;
 }
