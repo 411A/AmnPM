@@ -81,6 +81,15 @@ async function toggleBlockButton(q, blockedLink, blockedAll, lang, nextLink, nex
 async function mode(q, k, opened, lang, now) {
   const p = opened.payload;
   const link = opened.link;
+  // The batch is taken before delivery; every exit that does not deliver
+  // must put it back so a retry tap finds it instead of an empty group.
+  const refund = () => Promise.all(batch.map((messageId) => store.addPending({
+    user_key: p.user_key,
+    link_id: link.id,
+    group_key: p.group_key,
+    message_id: messageId,
+    created_at: now,
+  })));
   if (link.state !== 'active') return answer(q, t(lang, 'linkInactive'));
 
   const chosen = k === CALLBACK.MODE_ANON ? 'anon' : k === CALLBACK.MODE_HISTORY ? 'history' : 'forward';
@@ -110,30 +119,14 @@ async function mode(q, k, opened, lang, now) {
   if (CONFIG.deliverPerMinute > 0) {
     const delivered = await store.bumpRate(link.id, `out:${p.sender_key}`, now, batch.length);
     if (delivered > CONFIG.deliverPerMinute) {
-      for (const messageId of batch) {
-        await store.addPending({
-          user_key: p.user_key,
-          link_id: link.id,
-          group_key: p.group_key,
-          message_id: messageId,
-          created_at: now,
-        });
-      }
+      await refund();
       return answer(q, t(lang, 'throttle'));
     }
   }
   if (CONFIG.ownerPerMinute > 0) {
     const accepted = await store.bumpRate(0, link.owner_key, now, batch.length);
     if (accepted > CONFIG.ownerPerMinute) {
-      for (const messageId of batch) {
-        await store.addPending({
-          user_key: p.user_key,
-          link_id: link.id,
-          group_key: p.group_key,
-          message_id: messageId,
-          created_at: now,
-        });
-      }
+      await refund();
       return answer(q, t(lang, 'throttle'));
     }
   }
@@ -161,7 +154,7 @@ async function mode(q, k, opened, lang, now) {
       // stragglers stay queued for the next drain; the main batch succeeded
     }
   } catch {
-    await store.releasePending(p.user_key, p.group_key);
+    await refund();
     await api.sendMessage({
       chat_id: p.sender_id,
       ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
@@ -171,7 +164,7 @@ async function mode(q, k, opened, lang, now) {
   }
 
   if (target.pending) {
-    await store.releasePending(p.user_key, p.group_key);
+    await refund();
     await api.sendMessage({
       chat_id: p.sender_id,
       ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),

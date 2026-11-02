@@ -185,11 +185,6 @@ export async function releasePending(userKey, groupKey) {
     WHERE user_key = ${userKey} AND group_key = ${groupKey}`);
 }
 
-export async function listPending(userKey, groupKey) {
-  return db.all(sql`SELECT message_id FROM pending
-    WHERE user_key = ${userKey} AND group_key = ${groupKey} ORDER BY message_id`);
-}
-
 export async function clearPending(userKey, groupKey) {
   await db.run(sql`DELETE FROM pending WHERE user_key = ${userKey} AND group_key = ${groupKey}`);
 }

@@ -1176,6 +1176,26 @@ test('an orphaned owner album is taken over and shipped once', async () => {
   }
 });
 
+test('a delivery that lands mid-topic-creation is retryable', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const now = Math.floor(Date.now() / 1000);
+  await store.reserveTopic({ link_id: link.id, kind: 'anon', conversation_id: 0, created_at: now });
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  const data = buttons().find((entry) => entry.startsWith('M|'));
+  await click(data);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /preparing/i);
+  assert.equal(callsOf('copyMessages').length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 1);
+
+  const topic = rawDb().prepare("SELECT id FROM topics WHERE kind = 'anon'").get();
+  await store.updateTopic(topic.id, 4242, '', 'open');
+  await click(data);
+  assert.equal(callsOf('copyMessages').length, 1);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 0);
+});
+
 test('a dead anon topic is recreated instead of failing', async () => {
   await setupLink();
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
