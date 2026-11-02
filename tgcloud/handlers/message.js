@@ -250,18 +250,36 @@ async function renameTopic(msg, arg, lang) {
       return send(chatId, t(lang, 'renameTaken'), { message_thread_id: threadId });
     }
     const name = render.customTopicName(topic.kind, label, await linkMemo(link));
+    const edit = () => api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+    const failed = (err) => {
+      const wait = err?.parameters?.retry_after ?? err?.retry_after;
+      const secs = typeof wait === 'number' && Number.isFinite(wait) ? Math.max(1, Math.floor(wait)) : 0;
+      // Topic renames are strictly flood-controlled; a short wait is worth one
+      // retry, a long one is reported with its duration instead of burning calls.
+      if (secs > 0) {
+        return send(chatId, t(lang, 'renameFailedRetry', { seconds: secs }), { message_thread_id: threadId });
+      }
+      return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+    };
     try {
-      await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+      await edit();
     } catch (err) {
       if (rightsError(err)) {
         return send(chatId, t(lang, 'renameRights'), { message_thread_id: threadId });
       }
-      // Transient floods fail the first edit; one retry before giving up.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      try {
-        await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
-      } catch (retryErr) {
-        return send(chatId, t(lang, rightsError(retryErr) ? 'renameRights' : 'renameFailed'), { message_thread_id: threadId });
+      const wait = err?.parameters?.retry_after ?? err?.retry_after;
+      if (typeof wait === 'number' && wait > 0 && wait <= 5) {
+        await new Promise((resolve) => setTimeout(resolve, Math.max(1, Math.floor(wait)) * 1000));
+        try {
+          await edit();
+        } catch (retryErr) {
+          if (rightsError(retryErr)) {
+            return send(chatId, t(lang, 'renameRights'), { message_thread_id: threadId });
+          }
+          return failed(retryErr);
+        }
+      } else {
+        return failed(err);
       }
     }
     try {

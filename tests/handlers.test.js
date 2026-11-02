@@ -834,6 +834,21 @@ test('a renamed label cannot repeat another topic label', async () => {
   assert.equal(callsOf('editForumTopic').length, before + 1);
 });
 
+test('a long flood wait is reported with its duration', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+
+  failNext('editForumTopic', { errorCode: 429, parameters: { retry_after: 120 } });
+  const before = callsOf('editForumTopic').length;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+
+  // The failed edit is unrecorded by the stub; the duration message proves the
+  // catch path ran, and the instant return proves no retry was attempted.
+  assert.equal(callsOf('editForumTopic').length, before);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /120 seconds/);
+});
+
 test('a rename retries once after a transient edit failure', async () => {
   await setupLink();
   await deliverAnonymous();
