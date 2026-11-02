@@ -152,6 +152,7 @@ export const jobs = table('jobs', {
   payload_nonce: text('payload_nonce').notNull(),
   state: text('state').notNull(),
   claim: text('claim'),
+  claimed_at: integer('claimed_at').notNull().default(0),
   attempts: integer('attempts').notNull().default(0),
   sent_ids: text('sent_ids'),
   next_at: integer('next_at').notNull(),

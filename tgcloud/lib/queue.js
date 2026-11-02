@@ -127,6 +127,10 @@ export async function drain(maxJobs = 3) {
   const started = Date.now();
   let sent = 0;
 
+  // A claim is seconds of work; anything still marked sending after two
+  // minutes belonged to a dead drain. Reap once per drain, not per job.
+  await store.reapStaleClaims(nowSec() - 120);
+
   for (let i = 0; i < maxJobs; i += 1) {
     if (Date.now() - started > 3500) break;
     const job = await store.claimJob(nowSec());

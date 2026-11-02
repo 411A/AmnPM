@@ -1324,6 +1324,19 @@ test('a recreated topic keeps its forward kind', async () => {
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
 });
 
+test('a job stranded in sending is reaped and delivered', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0, null, null, 'en');
+  rawDb().prepare("UPDATE jobs SET state = 'sending', claim = 'dead', claimed_at = 0").run();
+
+  assert.equal(callsOf('copyMessages').length, 0);
+  await drain();
+  assert.equal(callsOf('copyMessages').length, 1);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+});
+
 test('a permanently failing delivery notifies the sender', async () => {
   await setupLink();
   const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();

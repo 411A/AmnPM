@@ -471,12 +471,20 @@ export async function claimJob(now) {
   // One atomic claim. The subquery and the update see the same write lock, so
   // a concurrent drain cannot claim the same row twice.
   const claim = randomHex(8);
-  const result = await db.run(sql`UPDATE jobs SET state = 'sending', claim = ${claim}
+  const result = await db.run(sql`UPDATE jobs SET state = 'sending', claim = ${claim}, claimed_at = ${now}
     WHERE id = (SELECT id FROM jobs
       WHERE state = 'pending' AND next_at <= ${now} ORDER BY id LIMIT 1)
       AND state = 'pending'
     RETURNING id, link_id, kind, payload_ct, payload_nonce, attempts, sent_ids`);
   return result.rows?.[0];
+}
+
+// A drain that dies between claim and finish leaves the row in 'sending'
+// forever: the claim query only sees 'pending'. Reap claims older than the
+// cutoff back to pending without spending their attempt budget.
+export async function reapStaleClaims(cutoff) {
+  await db.run(sql`UPDATE jobs SET state = 'pending', claim = NULL
+    WHERE state = 'sending' AND claimed_at <= ${cutoff}`);
 }
 
 export async function setJobSent(id, sentIds) {
