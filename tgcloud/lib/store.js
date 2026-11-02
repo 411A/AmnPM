@@ -163,6 +163,16 @@ export async function isFirstPending(userKey, groupKey, messageId) {
   return first ? Number(first.message_id) === Number(messageId) : false;
 }
 
+// Atomically remove and return a group's message ids in delivery order. One
+// statement, so a concurrent insert either joins this batch or starts the
+// next one; a row is never listed-but-lost or delivered twice.
+export async function takePending(userKey, groupKey) {
+  const result = await db.run(sql`DELETE FROM pending
+    WHERE user_key = ${userKey} AND group_key = ${groupKey}
+    RETURNING message_id`);
+  return (result.rows ?? []).map((row) => Number(row.message_id)).sort((a, b) => a - b);
+}
+
 // First caller wins the group; a concurrent second tap gets no rows.
 export async function claimPending(userKey, groupKey) {
   const result = await db.run(sql`UPDATE pending SET claimed = 1

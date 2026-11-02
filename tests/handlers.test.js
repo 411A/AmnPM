@@ -1134,6 +1134,48 @@ test('an owner album answer ships as one batch', async () => {
   }
 });
 
+test('an orphaned owner album is taken over and shipped once', async () => {
+  const hold = CONFIG.albumHoldMs;
+  const margin = CONFIG.albumTakeoverMs;
+  CONFIG.albumHoldMs = 20;
+  CONFIG.albumTakeoverMs = 20;
+  try {
+    await setupLink();
+    await onMessage(message('hello', 200, {
+      first_name: 'V',
+      message_thread_id: firstSenderThread(),
+      message_id: 55,
+    }));
+    await click(buttons().find((entry) => entry.startsWith('H|')));
+
+    // The leader died mid-hold: two rows sit with no handler to deliver them.
+    const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+    const senderKey = await senderKeyFor(link, 200);
+    const now = Math.floor(Date.now() / 1000);
+    await store.addPending({
+      user_key: `album:${link.id}:${senderKey}`, link_id: link.id,
+      group_key: 'og9', message_id: 991, created_at: now,
+    });
+    await store.addPending({
+      user_key: `album:${link.id}:${senderKey}`, link_id: link.id,
+      group_key: 'og9', message_id: 992, created_at: now,
+    });
+
+    const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+    const before = callsOf('copyMessages').length;
+    await onMessage(message(undefined, 100, { media_group_id: 'og9', message_id: 993, message_thread_id: ownerThread }));
+
+    const batches = callsOf('copyMessages').slice(before);
+    assert.equal(batches.length, 1);
+    assert.deepEqual(batches[0].args.message_ids, [991, 992, 993]);
+    assert.equal(callsOf('sendMessage').filter((call) => /Reply sent/.test(call.args.text)).length, 1);
+    assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM pending').get().n, 0);
+  } finally {
+    CONFIG.albumHoldMs = hold;
+    CONFIG.albumTakeoverMs = margin;
+  }
+});
+
 test('a dead anon topic is recreated instead of failing', async () => {
   await setupLink();
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));

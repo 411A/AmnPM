@@ -357,10 +357,11 @@ async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now, 
 // Owner albums arrive as separate updates sharing one media_group_id. The
 // first inserted row leads: it holds briefly so the followers land in the
 // same batch, then ships everything in one copyMessages call. No extra
-// button is needed; media_group_id already identifies the group. Returns
-// true when this call delivered (the caller confirms), false on failure,
-// and null for followers and duplicates (the caller stays silent so the
-// album gets exactly one confirmation).
+// button is needed; media_group_id already identifies the group. The take is
+// atomic, so a late insert either joins this batch or starts the next one.
+// Returns true when this call delivered (the caller confirms), false on
+// failure, and null when another call owns the batch (the caller stays
+// silent so the album gets exactly one confirmation).
 async function copyAlbumToSender(msg, link, chatId, senderKey, thread, replyTo, now) {
   if (!msg.media_group_id) {
     return copyToSender(msg, link, chatId, senderKey, thread, replyTo, now);
@@ -375,16 +376,19 @@ async function copyAlbumToSender(msg, link, chatId, senderKey, thread, replyTo, 
     created_at: now,
   });
   if (!added) return null;
-  if (!(await store.isFirstPending(userKey, groupKey, msg.message_id))) return null;
-  await new Promise((resolve) => setTimeout(resolve, CONFIG.albumHoldMs));
-  const rows = await store.listPending(userKey, groupKey);
-  await store.clearPending(userKey, groupKey);
-  if (!rows.length) return null;
-  if (rows.length === 1) {
-    return copyToSender(msg, link, chatId, senderKey, thread, replyTo, now);
+  // The leader holds so followers land in the same batch. A follower waits
+  // out the hold, then takes over only when the leader died mid-hold; the
+  // atomic take hands the batch to exactly one caller either way.
+  const hold = await store.isFirstPending(userKey, groupKey, msg.message_id)
+    ? CONFIG.albumHoldMs
+    : CONFIG.albumHoldMs + CONFIG.albumTakeoverMs;
+  await new Promise((resolve) => setTimeout(resolve, hold));
+  const batch = await store.takePending(userKey, groupKey);
+  if (!batch.length) return null;
+  if (batch.length === 1) {
+    return copyToSender({ ...msg, message_id: batch[0] }, link, chatId, senderKey, thread, replyTo, now);
   }
-  return copyToSender(msg, link, chatId, senderKey, thread, 0, now,
-    rows.map((row) => row.message_id));
+  return copyToSender(msg, link, chatId, senderKey, thread, 0, now, batch);
 }
 
 async function replyToWindow(msg, window, lang, now) {

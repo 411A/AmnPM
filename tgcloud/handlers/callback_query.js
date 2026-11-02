@@ -99,26 +99,41 @@ async function mode(q, k, opened, lang, now) {
   const claimed = await store.claimPending(p.user_key, p.group_key);
   if (!claimed) return answer(q, t(lang, 'answerExpired'));
 
-  const pending = await store.listPending(p.user_key, p.group_key);
-  if (!pending.length) {
-    await store.releasePending(p.user_key, p.group_key);
-    return answer(q, t(lang, 'answerExpired'));
-  }
+  // Commit the batch with one atomic take instead of list-then-clear: a row
+  // inserted between those two statements would be deleted undelivered.
+  const batch = await store.takePending(p.user_key, p.group_key);
+  if (!batch.length) return answer(q, t(lang, 'answerExpired'));
 
   // Intake was counted when the messages arrived; count the cash-in by message
   // count (albums included) so a stockpiled chooser cannot release a day of
   // messages in one burst.
   if (CONFIG.deliverPerMinute > 0) {
-    const delivered = await store.bumpRate(link.id, `out:${p.sender_key}`, now, pending.length);
+    const delivered = await store.bumpRate(link.id, `out:${p.sender_key}`, now, batch.length);
     if (delivered > CONFIG.deliverPerMinute) {
-      await store.releasePending(p.user_key, p.group_key);
+      for (const messageId of batch) {
+        await store.addPending({
+          user_key: p.user_key,
+          link_id: link.id,
+          group_key: p.group_key,
+          message_id: messageId,
+          created_at: now,
+        });
+      }
       return answer(q, t(lang, 'throttle'));
     }
   }
   if (CONFIG.ownerPerMinute > 0) {
-    const accepted = await store.bumpRate(0, link.owner_key, now, pending.length);
+    const accepted = await store.bumpRate(0, link.owner_key, now, batch.length);
     if (accepted > CONFIG.ownerPerMinute) {
-      await store.releasePending(p.user_key, p.group_key);
+      for (const messageId of batch) {
+        await store.addPending({
+          user_key: p.user_key,
+          link_id: link.id,
+          group_key: p.group_key,
+          message_id: messageId,
+          created_at: now,
+        });
+      }
       return answer(q, t(lang, 'throttle'));
     }
   }
@@ -132,7 +147,19 @@ async function mode(q, k, opened, lang, now) {
   let target;
   try {
     target = await deliver(link, p.sender_id, p.sender_key, chosen,
-      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
+      batch, p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
+    // A straggler may have landed mid-delivery; ship it in the same mode
+    // instead of leaving it without a prompt.
+    try {
+      const late = await store.takePending(p.user_key, p.group_key);
+      if (late.length) {
+        await deliver(link, p.sender_id, p.sender_key, chosen,
+          late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
+        await drain(1);
+      }
+    } catch {
+      // stragglers stay queued for the next drain; the main batch succeeded
+    }
   } catch {
     await store.releasePending(p.user_key, p.group_key);
     await api.sendMessage({
@@ -185,7 +212,6 @@ async function mode(q, k, opened, lang, now) {
   };
 
   await Promise.all([
-    store.clearPending(p.user_key, p.group_key),
     store.deleteActionToken(opened.row.prefix),
     confirm(),
   ]);
