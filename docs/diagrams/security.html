@@ -5693,6 +5693,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <li>Retired tokens keep only an 8-byte SHA-256 fingerprint, so a token cannot return.</li>
           <li>Optional PBKDF2 (kdfIterations &gt; 0) raises the cost of guessing a chat id.</li>
           <li>Action buttons split ciphertext between the database and callback_data.</li>
+          <li>The button-held 12 characters are 72 bits; truncated ciphertext fails authentication.</li>
         </ul>
       </div>
 
@@ -5703,7 +5704,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </div>
         <ul>
           <li>The operator can read updates and holds the KEK; this is not end-to-end encryption.</li>
+          <li>With both the database and the KEK, sealed fields open; without the button-held suffixes, action payloads still do not.</li>
           <li>A database-only leak still exposes counts, timing, and routing relationships, but not content or encrypted fields without the KEK.</li>
+          <li>Delivery jobs are deleted once sent or failed, pending rows older than a day are swept, and action tokens expire.</li>
           <li>No application logs; CI blocks console, process, dynamic imports, eval, and direct network calls.</li>
         </ul>
       </div>
