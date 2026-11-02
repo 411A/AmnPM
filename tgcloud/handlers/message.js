@@ -299,8 +299,15 @@ function replyTarget(text) {
   return { chatId: Number(text), threadId: 0 };
 }
 
-async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now) {
+async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now, batchIds = null) {
   const attempt = (withReply, targetThread) => {
+    if (batchIds) {
+      // copyMessages has no reply_to parameter, so an album ships as one
+      // batch without threading while single messages keep their reply.
+      const base = { chat_id: chatId, from_chat_id: msg.chat.id, message_ids: batchIds };
+      if (targetThread) base.message_thread_id = targetThread;
+      return api.copyMessages(base);
+    }
     const base = { chat_id: chatId, from_chat_id: msg.chat.id, message_id: msg.message_id };
     if (targetThread) base.message_thread_id = targetThread;
     if (withReply && replyTo) base.reply_to_message_id = replyTo;
@@ -347,6 +354,39 @@ async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now) 
   }
 }
 
+// Owner albums arrive as separate updates sharing one media_group_id. The
+// first inserted row leads: it holds briefly so the followers land in the
+// same batch, then ships everything in one copyMessages call. No extra
+// button is needed; media_group_id already identifies the group. Returns
+// true when this call delivered (the caller confirms), false on failure,
+// and null for followers and duplicates (the caller stays silent so the
+// album gets exactly one confirmation).
+async function copyAlbumToSender(msg, link, chatId, senderKey, thread, replyTo, now) {
+  if (!msg.media_group_id) {
+    return copyToSender(msg, link, chatId, senderKey, thread, replyTo, now);
+  }
+  const userKey = `album:${link.id}:${senderKey}`;
+  const groupKey = String(msg.media_group_id);
+  const added = await store.addPending({
+    user_key: userKey,
+    link_id: link.id,
+    group_key: groupKey,
+    message_id: msg.message_id,
+    created_at: now,
+  });
+  if (!added) return null;
+  if (!(await store.isFirstPending(userKey, groupKey, msg.message_id))) return null;
+  await new Promise((resolve) => setTimeout(resolve, CONFIG.albumHoldMs));
+  const rows = await store.listPending(userKey, groupKey);
+  await store.clearPending(userKey, groupKey);
+  if (!rows.length) return null;
+  if (rows.length === 1) {
+    return copyToSender(msg, link, chatId, senderKey, thread, replyTo, now);
+  }
+  return copyToSender(msg, link, chatId, senderKey, thread, 0, now,
+    rows.map((row) => row.message_id));
+}
+
 async function replyToWindow(msg, window, lang, now) {
   const link = await store.getLink(window.link_id);
   if (!link) {
@@ -377,7 +417,7 @@ async function replyToWindow(msg, window, lang, now) {
     thread = talk.thread;
   }
 
-  const copied = await copyToSender(
+  const copied = await copyAlbumToSender(
     msg,
     link,
     target.chatId,
@@ -386,6 +426,7 @@ async function replyToWindow(msg, window, lang, now) {
     window.original_id,
     now,
   );
+  if (copied === null) return undefined;
   if (!copied) return sendHere(msg, t(lang, 'failed'));
 
   if (window.reply_prompt_id) {
@@ -424,7 +465,7 @@ async function directReply(msg, link, conversation, lang, now) {
   if (talk.pending) return sendHere(msg, t(lang, 'preparing'));
   if (!talk.thread) return sendHere(msg, t(lang, 'failed'));
 
-  const copied = await copyToSender(
+  const copied = await copyAlbumToSender(
     msg,
     link,
     targetChat,
@@ -433,6 +474,7 @@ async function directReply(msg, link, conversation, lang, now) {
     conversation.last_message_id,
     now,
   );
+  if (copied === null) return undefined;
   if (!copied) return sendHere(msg, t(lang, 'failed'));
   return sendHere(msg, t(lang, 'answerSent'));
 }
@@ -569,8 +611,9 @@ async function plain(msg, lang, now) {
 
   if (!added) return undefined;
   if (msg.media_group_id) {
-    const pending = await store.listPending(sessionKey, groupKey);
-    if (pending.length > 1) return undefined;
+    // Only the earliest inserted pending row for the album asks for a mode,
+    // even when every item arrived before the first handler checked.
+    if (!(await store.isFirstPending(sessionKey, groupKey, msg.message_id))) return undefined;
   }
 
   const firstName = msg.from?.first_name ?? '';

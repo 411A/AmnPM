@@ -161,6 +161,53 @@ export async function recreateSenderTopic(link, chatId, senderKey, now) {
   }
 }
 
+// The stored owner topic is dead (Telegram rejects every write to it): create
+// a replacement and repoint the row, like recreateSenderTopic does for senders.
+export async function recreateOwnerTopic(link, chatId, kind, conversationId, now) {
+  const existing = await store.getTopic(link.id, kind, conversationId ?? 0);
+  if (existing) {
+    if (!(await store.beginTopicRecreate(existing.id, existing.thread_id, now))) {
+      const row = await store.getTopic(link.id, kind, conversationId ?? 0);
+      if (row?.state === 'open' && row.thread_id) return row.thread_id;
+    }
+  }
+
+  const memoText = await linkMemo(link);
+  let label = '';
+  if (conversationId) {
+    const conversation = await store.getConversationById(conversationId);
+    if (conversation) label = await conversationLabel(link, conversation);
+  }
+  const name = topicName(kind, memoText, label);
+
+  try {
+    const topic = await api.createForumTopic({ chat_id: chatId, name });
+    if (existing) {
+      await store.updateTopic(
+        existing.id,
+        topic.message_thread_id,
+        existing.name?.startsWith('enc:') ? existing.name : '',
+        'open',
+      );
+    } else {
+      await store.createTopic({
+        link_id: link.id,
+        kind,
+        conversation_id: conversationId ?? 0,
+        thread_id: topic.message_thread_id,
+        name: '',
+        state: 'open',
+        created_at: now,
+      });
+    }
+    if (conversationId) await store.setConversationTopic(conversationId, topic.message_thread_id);
+    return topic.message_thread_id;
+  } catch {
+    if (existing) await store.updateTopicState(existing.id, 0, 'unavailable');
+    return 0;
+  }
+}
+
 export async function closeLinkTopics(link, chatId, lang) {
   const topics = await store.listTopics(link.id);
   const memoText = await linkMemo(link);

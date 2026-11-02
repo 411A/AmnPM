@@ -127,6 +127,20 @@ test('a pending group is claimed by exactly one caller', async () => {
   assert.equal(await store.claimPending('u', 'g'), true);
 });
 
+test('the earliest album row is the sole asker', async () => {
+  assert.ok(await store.addPending({
+    user_key: 'u2', link_id: 1, group_key: 'g', message_id: 11, created_at: 1,
+  }));
+  assert.ok(await store.addPending({
+    user_key: 'u2', link_id: 1, group_key: 'g', message_id: 10, created_at: 1,
+  }));
+  assert.equal(await store.addPending({
+    user_key: 'u2', link_id: 1, group_key: 'g', message_id: 11, created_at: 1,
+  }), 0);
+  assert.equal(await store.isFirstPending('u2', 'g', 11), true);
+  assert.equal(await store.isFirstPending('u2', 'g', 10), false);
+});
+
 test('a new answer replaces the previous reply target', async () => {
   const row = {
     owner_key: 'o', link_id: 1, target_ct: 'c', target_nonce: 'n',

@@ -5,6 +5,7 @@ import { applySchema } from './stub-db.mjs';
 import * as schema from '../tgcloud/schema.js';
 import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
+import { CONFIG } from '../tgcloud/lib/config.js';
 import { linkMemo } from '../tgcloud/lib/keys.js';
 import { tokenFp } from '../tgcloud/lib/ids.js';
 import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
@@ -1074,4 +1075,113 @@ test('owner delivery has a burst cap across senders', async () => {
 
   assert.equal(callsOf('copyMessages').length, before);
   assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /Too fast/);
+});
+
+test('an owner album direct reply ships as one batch', async () => {
+  const hold = CONFIG.albumHoldMs;
+  CONFIG.albumHoldMs = 50;
+  try {
+    await setupLink();
+    await onMessage(message('hello', 200, {
+      first_name: 'V',
+      message_thread_id: firstSenderThread(),
+      message_id: 55,
+    }));
+    await click(buttons().find((entry) => entry.startsWith('H|')));
+
+    const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+    const before = callsOf('copyMessages').length;
+    await Promise.all([
+      onMessage(message(undefined, 100, { media_group_id: 'og1', message_id: 661, message_thread_id: ownerThread })),
+      onMessage(message(undefined, 100, { media_group_id: 'og1', message_id: 662, message_thread_id: ownerThread })),
+    ]);
+
+    const batches = callsOf('copyMessages').slice(before);
+    assert.equal(batches.length, 1);
+    assert.equal(batches[0].args.chat_id, 200);
+    assert.deepEqual(batches[0].args.message_ids, [661, 662]);
+    assert.equal(batches[0].args.reply_to_message_id, undefined);
+    assert.equal(callsOf('copyMessage').length, 0);
+    assert.equal(callsOf('sendMessage').filter((call) => /Reply sent/.test(call.args.text)).length, 1);
+  } finally {
+    CONFIG.albumHoldMs = hold;
+  }
+});
+
+test('an owner album answer ships as one batch', async () => {
+  const hold = CONFIG.albumHoldMs;
+  CONFIG.albumHoldMs = 50;
+  try {
+    await setupLink();
+    const controls = await deliverAnonymous();
+    const data = controls.args.reply_markup.inline_keyboard.flat()
+      .find((button) => button.callback_data.startsWith('A|')).callback_data;
+    await click(data, 100, controls.args.reply_markup, 104);
+
+    const before = callsOf('copyMessages').length;
+    await Promise.all([
+      onMessage(message(undefined, 100, { media_group_id: 'og2', message_id: 671, message_thread_id: 104 })),
+      onMessage(message(undefined, 100, { media_group_id: 'og2', message_id: 672, message_thread_id: 104 })),
+    ]);
+
+    const batches = callsOf('copyMessages').slice(before);
+    assert.equal(batches.length, 1);
+    assert.deepEqual(batches[0].args.message_ids, [671, 672]);
+    assert.equal(callsOf('sendMessage').filter((call) => /Reply sent/.test(call.args.text)).length, 1);
+    assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM reply_windows').get().n, 0);
+  } finally {
+    CONFIG.albumHoldMs = hold;
+  }
+});
+
+test('a dead anon topic is recreated instead of failing', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('M|')));
+
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const beforeThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon'").get().thread_id;
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
+  failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  await drain();
+
+  const afterThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon'").get()?.thread_id ?? 0;
+  assert.ok(afterThread);
+  assert.notEqual(afterThread, beforeThread);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+  assert.equal(callsOf('sendMessage').filter((call) => /Delivery failed/.test(call.args.text ?? '')).length, 0);
+});
+
+test('a recreated topic keeps its forward kind', async () => {
+  await setupLink();
+  await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('F|')));
+
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  rawDb().prepare("DELETE FROM topics WHERE kind = 'forward'").run();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'forward', [77, 78], 'V', 100, 0);
+  failNext('forwardMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  await drain();
+
+  const kinds = rawDb().prepare('SELECT DISTINCT kind AS k FROM topics').all().map((row) => row.k);
+  assert.deepEqual(kinds, ['forward']);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+});
+
+test('a permanently failing delivery notifies the sender', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0, null, null, 'en');
+  for (let i = 0; i < 5; i += 1) failNext('copyMessages', { errorCode: 400, description: 'boom' });
+  for (let i = 0; i < 6; i += 1) {
+    rawDb().prepare('UPDATE jobs SET next_at = 0').run();
+    await drain(10);
+  }
+
+  const notices = callsOf('sendMessage').filter((call) => /Delivery failed/.test(call.args.text ?? ''));
+  assert.ok(notices.some((call) => call.args.chat_id === 200));
+  assert.ok(notices.every((call) => call.args.chat_id !== 100));
 });

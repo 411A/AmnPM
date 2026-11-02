@@ -76,7 +76,7 @@ const en = {
     '{e.send} How should this reach the owner?\n' +
     '<blockquote expandable>{guide}\n\nThe mode only changes what the owner sees about you; every mode still delivers to the owner.</blockquote>',
   modeGuideAnon: '{e.anon} Full anonymous — no name or history is shared. Replies still reach your topic.',
-  modeGuideHistory: '{e.history} With history — a stable alias per link keeps your replies connected without revealing your profile.',
+  modeGuideHistory: '{e.history} With history — a stable alias derived from your first name when the conversation starts; replies stay connected without revealing your profile. It does not change if your Telegram name changes later.',
   modeGuideForward: '{e.forward} Forward — your Telegram profile is shown with the message.',
   modeAnon: '{e.anon} Anonymous',
   modeHistory: '{e.history} With history',
@@ -258,7 +258,7 @@ const fa = {
     '{e.send} این پیام چطور به صاحب لینک برسد؟\n' +
     '<blockquote expandable>{guide}\n\nحالت فقط چیزی را تغییر می‌دهد که صاحب لینک از شما می‌بیند؛ همه حالت‌ها پیام را به صاحب لینک می‌رسانند.</blockquote>',
   modeGuideAnon: '{e.anon} کاملاً ناشناس — هیچ نام یا سابقه‌ای به اشتراک گذاشته نمی‌شود. پاسخ‌ها همچنان به موضوع شما می‌رسند.',
-  modeGuideHistory: '{e.history} با سابقه — نام مستعار ثابت برای هر لینک، بدون نمایش پروفایل شما، ارتباط پاسخ‌ها را حفظ می‌کند.',
+  modeGuideHistory: '{e.history} با سابقه — نام مستعار ثابت بر پایه نام شما هنگام آغاز گفتگو؛ ارتباط پاسخ‌ها حفظ می‌شود بدون نمایش پروفایل. با تغییر نام تلگرام تغییر نمی‌کند.',
   modeGuideForward: '{e.forward} هدایت — پروفایل تلگرام شما همراه پیام دیده می‌شود.',
   modeAnon: '{e.anon} ناشناس',
   modeHistory: '{e.history} با سابقه',

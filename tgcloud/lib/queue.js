@@ -1,7 +1,9 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
 import { openJob, ownerChatId, sealActions, linkDek } from './keys.js';
+import * as crypto from './crypto.js';
 import * as store from './store.js';
+import { recreateOwnerTopic } from './topics.js';
 import { ownerKeyboard } from './render.js';
 import { t } from './i18n.js';
 import { userKeyFor } from './links.js';
@@ -91,14 +93,19 @@ async function sendControls(link, payload, sentIds, now, blockedLink = false, bl
 }
 
 async function notifyFailure(job) {
-  const link = await store.getLink(job.link_id);
-  if (!link) return;
-  const chat = await ownerChatId(link);
-  const owner = await store.getOwner(link.owner_key);
-  await api.sendMessage({
-    chat_id: chat,
-    text: t(owner?.lang ?? 'en', 'failed'),
-  });
+  const payload = job ? (await openJob(job))?.payload : null;
+  const link = job ? await store.getLink(job.link_id) : null;
+  if (!link || !payload?.from_chat_id) return;
+  const lang = payload.sender_lang ?? 'en';
+  try {
+    await api.sendMessage({
+      chat_id: payload.from_chat_id,
+      ...(payload.sender_thread_id ? { message_thread_id: payload.sender_thread_id } : {}),
+      text: t(lang, 'failed'),
+    });
+  } catch {
+    // best effort; the job is already failed
+  }
 }
 
 export async function drain(maxJobs = 3) {
@@ -136,7 +143,44 @@ export async function drain(maxJobs = 3) {
 
       let sentIds = job.sent_ids ? JSON.parse(job.sent_ids) : null;
       if (!sentIds) {
-        const result = await send(job, opened.payload);
+        let result;
+        try {
+          result = await send(job, opened.payload);
+        } catch (err) {
+          const description = String(err?.description ?? err);
+          // A Telegram topic can die after creation: every write to it fails with
+          // "message thread not found". Recreate the owner topic and retry once.
+          if (/message thread not found/i.test(description) && opened.payload.thread_id) {
+            const topic = await store.getOwnedTopicByThread(opened.link.owner_key, opened.payload.thread_id);
+            // Prefer the stored row, then the mode sealed at enqueue time: a
+            // forward topic with a conversation must not be reborn as history.
+            const kind = topic?.kind ?? opened.payload.mode
+              ?? (opened.payload.conversation_id ? 'history' : 'anon');
+            const conversationId = topic?.conversation_id ?? opened.payload.conversation_id ?? 0;
+            const newThread = await recreateOwnerTopic(
+              opened.link,
+              opened.payload.chat_id,
+              kind,
+              conversationId,
+              nowSec(),
+            );
+            if (newThread) {
+              opened.payload.thread_id = newThread;
+              const dek = await linkDek(opened.link);
+              const sealed = await crypto.encrypt(
+                dek,
+                JSON.stringify(opened.payload),
+                `link:${opened.link.id}:job:v1`,
+              );
+              await store.setJobPayload(job.id, sealed.ct, sealed.nonce);
+              result = await send(job, opened.payload);
+            } else {
+              throw err;
+            }
+          } else {
+            throw err;
+          }
+        }
         sentIds = Array.isArray(result)
           ? result.map((message) => message.message_id)
           : (result?.message_id ? [result.message_id] : []);

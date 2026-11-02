@@ -145,11 +145,22 @@ export async function setSessionMode(userKey, mode, now) {
 
 export async function addPending(row) {
   // The unique index makes the insert itself the duplicate check. One statement
-  // per message instead of a SELECT followed by a write.
+  // per message instead of a SELECT followed by a write. Return the inserted row
+  // id so callers can tell duplicate inserts apart from new ones.
   const result = await db.run(sql`INSERT OR IGNORE INTO pending
     (user_key, link_id, group_key, message_id, created_at)
-    VALUES (${row.user_key}, ${row.link_id}, ${row.group_key}, ${row.message_id}, ${row.created_at})`);
-  return (result.rowsAffected ?? result.changes) > 0;
+    VALUES (${row.user_key}, ${row.link_id}, ${row.group_key}, ${row.message_id}, ${row.created_at})
+    RETURNING id`);
+  return Number(result.rows?.[0]?.id ?? 0);
+}
+
+// The earliest inserted pending row for a group is the sole asker, even when
+// every album item landed before the first handler ran.
+export async function isFirstPending(userKey, groupKey, messageId) {
+  const first = await db.get(sql`SELECT message_id FROM pending
+    WHERE user_key = ${userKey} AND group_key = ${groupKey}
+    ORDER BY id LIMIT 1`);
+  return first ? Number(first.message_id) === Number(messageId) : false;
 }
 
 // First caller wins the group; a concurrent second tap gets no rows.
@@ -336,6 +347,13 @@ export async function beginSenderRecreate(id, threadId, now) {
   return (result.rowsAffected ?? result.changes) > 0;
 }
 
+export async function beginTopicRecreate(id, threadId, now) {
+  const result = await db.run(sql`UPDATE topics
+    SET thread_id = 0, state = 'creating', created_at = ${now}
+    WHERE id = ${id} AND thread_id = ${threadId} AND state = 'open'`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
 export async function takeStaleSenderTopic(id, cutoff, now) {
   const result = await db.run(sql`UPDATE sender_topics SET created_at = ${now}
     WHERE id = ${id} AND state = 'creating' AND created_at <= ${cutoff}`);
@@ -455,6 +473,11 @@ export async function deferJob(id, nextAt) {
 export async function failJob(id) {
   // A failed job is never retried; delete it so the encrypted sender id is not retained.
   await db.run(sql`DELETE FROM jobs WHERE id = ${id}`);
+}
+
+export async function setJobPayload(id, ct, nonce) {
+  await db.run(sql`UPDATE jobs SET payload_ct = ${ct}, payload_nonce = ${nonce}
+    WHERE id = ${id}`);
 }
 
 export async function bumpRate(linkId, senderKey, now, amount = 1) {

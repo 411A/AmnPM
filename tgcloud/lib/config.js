@@ -10,6 +10,9 @@ export const CONFIG = {
   maxMemoLength: 32,
   actionTtlSeconds: 2_592_000,
   modeTtlSeconds: 86_400,
+  // Owner albums arrive as separate updates sharing one media_group_id. The
+  // first update holds this long so the rest land in one copyMessages batch.
+  albumHoldMs: 1500,
   tokenLength: 10,
   tokenAlphabet: '23456789abcdefghjkmnopqrstuvwxyz',
   // 0 = fast HMAC lookup. Set >0 for a PBKDF2 cost barrier; changing it invalidates stored keys.

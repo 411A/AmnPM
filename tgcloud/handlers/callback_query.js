@@ -132,7 +132,7 @@ async function mode(q, k, opened, lang, now) {
   let target;
   try {
     target = await deliver(link, p.sender_id, p.sender_key, chosen,
-      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt, owner);
+      pending.map((row) => row.message_id), p.first_name, now, p.thread_id ?? 0, salt, owner, lang);
   } catch {
     await store.releasePending(p.user_key, p.group_key);
     await api.sendMessage({
