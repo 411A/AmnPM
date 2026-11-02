@@ -101,7 +101,7 @@ async function createLink(ownerKey, chatId, memo, now) {
   }
 }
 
-// Numbered defaults: "main 1", "main 2", reusing the lowest free number after a revoke.
+// Numbered defaults: "link 1", "link 2", reusing the lowest free number after a revoke.
 async function nextDefaultMemo(ownerKey) {
   const used = new Set();
   for (const link of await store.listLinks(ownerKey)) {

@@ -28,7 +28,7 @@ test('fingerprints are stable', async () => {
 test('memo is trimmed, collapsed, bounded, and defaulted', () => {
   assert.equal(sanitizeMemo('  work  '), 'work');
   assert.equal(sanitizeMemo('a\n b'), 'a b');
-  assert.equal(sanitizeMemo(''), 'main');
+  assert.equal(sanitizeMemo(''), 'link');
   assert.equal(sanitizeMemo('x'.repeat(100)).length, 32);
 });
 

@@ -19,7 +19,7 @@ export const CONFIG = {
   tokenAlphabet: '23456789abcdefghjkmnopqrstuvwxyz',
   // 0 = fast HMAC lookup. Set >0 for a PBKDF2 cost barrier; changing it invalidates stored keys.
   kdfIterations: 0,
-  defaultMemo: 'main',
+  defaultMemo: 'link',
   repoUrl: 'https://github.com/411A/AmnPM',
   contactUrl: 'https://t.me/AmnPMBot',
 };
