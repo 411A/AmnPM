@@ -223,6 +223,11 @@ function stripTopicPrefix(text) {
   return String(text).replace(direction, '').replace(mode, '').trim();
 }
 
+function rightsError(err) {
+  return /admin|right|privileg|permission|forbidden|chat_admin_required/i
+    .test(String(err?.description ?? err ?? ''));
+}
+
 async function renameTopic(msg, arg, lang) {
   const chatId = msg.chat.id;
   const threadId = msg.message_thread_id ?? 0;
@@ -247,13 +252,16 @@ async function renameTopic(msg, arg, lang) {
     const name = render.customTopicName(topic.kind, label, await linkMemo(link));
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
-    } catch {
+    } catch (err) {
+      if (rightsError(err)) {
+        return send(chatId, t(lang, 'renameRights'), { message_thread_id: threadId });
+      }
       // Transient floods fail the first edit; one retry before giving up.
       await new Promise((resolve) => setTimeout(resolve, 1000));
       try {
         await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
-      } catch {
-        return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+      } catch (retryErr) {
+        return send(chatId, t(lang, rightsError(retryErr) ? 'renameRights' : 'renameFailed'), { message_thread_id: threadId });
       }
     }
     try {
@@ -274,8 +282,8 @@ async function renameTopic(msg, arg, lang) {
     const name = render.customSenderTopicName(label);
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
-    } catch {
-      return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+    } catch (err) {
+      return send(chatId, t(lang, rightsError(err) ? 'renameRights' : 'renameFailed'), { message_thread_id: threadId });
     }
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
   }
@@ -510,11 +518,31 @@ async function senderTopicFor(base, threadId) {
   return null;
 }
 
+// onMessage only routes clean "/cmd" text to command(). A command typed with
+// leading whitespace or sent as a media caption would otherwise fall through
+// to plain() — an owner's "/rename" would be copied to the sender instead of
+// renaming the topic. Known heads route to command(); anything else keeps the
+// old delivery behavior so no message is ever silently dropped.
+const COMMAND_HEADS = new Set([
+  '/start', '/newlink', '/settings', '/help', '/privacy', '/about', '/rename', '/mode',
+]);
+
+function asCommand(msg) {
+  const raw = typeof msg.text === 'string' ? msg.text
+    : (typeof msg.caption === 'string' ? msg.caption : '');
+  const head = raw.trimStart().split(/\s+/, 1)[0] ?? '';
+  if (!COMMAND_HEADS.has(head)) return null;
+  return { ...msg, text: raw.trim() };
+}
+
 async function plain(msg, lang, now) {
   const chatId = msg.chat.id;
   const salt = await ownerSalt();
   const ownerKey = await userKeyFor(chatId, salt);
   const state = await store.getOwnerState(ownerKey);
+
+  const cmd = asCommand(msg);
+  if (cmd) return command(cmd, lang, now);
 
   if (state?.memo_link_id) {
     if (typeof msg.text !== 'string') {
@@ -535,7 +563,7 @@ async function plain(msg, lang, now) {
       await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
       const updated = await store.getLink(link.id);
       const chat = await ownerChatId(updated);
-      await renameTopics(updated, chat);
+      const renamed = await renameTopics(updated, chat);
       await Promise.all([
         state.memo_message_id
           ? api.deleteMessage({ chat_id: chat, message_id: state.memo_message_id }).catch(() => {})
@@ -543,6 +571,9 @@ async function plain(msg, lang, now) {
         api.deleteMessage({ chat_id: chatId, message_id: msg.message_id }).catch(() => {}),
         store.clearMemoState(ownerKey),
       ]);
+      if (renamed.failed > 0) {
+        return sendHere(msg, t(lang, renamed.rights ? 'renameRights' : 'memoPartial', { count: renamed.failed }));
+      }
     } else {
       await store.clearMemoState(ownerKey);
     }

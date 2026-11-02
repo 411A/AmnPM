@@ -861,6 +861,81 @@ test('re-setting the same label skips the API call', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
 });
 
+test('a rename without topic rights says so directly', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+
+  failNext('editForumTopic', { errorCode: 400, description: 'Bad Request: not enough rights to manage topics' });
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Manage Topics/);
+});
+
+test('a memo change reports topics that kept old names', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+
+  failNext('editForumTopic', { errorCode: 400, description: 'Bad Request: need administrator rights' });
+  await onMessage(message('newmemo', 100, { message_id: 7777 }));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Manage Topics/);
+  assert.match(rawDb().prepare('SELECT memo FROM links LIMIT 1').get().memo, /^enc:/);
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  failNext('editForumTopic', { errorCode: 400, description: 'Bad Request: TOPIC_CLOSED' });
+  await onMessage(message('othermemo', 100, { message_id: 7778 }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /1 topic\(s\) kept their old names/);
+});
+
+test('a rename sent as a photo caption is not forwarded to the sender', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, {
+    first_name: 'V',
+    message_thread_id: firstSenderThread(),
+    message_id: 55,
+  }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+  const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+
+  const beforeCopy = callsOf('copyMessage').length;
+  const beforeEdit = callsOf('editForumTopic').length;
+  await onMessage(message(undefined, 100, {
+    caption: '/rename Friends',
+    photo: [{ file_id: 'p1' }],
+    message_id: 701,
+    message_thread_id: ownerThread,
+  }));
+
+  assert.equal(callsOf('copyMessage').length, beforeCopy);
+  assert.equal(callsOf('editForumTopic').length, beforeEdit + 1);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+});
+
+test('a rename with leading whitespace still renames', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+
+  const beforeCopy = callsOf('copyMessage').length;
+  await onMessage(message('  /rename Friends', 100, { message_thread_id: thread }));
+
+  assert.equal(callsOf('copyMessage').length, beforeCopy);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+});
+
+test('an unknown slash message still delivers instead of vanishing', async () => {
+  await setupLink();
+  await onMessage(message('  /frobnicate hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+
+  assert.ok(buttons().some((entry) => entry.startsWith('M|')));
+});
+
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
   await setupLink();
   await deliverAnonymous();

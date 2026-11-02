@@ -66,6 +66,8 @@ async function topicDisplayName(link, topic, memoText) {
 export async function renameTopics(link, chatId) {
   const memoText = await linkMemo(link);
   const topics = await store.listTopics(link.id);
+  let failed = 0;
+  let rights = false;
   for (const topic of topics) {
     if (!topic.thread_id) continue;
     const name = await topicDisplayName(link, topic, memoText);
@@ -77,10 +79,14 @@ export async function renameTopics(link, chatId) {
         topic.name?.startsWith('enc:') ? topic.name : '',
         topic.state,
       );
-    } catch {
+    } catch (err) {
       // keep the old name; the memo change is still stored
+      failed += 1;
+      rights = rights || /admin|right|privileg|permission|forbidden|chat_admin_required/i
+        .test(String(err?.description ?? err ?? ''));
     }
   }
+  return { failed, rights };
 }
 
 export async function ensureSenderTopic(link, chatId, senderKey, now) {
