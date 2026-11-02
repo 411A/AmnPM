@@ -6,7 +6,7 @@ import { t } from './i18n.js';
 import { sealAction, linkMemo, linkToken, ownerChatId } from './keys.js';
 import { deepLink } from './links.js';
 import { shareUrl } from './render.js';
-import { EMOJI, CALLBACK } from './constants.js';
+import { EMOJI, CALLBACK, STYLE } from './constants.js';
 
 export function homeMenu(lang) {
   return {
@@ -25,6 +25,9 @@ export function homeMenu(lang) {
 export function modesMenu(lang, modes) {
   const row = (mode, label) => [{
     text: `${modes.includes(mode) ? EMOJI.selected : EMOJI.unselected} ${label}`,
+    // The button color carries the same state for clients that render it:
+    // green when the mode receives messages, red when it does not.
+    style: modes.includes(mode) ? STYLE.enabled : STYLE.disabled,
     callback_data: `${CALLBACK.MODE_TOGGLE}${CALLBACK.SEP}${mode}${CALLBACK.SEP}${modes.includes(mode) ? '0' : '1'}`,
   }];
   return {

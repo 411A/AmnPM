@@ -241,6 +241,27 @@ test('the owner can hide send modes and senders see only the rest', async () => 
   assert.doesNotMatch(chooser.args.text, /With history|Forward/);
 });
 
+test('mode toggles carry state in color as well as glyphs', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/settings', 100));
+  await click('m:modes', 100);
+
+  for (const button of lastMenuButtons().filter((entry) => entry.callback_data.startsWith('T|'))) {
+    assert.match(button.callback_data, /^T\|(anon|history|forward)\|(0|1)$/);
+    assert.ok(button.style === 'success' || button.style === 'danger');
+  }
+  const styles = Object.fromEntries(lastMenuButtons()
+    .filter((entry) => entry.callback_data.startsWith('T|'))
+    .map((entry) => [entry.callback_data.split('|')[1], entry.style]));
+  assert.deepEqual(styles, { anon: 'success', history: 'success', forward: 'success' });
+
+  await click(modeToggle('history'), 100);
+  const toggled = lastMenuButtons().find((entry) => entry.callback_data.startsWith('T|history|'));
+  assert.equal(toggled.style, 'danger');
+  assert.match(toggled.text, /^✗ /);
+  assert.match(toggled.callback_data, /\|1$/);
+});
+
 test('a menu pressed from another chat cannot change owner modes', async () => {
   await onMessage(message('/start', 100));
   await onMessage(message('/settings', 100));
@@ -287,7 +308,7 @@ test('the last enabled mode cannot be disabled', async () => {
 
   const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
   assert.match(alerts.at(-1).args.text, /at least one mode/);
-  assert.match(lastMenuButtons().find((button) => button.callback_data.startsWith('T|forward|')).text, /^✓/);
+  assert.equal(lastMenuButtons().find((button) => button.callback_data.startsWith('T|forward|')).style, 'success');
 });
 
 test('a stranger reaches the owner anonymously', async () => {

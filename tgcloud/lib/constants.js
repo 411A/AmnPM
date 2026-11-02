@@ -44,6 +44,12 @@ export const EMOJI = {
   unverified: '⚪️',
 };
 
+// Button state by meaning; the values are the platform's native styles.
+export const STYLE = {
+  enabled: 'success',
+  disabled: 'danger',
+};
+
 export const CALLBACK = {
   SEP: '|',
   MENU_PREFIX: 'm:',
