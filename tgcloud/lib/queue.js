@@ -1,6 +1,6 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
-import { openJob, ownerChatId, sealActions, linkDek } from './keys.js';
+import { openJob, sealActions, linkDek } from './keys.js';
 import * as crypto from './crypto.js';
 import * as store from './store.js';
 import { recreateOwnerTopic } from './topics.js';
