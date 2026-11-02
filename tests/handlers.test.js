@@ -1024,6 +1024,31 @@ test('a renamed forward topic keeps its memo and follows memo changes', async ()
   assert.equal(callsOf('editForumTopic').at(-1).args.name, '\u200E⬇️ 😎 Friends · newmemo');
 });
 
+test('a memo prompt opened from a topic answers in that topic', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const ownerThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon'").get().thread_id;
+
+  await onMessage(message('/settings', 100, { message_thread_id: ownerThread }));
+  await click('m:links', 100, undefined, ownerThread);
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100, undefined, ownerThread);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100, undefined, ownerThread);
+
+  const prompt = callsOf('sendMessage').filter((call) => /Send the new memo/.test(call.args.text)).at(-1);
+  assert.equal(prompt.args.message_thread_id, ownerThread);
+});
+
+test('a memo prompt opened from All stays in All', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+
+  const prompt = callsOf('sendMessage').filter((call) => /Send the new memo/.test(call.args.text)).at(-1);
+  assert.equal(prompt.args.message_thread_id, undefined);
+});
+
 test('the memo prompt and the memo message are removed after use', async () => {
   await setupLink();
   await deliverAnonymous();

@@ -451,7 +451,7 @@ async function memoPrompt(q, opened, lang, now) {
   if (await store.getReplyWindow(opened.link.owner_key, now)) {
     return answer(q, t(lang, 'replyBusy'), true);
   }
-  const openedMemo = await requestMemo(opened.link, lang);
+  const openedMemo = await requestMemo(opened.link, lang, q.message?.message_thread_id ?? 0);
   if (!openedMemo) return answer(q, t(lang, 'replyBusy'), true);
   return answer(q);
 }

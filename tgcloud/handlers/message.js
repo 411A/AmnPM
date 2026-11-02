@@ -181,11 +181,11 @@ async function openLink(msg, token, lang, now) {
   await store.upsertSession(await sessionKeyFrom(base), link.id, now);
   const senderKey = await senderKeyFrom(base, link.id);
   const talk = await ensureSenderTopic(link, chatId, senderKey, now);
-  if (talk.pending) return send(chatId, t(lang, 'topicPreparing'));
-  if (!talk.thread) return send(chatId, t(lang, 'topicFailed'));
+  if (talk.pending) return sendHere(msg, t(lang, 'topicPreparing'));
+  if (!talk.thread) return sendHere(msg, t(lang, 'topicFailed'));
   if (talk.created) {
     try {
-      await send(chatId, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
+      await sendHere(msg, t(lang, 'senderTopicHint', { token: await linkToken(link) }));
     } catch {
       // the prompt below is the important message
     }
@@ -195,7 +195,7 @@ async function openLink(msg, token, lang, now) {
   } catch (err) {
     if (!/thread|topic/i.test(String(err?.description ?? err))) throw err;
     const fresh = await recreateSenderTopic(link, chatId, senderKey, now);
-    if (!fresh) return send(chatId, t(lang, 'topicFailed'));
+    if (!fresh) return sendHere(msg, t(lang, 'topicFailed'));
     return send(chatId, t(lang, 'prompt'), { message_thread_id: fresh });
   }
 }
@@ -577,7 +577,7 @@ async function plain(msg, lang, now) {
         // message already gone
       }
       const link = await store.getLink(state.memo_link_id);
-      if (link) await requestMemo(link, lang);
+      if (link) await requestMemo(link, lang, msg.message_thread_id ?? 0);
       return undefined;
     }
     const link = await store.getLink(state.memo_link_id);

@@ -136,8 +136,9 @@ export async function editRichMenu(q, html, keyboard) {
 }
 
 // Sends the memo prompt into the owner chat and remembers it, so it can be
-// removed once the memo arrives. Replaces any prompt still pending.
-export async function requestMemo(link, lang) {
+// removed once the memo arrives. Replaces any prompt still pending. The
+// prompt answers in the same topic the button was pressed in.
+export async function requestMemo(link, lang, threadId = 0) {
   const chatId = await ownerChatId(link);
   const current = await store.getMemoState(link.owner_key);
   if (!(await store.claimMemo(link.owner_key, link.id))) return false;
@@ -151,6 +152,7 @@ export async function requestMemo(link, lang) {
   try {
     const sent = await api.sendMessage({
       chat_id: chatId,
+      ...(threadId ? { message_thread_id: threadId } : {}),
       text: t(lang, 'memoPrompt', { max: CONFIG.maxMemoLength }),
       parse_mode: 'HTML',
       link_preview_options: { is_disabled: true },
