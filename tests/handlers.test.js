@@ -814,6 +814,53 @@ test('changing a memo renames the topics', async () => {
   assert.match(edits[0].args.name, /newmemo/);
 });
 
+test('a renamed label cannot repeat another topic label', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const anonThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: anonThread }));
+
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().filter((entry) => entry.startsWith('H|')).at(-1));
+  const historyThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'history'").get().thread_id;
+
+  const before = callsOf('editForumTopic').length;
+  await onMessage(message('/rename friends', 100, { message_thread_id: historyThread }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /already used/);
+  assert.equal(callsOf('editForumTopic').length, before);
+
+  await onMessage(message('/rename Family', 100, { message_thread_id: historyThread }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+  assert.equal(callsOf('editForumTopic').length, before + 1);
+});
+
+test('a rename retries once after a transient edit failure', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+
+  failNext('editForumTopic', { errorCode: 429, parameters: { retry_after: 1 } });
+  const before = callsOf('editForumTopic').length;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+
+  // The first edit threw (unrecorded by the stub); the retry recorded the success.
+  assert.equal(callsOf('editForumTopic').length, before + 1);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+  assert.ok(!callsOf('sendMessage').some((call) => /Could not rename/.test(call.args.text ?? '')));
+});
+
+test('re-setting the same label skips the API call', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+
+  const before = callsOf('editForumTopic').length;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+  assert.equal(callsOf('editForumTopic').length, before);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+});
+
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
   await setupLink();
   await deliverAnonymous();

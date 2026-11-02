@@ -208,6 +208,25 @@ export async function recreateOwnerTopic(link, chatId, kind, conversationId, now
   }
 }
 
+// A renamed topic must not share its label with another custom topic in the
+// same forum: same-kind/same-memo displays cannot collide structurally, but
+// equal labels across kinds or links read as the same topic. Sender topics
+// need no check: each lives in a different private chat, so they never share
+// visibility.
+export async function isTopicNameTaken(ownerKey, link, label, exceptId) {
+  const wanted = label.toLowerCase();
+  for (const owned of await store.listLinks(ownerKey)) {
+    const rowLink = owned.id === link.id ? link : await store.getLink(owned.id);
+    if (!rowLink) continue;
+    for (const row of await store.listTopics(rowLink.id)) {
+      if (row.id === exceptId) continue;
+      const custom = await topicLabel(rowLink, row);
+      if (custom && custom.toLowerCase() === wanted) return true;
+    }
+  }
+  return false;
+}
+
 export async function closeLinkTopics(link, chatId, lang) {
   const topics = await store.listTopics(link.id);
   const memoText = await linkMemo(link);

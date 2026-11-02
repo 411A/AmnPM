@@ -5,9 +5,9 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, conversationChatId } from '../lib/keys.js';
+import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, topicLabel, conversationChatId } from '../lib/keys.js';
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
-import { renameTopics, ensureSenderTopic, recreateSenderTopic } from '../lib/topics.js';
+import { renameTopics, ensureSenderTopic, recreateSenderTopic, isTopicNameTaken } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { deepLink, ownerSalt, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
@@ -236,12 +236,31 @@ async function renameTopic(msg, arg, lang) {
   if (topic) {
     const link = await store.getLink(topic.link_id);
     if (!link) return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
+    // Re-setting the same label is a no-op success without an API call.
+    if ((await topicLabel(link, topic)) === label) {
+      const name = render.customTopicName(topic.kind, label, await linkMemo(link));
+      return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
+    }
+    if (await isTopicNameTaken(ownerKey, link, label, topic.id)) {
+      return send(chatId, t(lang, 'renameTaken'), { message_thread_id: threadId });
+    }
     const name = render.customTopicName(topic.kind, label, await linkMemo(link));
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+    } catch {
+      // Transient floods fail the first edit; one retry before giving up.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
+      } catch {
+        return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
+      }
+    }
+    try {
       const sealed = await sealTopicName(link, topic.id, label);
       await store.updateTopic(topic.id, threadId, sealed, topic.state);
     } catch {
+      // the display changed but was not stored; a retry heals both.
       return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
     }
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
