@@ -241,8 +241,15 @@ async function renameTopic(msg, arg, lang) {
   if (topic) {
     const link = await store.getLink(topic.link_id);
     if (!link) return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
-    // Re-setting the same label is a no-op success without an API call.
-    if ((await topicLabel(link, topic)) === label) {
+    // Re-setting the same label is a no-op success without an API call. An
+    // unreadable stored name simply means "not the same", never a crash.
+    let current = '';
+    try {
+      current = await topicLabel(link, topic);
+    } catch {
+      current = '';
+    }
+    if (current === label) {
       const name = render.customTopicName(topic.kind, label, await linkMemo(link));
       return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
     }

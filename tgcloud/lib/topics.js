@@ -55,12 +55,18 @@ export async function ensureTopic(link, chatId, kind, conversationId, name) {
 }
 
 async function topicDisplayName(link, topic, memoText) {
-  const custom = await topicLabel(link, topic);
-  if (custom) return customTopicName(topic.kind, custom, memoText);
-  if (topic.kind === 'anon') return topicName('anon', memoText);
-  const conversation = await store.getConversationById(topic.conversation_id);
-  const label = conversation ? await conversationLabel(link, conversation) : '';
-  return topicName(topic.kind, memoText, label);
+  // A name that cannot decrypt must not kill the caller: fall back to the
+  // default display name for this row and keep renaming the rest.
+  try {
+    const custom = await topicLabel(link, topic);
+    if (custom) return customTopicName(topic.kind, custom, memoText);
+    if (topic.kind === 'anon') return topicName('anon', memoText);
+    const conversation = await store.getConversationById(topic.conversation_id);
+    const label = conversation ? await conversationLabel(link, conversation) : '';
+    return topicName(topic.kind, memoText, label);
+  } catch {
+    return topicName(topic.kind, memoText, '');
+  }
 }
 
 export async function renameTopics(link, chatId) {
@@ -226,7 +232,13 @@ export async function isTopicNameTaken(ownerKey, link, label, exceptId) {
     if (!rowLink) continue;
     for (const row of await store.listTopics(rowLink.id)) {
       if (row.id === exceptId) continue;
-      const custom = await topicLabel(rowLink, row);
+      // A row that cannot decrypt is unknown, not a collision.
+      let custom = '';
+      try {
+        custom = await topicLabel(rowLink, row);
+      } catch {
+        continue;
+      }
       if (custom && custom.toLowerCase() === wanted) return true;
     }
   }

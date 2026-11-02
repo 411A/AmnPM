@@ -951,6 +951,35 @@ test('an unknown slash message still delivers instead of vanishing', async () =>
   assert.ok(buttons().some((entry) => entry.startsWith('M|')));
 });
 
+test('one unreadable topic name does not block renaming another', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  // A sealed name that cannot decrypt must not poison owner-wide operations.
+  rawDb().prepare("UPDATE topics SET name = 'enc:broken'").run();
+
+  const before = callsOf('sendMessage').length;
+  await onMessage(message('/rename Friends', 100, { message_thread_id: thread }));
+
+  assert.ok(callsOf('sendMessage').length > before);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
+  assert.equal(callsOf('editForumTopic').length, 1);
+});
+
+test('one unreadable topic name does not block a memo change', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  rawDb().prepare("UPDATE topics SET name = 'enc:broken'").run();
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('newmemo', 100, { message_id: 7777 }));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Memo updated/);
+  assert.match(rawDb().prepare('SELECT memo FROM links LIMIT 1').get().memo, /^enc:/);
+});
+
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
   await setupLink();
   await deliverAnonymous();
