@@ -976,7 +976,7 @@ test('one unreadable topic name does not block a memo change', async () => {
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('newmemo', 100, { message_id: 7777 }));
 
-  assert.match(callsOf('sendMessage').at(-1).args.text, /Memo updated/);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /kept their old names/);
   assert.match(rawDb().prepare('SELECT memo FROM links LIMIT 1').get().memo, /^enc:/);
 });
 
@@ -1059,6 +1059,21 @@ test('the link menu offers open and share actions', async () => {
   const menu = callsOf('editMessageText').at(-1).args.reply_markup.inline_keyboard.flat();
   assert.ok(menu.some((button) => /t\.me\/test_bot\?start=/.test(String(button.url))));
   assert.ok(menu.some((button) => /t\.me\/share\/url/.test(String(button.url))));
+});
+
+test('an unreadable topic name is left alone, not overwritten', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  rawDb().prepare("UPDATE topics SET name = 'enc:broken'").run();
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('newmemo', 100, { message_id: 7777 }));
+
+  // The bot cannot read the custom name, so it must not replace it with a guess.
+  assert.equal(callsOf('editForumTopic').length, 0);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /kept their old names/);
 });
 
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {

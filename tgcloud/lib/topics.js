@@ -55,8 +55,8 @@ export async function ensureTopic(link, chatId, kind, conversationId, name) {
 }
 
 async function topicDisplayName(link, topic, memoText) {
-  // A name that cannot decrypt must not kill the caller: fall back to the
-  // default display name for this row and keep renaming the rest.
+  // A name that cannot decrypt must not kill the caller, and must not be
+  // replaced by a guessed default either: null means "leave this topic alone".
   try {
     const custom = await topicLabel(link, topic);
     if (custom) return customTopicName(topic.kind, custom, memoText);
@@ -65,7 +65,7 @@ async function topicDisplayName(link, topic, memoText) {
     const label = conversation ? await conversationLabel(link, conversation) : '';
     return topicName(topic.kind, memoText, label);
   } catch {
-    return topicName(topic.kind, memoText, '');
+    return null;
   }
 }
 
@@ -77,6 +77,11 @@ export async function renameTopics(link, chatId) {
   for (const topic of topics) {
     if (!topic.thread_id) continue;
     const name = await topicDisplayName(link, topic, memoText);
+    if (!name) {
+      // Unreadable row: never overwrite a custom name with a guessed default.
+      failed += 1;
+      continue;
+    }
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: topic.thread_id, name });
       await store.updateTopic(
@@ -266,7 +271,7 @@ export async function closeLinkTopics(link, chatId, lang) {
       // closeForumTopic is supergroup-only. In a private bot chat, mark the
       // topic name instead so it still reads as closed; the bot rejects writes.
       try {
-        const name = await topicDisplayName(link, topic, memoText);
+        const name = (await topicDisplayName(link, topic, memoText)) ?? topicName(topic.kind, memoText, '');
         await api.editForumTopic({
           chat_id: chatId,
           message_thread_id: topic.thread_id,

@@ -610,7 +610,13 @@ async function plain(msg, lang, now) {
     await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
     const updated = await store.getLink(link.id);
     const chat = await ownerChatId(updated);
-    const renamed = await renameTopics(updated, chat);
+    let renamed = { failed: 0, rights: false };
+    try {
+      renamed = await renameTopics(updated, chat);
+    } catch {
+      // The memo itself is saved; report the rename problem instead of dying.
+      renamed = { failed: 1, rights: false };
+    }
     await Promise.all([
       state.memo_message_id
         ? api.deleteMessage({ chat_id: chat, message_id: state.memo_message_id }).catch(() => {})
