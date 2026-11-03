@@ -1137,6 +1137,7 @@ test('owners can rename a topic and keep the mandatory emoji prefix', async () =
   const edit = callsOf('editForumTopic').at(-1);
   assert.equal(edit.args.name, '\u200E⬇️ 👽 Cool stuff · link 1');
   assert.match(rawDb().prepare('SELECT name FROM topics WHERE thread_id = ?').get(thread).name, /^enc:/);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /reopen the chat/);
   assert.equal(callsOf('sendMessage').at(-1).args.message_thread_id, thread);
 });
 

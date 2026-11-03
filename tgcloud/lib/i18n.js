@@ -37,7 +37,7 @@ const en = {
     '</ul>\n' +
     '</details>\n' +
     '<details><summary><b>Topics & naming</b></summary>\n' +
-    'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji.\n' +
+    'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji. Telegram may not push the new title to your app instantly: reopen the chat to refresh it.\n' +
     '</details>\n' +
     '<details><summary><b>Managing links</b></summary>\n' +
     'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays.\n' +
@@ -139,7 +139,7 @@ const en = {
   menuExpired: '{e.warn} This menu is out of date. Open /settings again.',
   albumPartialSender: '{e.warn} Part of your album arrived too late and was not sent. Please resend it.',
   renameUsage: '{e.tag} Send <code>/rename name</code> inside the topic you want to rename.',
-  renamed: '{e.tag} Topic renamed to {name}.',
+  renamed: '{e.tag} Topic renamed to {name}.\nIf your app still shows the old title, reopen the chat.',
   renameNoTopic: '{e.warn} Use <code>/rename name</code> inside a topic (not in All).',
   renameUnknown: '{e.warn} This topic belongs to an older or revoked link, so the bot cannot rename it. Open a current topic and try again.',
   renameFailed: '{e.warn} Could not rename this topic.',
@@ -227,7 +227,7 @@ const fa = {
     '</ul>\n' +
     '</details>\n' +
     '<details><summary><b>موضوع‌ها و نام‌گذاری</b></summary>\n' +
-    'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند.\n' +
+    'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند. ممکن است عنوان جدید فوراً در برنامه شما نمایش داده نشود: گفتگو را دوباره باز کنید.\n' +
     '</details>\n' +
     '<details><summary><b>مدیریت لینک‌ها</b></summary>\n' +
     'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند.\n' +
@@ -329,7 +329,7 @@ const fa = {
   menuExpired: '{e.warn} این منو قدیمی است. دوباره /settings را باز کنید.',
   albumPartialSender: '{e.warn} بخشی از آلبوم دیر رسید و ارسال نشد. لطفاً دوباره بفرستید.',
   renameUsage: '{e.tag} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: <code>/rename نام</code>',
-  renamed: '{e.tag} نام موضوع به {name} تغییر کرد.',
+  renamed: '{e.tag} نام موضوع به {name} تغییر کرد.\nاگر برنامه شما هنوز عنوان قبلی را نشان می‌دهد، گفتگو را دوباره باز کنید.',
   renameNoTopic: '{e.warn} برای تغییر نام، <code>/rename نام</code> را داخل یکی از موضوع‌ها (نه در All) بفرستید.',
   renameUnknown: '{e.warn} این موضوع به یک لینک قدیمی یا حذف‌شده تعلق دارد و قابل تغییر نام نیست. یک موضوع فعلی را باز کنید و دوباره تلاش کنید.',
   renameFailed: '{e.warn} تغییر نام این موضوع ممکن نشد.',
