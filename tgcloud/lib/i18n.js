@@ -135,7 +135,9 @@ const en = {
   revokedShort: 'Revoked.',
   memoPrompt: '{e.memo} Send the new memo (max {max} characters).',
   memoChanged: '{e.memo} <b>Memo updated</b>\n<blockquote>{memo}</blockquote>',
-  memoTaken: '{e.warn} Another link already uses that name. Pick a different memo.',
+  memoTaken: '{e.warn} Another link already uses that name. Try "{suggestion}" instead.',
+  menuExpired: '{e.warn} This menu is out of date. Open /settings again.',
+  albumPartialSender: '{e.warn} Part of your album arrived too late and was not sent. Please resend it.',
   renameUsage: '{e.tag} Send <code>/rename name</code> inside the topic you want to rename.',
   renamed: '{e.tag} Topic renamed to {name}.',
   renameNoTopic: '{e.warn} Use <code>/rename name</code> inside a topic.',
@@ -154,7 +156,7 @@ const en = {
   replySetup:
     '{e.info} This topic was created before direct replies. Press Answer once on any message here, ' +
     'or ask the sender to send one message. After that, typing here replies directly.',
-  modeCleared: '{e.repeat} Mode cleared. Send your next message to choose again.',
+  modeCleared: '{e.repeat} Mode marker cleared. Every message still asks once before sending.',
   cancelled: 'Cancelled.',
   btnAnswer: '{e.answer} Answer',
   btnRead: '{e.eyes} Read',
@@ -322,7 +324,9 @@ const fa = {
   revokedShort: 'حذف شد.',
   memoPrompt: '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
   memoChanged: '{e.memo} <b>یادداشت به‌روز شد</b>\n<blockquote>{memo}</blockquote>',
-  memoTaken: '{e.warn} نام دیگری برای لینک دیگری استفاده شده. یادداشت دیگری انتخاب کنید.',
+  memoTaken: '{e.warn} نام دیگری برای لینک دیگری استفاده شده. «{suggestion}» را امتحان کنید.',
+  menuExpired: '{e.warn} این منو قدیمی است. دوباره /settings را باز کنید.',
+  albumPartialSender: '{e.warn} بخشی از آلبوم دیر رسید و ارسال نشد. لطفاً دوباره بفرستید.',
   renameUsage: '{e.tag} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: <code>/rename نام</code>',
   renamed: '{e.tag} نام موضوع به {name} تغییر کرد.',
   renameNoTopic: '{e.warn} برای تغییر نام، <code>/rename نام</code> را داخل یک موضوع بفرستید.',
@@ -341,7 +345,7 @@ const fa = {
   replySetup:
     '{e.info} این موضوع پیش از فعال‌شدن پاسخ مستقیم ساخته شده است. یک بار روی Answer هر پیام همین‌جا بزنید، ' +
     'یا از فرستنده بخواهید یک پیام بفرستد. بعد از آن، تایپ در همین موضوع مستقیماً ارسال می‌شود.',
-  modeCleared: '{e.repeat} حالت پاک شد. پیام بعدی را بفرستید تا دوباره انتخاب کنید.',
+  modeCleared: '{e.repeat} نشانگر حالت پاک شد. هر پیام پیش از ارسال همچنان یک بار می‌پرسد.',
   cancelled: 'لغو شد.',
   btnAnswer: '{e.answer} پاسخ',
   btnRead: '{e.eyes} خواندن',

@@ -208,29 +208,39 @@ async function mode(q, k, opened, lang, now) {
     target = await deliver(link, p.sender_id, p.sender_key, chosen,
       batch, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
     // A straggler may have landed mid-delivery; ship it in the same mode
-    // instead of leaving it without a prompt.
+    // instead of leaving it without a prompt. It pays the same rate limits as
+    // the main batch, otherwise racing messages against the tap bypasses them.
     try {
       const late = await store.takePending(p.user_key, p.group_key);
       if (late.length) {
-        try {
-          await deliver(link, p.sender_id, p.sender_key, chosen,
-            late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
-          await drain(1);
-        } catch {
-          // put the stragglers back so a retry tap still finds them
-          for (const messageId of late) {
-            await store.addPending({
-              user_key: p.user_key,
-              link_id: link.id,
-              group_key: p.group_key,
-              message_id: messageId,
-              created_at: now,
+        const lateDelivered = await store.bumpRate(link.id, `out:${p.sender_key}`, now, late.length);
+        const lateOwner = await store.bumpRate(0, link.owner_key, now, late.length);
+        const overLimit = (CONFIG.deliverPerMinute > 0 && lateDelivered > CONFIG.deliverPerMinute)
+          || (CONFIG.ownerPerMinute > 0 && lateOwner > CONFIG.ownerPerMinute);
+        if (overLimit) {
+          await api.sendMessage({
+            chat_id: p.sender_id,
+            ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
+            text: t(lang, 'albumPartialSender'),
+          });
+        } else {
+          try {
+            await deliver(link, p.sender_id, p.sender_key, chosen,
+              late, p.first_name, now, p.thread_id ?? 0, salt, owner, lang, confirmIds);
+            await drain(1);
+          } catch {
+            // The main batch already succeeded; tell the sender about the rest
+            // instead of leaving it silently queued without a prompt.
+            await api.sendMessage({
+              chat_id: p.sender_id,
+              ...(p.thread_id ? { message_thread_id: p.thread_id } : {}),
+              text: t(lang, 'albumPartialSender'),
             });
           }
         }
       }
     } catch {
-      // stragglers stay queued for the next drain; the main batch succeeded
+      // pending rows stay intact; the next drain or message handles them
     }
   } catch {
     await refund();
@@ -556,7 +566,9 @@ export default async function onCallback(update) {
     const opened = await openAction(prefix, suffix);
     const expected = KINDS[k];
     if (!opened || !expected || opened.row.kind !== expected) {
-      return await answer(q, t(lang, 'linkNotFound'));
+      // A regenerated menu deletes the previous menu's tokens; say so instead
+      // of the misleading "link not found".
+      return await answer(q, t(lang, expected === 'menu' ? 'menuExpired' : 'linkNotFound'));
     }
 
     // Action tokens are bearer capabilities; bind them to the intended actor.

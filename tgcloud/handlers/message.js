@@ -212,12 +212,23 @@ async function memoInUse(ownerKey, memo, exceptLinkId = 0) {
   return false;
 }
 
+// First free "link N" label, used to suggest a name after a duplicate.
+async function nextFreeMemo(ownerKey) {
+  const used = new Set();
+  for (const link of await store.listLinks(ownerKey)) {
+    used.add((await linkMemo(link)).trim().toLowerCase());
+  }
+  let n = 1;
+  while (used.has(`${CONFIG.defaultMemo} ${n}`.toLowerCase())) n += 1;
+  return `${CONFIG.defaultMemo} ${n}`;
+}
+
 async function newLink(msg, arg, lang, now) {
   const chatId = msg.chat.id;
   const ownerKey = await userKeyFor(chatId);
   await store.ensureOwner(ownerKey, now, lang);
   if (arg && await memoInUse(ownerKey, ids.sanitizeMemo(arg))) {
-    return sendHere(msg, t(lang, 'memoTaken'));
+    return sendHere(msg, t(lang, 'memoTaken', { suggestion: await nextFreeMemo(ownerKey) }));
   }
   const link = await createLink(ownerKey, chatId, arg || await nextDefaultMemo(ownerKey), now);
   if (!link) return sendHere(msg, t(lang, 'capReached', { cap: CONFIG.maxLinksPerOwner }));
@@ -591,8 +602,10 @@ async function plain(msg, lang, now) {
       } catch {
         // message already gone
       }
+      // The prompt is still on screen; re-sending it for every album item
+      // would flood the chat.
       const link = await store.getLink(state.memo_link_id);
-      if (link) await requestMemo(link, lang, msg.message_thread_id ?? 0);
+      if (link && !state.memo_message_id) await requestMemo(link, lang, msg.message_thread_id ?? 0);
       return undefined;
     }
     const link = await store.getLink(state.memo_link_id);
@@ -603,7 +616,7 @@ async function plain(msg, lang, now) {
     }
     if (await memoInUse(ownerKey, memoText, link.id)) {
       // Keep the prompt: the owner can send a different label right away.
-      return sendHere(msg, t(lang, 'memoTaken'));
+      return sendHere(msg, t(lang, 'memoTaken', { suggestion: await nextFreeMemo(ownerKey) }));
     }
     const dek = await linkDek(link);
     const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);

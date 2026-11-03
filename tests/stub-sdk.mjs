@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 const database = new DatabaseSync(':memory:');
 const calls = [];
 const failures = new Map();
+const shorts = new Map();
 let nextId = 100;
 
 function wrap(query) {
@@ -49,6 +50,7 @@ export function resetDb() {
   for (const { name } of tables) database.prepare(`DROP TABLE IF EXISTS ${name}`).run();
   calls.length = 0;
   failures.clear();
+  shorts.clear();
   nextId = 100;
 }
 
@@ -61,6 +63,18 @@ function record(method, args) {
 export function failNext(method, error) {
   if (!failures.has(method)) failures.set(method, []);
   failures.get(method).push(error);
+}
+
+// Return only the first N results once, to simulate a partial album copy.
+export function shortNext(method, count) {
+  shorts.set(method, count);
+}
+
+function takeShort(method, length) {
+  if (!shorts.has(method)) return null;
+  const count = shorts.get(method);
+  shorts.delete(method);
+  return Math.max(0, Math.min(length, count));
 }
 
 export function callsOf(method) {
@@ -110,7 +124,9 @@ export const api = {
   },
   async copyMessages(args) {
     record('copyMessages', args);
-    return args.message_ids.map(() => ({ message_id: nextId++ }));
+    const limited = takeShort('copyMessages', args.message_ids.length);
+    const ids = limited == null ? args.message_ids : args.message_ids.slice(0, limited);
+    return ids.map(() => ({ message_id: nextId++ }));
   },
   async forwardMessage(args) {
     record('forwardMessage', args);
@@ -118,7 +134,9 @@ export const api = {
   },
   async forwardMessages(args) {
     record('forwardMessages', args);
-    return args.message_ids.map(() => ({ message_id: nextId++ }));
+    const limited = takeShort('forwardMessages', args.message_ids.length);
+    const ids = limited == null ? args.message_ids : args.message_ids.slice(0, limited);
+    return ids.map(() => ({ message_id: nextId++ }));
   },
   async createForumTopic(args) {
     record('createForumTopic', args);

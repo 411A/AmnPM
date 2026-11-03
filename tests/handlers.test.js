@@ -1,6 +1,6 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resetDb, rawDb, callsOf, failNext } from './stub-sdk.mjs';
+import { resetDb, rawDb, callsOf, failNext, shortNext } from './stub-sdk.mjs';
 import { applySchema } from './stub-db.mjs';
 import * as schema from '../tgcloud/schema.js';
 import onMessage from '../tgcloud/handlers/message.js';
@@ -984,7 +984,7 @@ test('two links cannot share a memo label', async () => {
   await onMessage(message('/start', 100));
   await onMessage(message('/newlink', 100));
   await onMessage(message('/newlink link 1', 100));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /already uses that name/i);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Try "link 2"/);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
 
   await onMessage(message('/newlink other', 100));
@@ -1001,10 +1001,56 @@ test('a memo change cannot reuse another link label', async () => {
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);
   await onMessage(message('link 1', 100, { message_id: 7777 }));
 
-  assert.match(callsOf('sendMessage').at(-1).args.text, /already uses that name/i);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Try "link 2"/);
   const memos = rawDb().prepare('SELECT memo FROM links ORDER BY id').all();
   assert.equal(memos.length, 2);
   assert.notEqual(memos[0].memo, memos[1].memo);
+});
+
+test('an expired menu button explains itself', async () => {
+  await onMessage(message('/start', 100));
+  await click('D|deadbeef0000deadbeef0000|cafebabecafe0000cafebabe', 100);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /out of date/);
+});
+
+test('a media message during a memo prompt does not re-send the prompt', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  const promptsBefore = callsOf('sendMessage').filter((call) => /Send the new memo/.test(call.args.text)).length;
+
+  await onMessage(message(undefined, 100, { photo: [{ file_id: 'p1' }], message_id: 7001 }));
+  const promptsAfter = callsOf('sendMessage').filter((call) => /Send the new memo/.test(call.args.text)).length;
+  assert.equal(promptsAfter, promptsBefore);
+});
+
+test('revoking a link clears a pending memo prompt', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  assert.ok(rawDb().prepare('SELECT memo_link_id FROM owners').get().memo_link_id);
+
+  await onMessage(message('/settings', 100));
+  await click(buttons().filter((entry) => entry.startsWith('D|')).at(-1), 100);
+  await click(buttons().filter((entry) => entry.startsWith('V|')).at(-1), 100);
+  await click(buttons().filter((entry) => entry.startsWith('K|')).at(-1), 100);
+
+  assert.equal(rawDb().prepare('SELECT memo_link_id FROM owners').get().memo_link_id, null);
+});
+
+test('a partial album copy tells the owner what was missing', async () => {
+  await setupLink();
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [71, 72], 'V', 100, 0);
+  shortNext('copyMessages', 1);
+  await drain();
+
+  assert.ok(callsOf('sendMessage').some((call) => /Part of the album/.test(call.args.text)));
 });
 
 test('an owner cannot open their own link as a sender', async () => {
