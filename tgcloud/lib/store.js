@@ -333,11 +333,6 @@ export async function listTopics(linkId) {
   return db.all(sql`SELECT * FROM topics WHERE link_id = ${linkId}`);
 }
 
-export async function countTopicsNamed(linkId, name) {
-  const row = await db.get(sql`SELECT COUNT(*) AS n FROM topics WHERE link_id = ${linkId} AND name = ${name}`);
-  return Number(row?.n ?? 0);
-}
-
 export async function getSenderTopic(linkId, senderKey) {
   return db.get(sql`SELECT * FROM sender_topics
     WHERE link_id = ${linkId} AND sender_key = ${senderKey}`);
