@@ -338,7 +338,7 @@ async function renameTopic(msg, arg, lang) {
     }
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
   }
-  return send(chatId, t(lang, 'renameNoTopic'), { message_thread_id: threadId });
+  return send(chatId, t(lang, 'renameUnknown'), { message_thread_id: threadId });
 }
 
 async function command(msg, lang, now) {

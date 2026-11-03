@@ -1122,6 +1122,12 @@ test('an unreadable topic name is left alone, not overwritten', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /kept their old names/);
 });
 
+test('a rename in an unlinked topic explains the stale link', async () => {
+  await setupLink();
+  await onMessage(message('/rename Old', 100, { message_thread_id: 999999 }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /older or revoked link/);
+});
+
 test('owners can rename a topic and keep the mandatory emoji prefix', async () => {
   await setupLink();
   await deliverAnonymous();
