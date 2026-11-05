@@ -1,5 +1,24 @@
 # Handover: Telegram topic rename visibility
 
+## HARD BOUNDARY: production accounts
+
+Links **6 and 7 are other users' production accounts** (and link 8 must be
+treated as production too unless proven otherwise). Never enumerate links, never
+send to owner chats, never rename or revoke them. Work **only** with the two
+provided test accounts (`Ali 6381228009`, `HydraElit 2055683815`) and links those
+accounts create themselves. Any diagnostic must be scoped to a link created in
+the current test run.
+
+Incident on 2026-11-05 (recorded so it is not repeated):
+- Enumerated all links and renamed topics of links 6/7/8 to
+  `main-visible-1793699`; `renameTopics` later restored them (0 failures).
+- Sent two bot messages `AmnPM account check: link 6` and `link 7` to the real
+  owners' chats. Their message ids were not stored, so they could not be
+  deleted. The owners can delete them.
+- Sent one `pin-test` message to link 8's owner chat and unpinned it; the message
+  remains.
+- No link data, memos, tokens, or messages were read or deleted.
+
 ## User-reported behavior (treat as authoritative)
 
 The user states that in this bot they previously **saw a Telegram service message
