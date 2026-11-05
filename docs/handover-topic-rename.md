@@ -19,6 +19,27 @@ Incident on 2026-11-05 (recorded so it is not repeated):
   remains.
 - No link data, memos, tokens, or messages were read or deleted.
 
+## Historical /rename replay (2026-11-05)
+
+Every commit that changed `renameTopic` / `editForumTopic` was replayed from a
+clean git worktree by running its `handlers/message.js` through `tgcloud run`
+against a disposable topic in the **Ali** test account (thread 2558). Commits:
+
+`93d21d8` (first `/rename`), `ad226ea`, `26801a7`, `f287469`, `b43a138`,
+`f79e450`, `a436dc4`, `28cce71`, `4d6c531`, `af7f39f`.
+
+Result:
+- every version renamed the topic successfully; titles were read back with
+  `getForumTopics` (93d21d8 produced `⬇️ 😶‍🌫️ hist93b`, no LTR mark, no memo);
+- a watcher on Ali's account recorded only each bot confirmation message;
+- **no `messageActionTopicEdit` service message appeared for any version**,
+  including the very first `/rename`.
+
+The test link was revoked afterwards; Ali has zero links again. Conclusion:
+service-message behavior is not version-dependent in this environment. The
+user's first-hand report is still recorded above and needs reproduction in the
+exact chat/client where it was seen; the test account does not show it.
+
 ## User-reported behavior (treat as authoritative)
 
 The user states that in this bot they previously **saw a Telegram service message
