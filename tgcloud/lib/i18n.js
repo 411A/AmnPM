@@ -40,7 +40,7 @@ const en = {
     'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji. The new name is stored on the server immediately, but the app may take hours to a day to display it.\n' +
     '</details>\n' +
     '<details><summary><b>Managing links</b></summary>\n' +
-    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays. A link with no delivered message for 12 months is deleted automatically; a reminder is sent about 30 days before. Deleting the topics of a link also closes it.\n' +
+    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays. A link with no delivered message for 12 months is deleted automatically; a reminder is sent about 30 days before. Deleting the topics of a link also closes it on the next delivery attempt.\n' +
     '</details>',
   privacy:
     '{e.lock} <b>Privacy</b>\n' +
@@ -236,7 +236,7 @@ const fa = {
     'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند. نام جدید فوراً در سرور ذخیره می‌شود، اما ممکن است ساعت‌ها تا یک روز طول بکشد تا برنامه آن را نمایش دهد.\n' +
     '</details>\n' +
     '<details><summary><b>مدیریت لینک‌ها</b></summary>\n' +
-    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند. لینکی که ۱۲ ماه پیامی ردوبدل نکند خودکار حذف می‌شود؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. حذف موضوع‌های یک لینک هم آن لینک را می‌بندد.\n' +
+    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند. لینکی که ۱۲ ماه پیامی ردوبدل نکند خودکار حذف می‌شود؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. حذف موضوع‌های یک لینک هم در نخستین تلاش بعدی برای ارسال، آن لینک را می‌بندد.\n' +
     '</details>',
   privacy:
     '{e.lock} <b>حریم خصوصی</b>\n' +
