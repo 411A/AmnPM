@@ -206,7 +206,12 @@ export async function drain(maxJobs = 3) {
         sentIds = Array.isArray(result)
           ? result.map((message) => message.message_id)
           : (result?.message_id ? [result.message_id] : []);
-        await store.touchLinkActivity(opened.link.id, nowSec());
+        try {
+          await store.touchLinkActivity(opened.link.id, nowSec());
+        } catch {
+          // Activity is best effort: a delivered message must never be retried
+          // just because the retention clock could not be written.
+        }
         if (job.kind === 'copy' || job.kind === 'forward') {
           await store.setJobSent(job.id, JSON.stringify(sentIds));
         }
