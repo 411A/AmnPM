@@ -21,6 +21,23 @@
 - Batches are 10 reminders and 3 purges per run. A larger backlog keeps a
   5-minute lease and drains over subsequent updates, not over weeks.
 
+## Client-side topic deletion
+
+Deleting a topic in the Telegram client does **not** notify the bot. Live
+verification on the two test accounts showed that the bot's next send
+**recreated the same topic** (same thread id, same title) and the link stayed
+active. This is Telegram's behavior, not the bot creating a new thread.
+
+Therefore the immediate dead-topic purge only runs when Telegram actually
+returns `message thread not found` twice. A real client-side deletion does not
+produce that error. The 365-day TTL is the only guaranteed cleanup for a
+client-side deletion; the 335-day reminder is the only warning.
+
+The same applies to a sender topic: an owner reply resurrected the same sender
+topic (same thread id). The `recreateSenderTopic` path is a fallback for an
+actually invalid thread; a fault-injected invalid thread was verified to create
+a new sender topic and accept messages.
+
 ## What cannot be done
 
 - The Bot API has **no `getForumTopics`** method. The official
