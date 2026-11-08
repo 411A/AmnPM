@@ -2,11 +2,32 @@ import { api } from 'sdk';
 import * as store from './store.js';
 import * as crypto from './crypto.js';
 import { CONFIG } from './config.js';
-import { KEYS, CURRENT_KEK_VERSION } from './secret.js';
+import { contentKek, identityKek, CURRENT_IDENTITY_VERSION } from './keyring.js';
 
 async function sealOwnerSalt(salt) {
-  const sealed = await crypto.encrypt(KEYS[CURRENT_KEK_VERSION], salt, 'meta:install_salt:v1');
-  return `enc:${CURRENT_KEK_VERSION}:${sealed.nonce}:${sealed.ct}`;
+  const sealed = await crypto.encrypt(
+    identityKek(CURRENT_IDENTITY_VERSION),
+    salt,
+    'meta:install_salt:v1',
+  );
+  return `id:${CURRENT_IDENTITY_VERSION}:${sealed.nonce}:${sealed.ct}`;
+}
+
+async function openOwnerSalt(stored) {
+  const [tag, version, nonce, ct] = String(stored).split(':');
+  if (tag === 'id') {
+    return crypto.decrypt(identityKek(Number(version)), ct, nonce, 'meta:install_salt:v1');
+  }
+  if (tag === 'enc') {
+    // Pre-domain rows were wrapped with the content KEK. The salt value itself
+    // does not change, so every derived owner/sender/link key stays valid.
+    const salt = await crypto.decrypt(contentKek(Number(version)), ct, nonce, 'meta:install_salt:v1');
+    await store.setMeta('install_salt', await sealOwnerSalt(salt));
+    return salt;
+  }
+  // Legacy plaintext salt.
+  await store.setMeta('install_salt', await sealOwnerSalt(String(stored)));
+  return String(stored);
 }
 
 // Read from the database on every derivation: a restored or reset database must
@@ -20,15 +41,9 @@ export async function ownerSalt() {
     const salt = crypto.randomHex(32);
     await store.insertMetaIfAbsent('install_salt', await sealOwnerSalt(salt));
     const winner = await store.getMeta('install_salt');
-    const [, version, nonce, ct] = winner.split(':');
-    return crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
+    return openOwnerSalt(winner);
   }
-  if (stored.startsWith('enc:')) {
-    const [, version, nonce, ct] = stored.split(':');
-    return crypto.decrypt(KEYS[Number(version)], ct, nonce, 'meta:install_salt:v1');
-  }
-  await store.setMeta('install_salt', await sealOwnerSalt(stored));
-  return stored;
+  return openOwnerSalt(stored);
 }
 
 // Each handler reads the salt once and passes it to every derivation, so one

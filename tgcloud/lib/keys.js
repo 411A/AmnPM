@@ -1,20 +1,17 @@
 import { CONFIG } from './config.js';
 import * as c from './crypto.js';
 import * as store from './store.js';
-import { KEYS, CURRENT_KEK_VERSION } from './secret.js';
+import {
+  actionKey,
+  actionKeyVersions,
+  contentKek,
+  CURRENT_ACTION_VERSION,
+} from './keyring.js';
 
-// Fail at boot, not on the first message: a mistyped or placeholder KEK must
-// never become a silent all-zero AES key.
-for (const [version, key] of Object.entries(KEYS)) {
-  if (typeof key !== 'string' || !/^[0-9a-fA-F]{64}$/.test(key) || /^0+$/.test(key)) {
-    throw new Error(`KEK ${version} must be 32 nonzero bytes of hex`);
-  }
-}
-if (!KEYS[CURRENT_KEK_VERSION]) throw new Error(`missing current KEK version ${CURRENT_KEK_VERSION}`);
+export { actionKey } from './keyring.js';
 
 export async function linkDek(link) {
-  const kek = KEYS[link.kek_version];
-  if (!kek) throw new Error(`unknown KEK version ${link.kek_version}`);
+  const kek = contentKek(link.kek_version);
   return c.decryptBytes(
     kek,
     link.dek_wrapped,
@@ -115,10 +112,10 @@ export async function ownerChatId(link) {
   );
 }
 
-async function prepareAction(link, kind, payload, now, ttl, dek) {
-  const key = dek ?? (await linkDek(link));
+async function prepareAction(link, kind, payload, now, ttl, key) {
+  const actionKeyBytes = key ?? (await actionKey(link));
   const { ct, nonce } = await c.encrypt(
-    key,
+    actionKeyBytes,
     JSON.stringify(payload),
     `link:${link.id}:action:${kind}:v1`,
   );
@@ -137,16 +134,16 @@ async function prepareAction(link, kind, payload, now, ttl, dek) {
   };
 }
 
-export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
-  const prepared = await prepareAction(link, kind, payload, now, ttl, dek);
+export async function sealAction(link, kind, payload, now, ttl = CONFIG.actionTtlSeconds, key = null) {
+  const prepared = await prepareAction(link, kind, payload, now, ttl, key);
   await store.putActionToken(prepared.row);
   return { prefix: prepared.prefix, suffix: prepared.suffix };
 }
 
-export async function sealActions(link, specs, now, ttl = CONFIG.actionTtlSeconds, dek = null) {
-  const key = dek ?? (await linkDek(link));
+export async function sealActions(link, specs, now, ttl = CONFIG.actionTtlSeconds, key = null) {
+  const actionKeyBytes = key ?? (await actionKey(link));
   const prepared = await Promise.all(
-    specs.map(({ kind, payload }) => prepareAction(link, kind, payload, now, ttl, key)),
+    specs.map(({ kind, payload }) => prepareAction(link, kind, payload, now, ttl, actionKeyBytes)),
   );
   await store.putActionTokens(prepared.map((item) => item.row));
   return prepared.map(({ prefix, suffix }) => ({ prefix, suffix }));
@@ -164,14 +161,56 @@ export async function openAction(prefix, suffix) {
     await store.deleteActionToken(prefix);
     return null;
   }
-  const dek = await linkDek(link);
-  const text = await c.decrypt(
-    dek,
-    c.join(row.body, suffix),
-    row.nonce,
-    `link:${link.id}:action:${row.kind}:v1`,
-  );
+  const ct = c.join(row.body, suffix);
+  const aad = `link:${link.id}:action:${row.kind}:v1`;
+  let text;
+  for (const version of actionKeyVersions()) {
+    try {
+      text = await c.decrypt(await actionKey(link, version), ct, row.nonce, aad);
+      break;
+    } catch {
+      // this version did not seal the token
+    }
+  }
+  if (text === undefined) {
+    // Tokens sealed before the action-key domain used the link DEK. They stay
+    // readable until their normal TTL; new tokens never use this path.
+    try {
+      text = await c.decrypt(await linkDek(link), ct, row.nonce, aad);
+    } catch {
+      return null;
+    }
+  }
   return { row, link, payload: JSON.parse(text) };
+}
+
+// Reply windows persist an encrypted sender target for the owner's next
+// message. Use the action domain for new windows; old rows fall back to the
+// link DEK and expire on their normal schedule.
+export async function sealReplyTarget(link, target) {
+  const key = await actionKey(link, CURRENT_ACTION_VERSION);
+  const sealed = await c.encrypt(
+    key,
+    JSON.stringify(target),
+    `link:${link.id}:reply:v1`,
+  );
+  return { ct: sealed.ct, nonce: sealed.nonce };
+}
+
+export async function openReplyTarget(link, ct, nonce) {
+  const aad = `link:${link.id}:reply:v1`;
+  for (const version of actionKeyVersions()) {
+    try {
+      return JSON.parse(await c.decrypt(await actionKey(link, version), ct, nonce, aad));
+    } catch {
+      // try the next action key version
+    }
+  }
+  try {
+    return JSON.parse(await c.decrypt(await linkDek(link), ct, nonce, aad));
+  } catch {
+    return null;
+  }
 }
 
 export async function sealJob(link, kind, payload, now) {

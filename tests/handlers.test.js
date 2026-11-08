@@ -113,12 +113,12 @@ test('bot metadata config runs once', async () => {
   const commands = callsOf('setMyCommands')[0].args.commands;
   assert.deepEqual(
     commands.map((entry) => entry.command),
-    ['start', 'newlink', 'settings', 'rename', 'help', 'privacy', 'about'],
+    ['start', 'newlink', 'settings', 'rename', 'help', 'privacy', 'security', 'about'],
   );
   assert.ok(commands.every((entry) => !entry.description.includes('\n')));
   assert.match(commands[0].description, /^🔰 /);
   assert.match(commands[2].description, /^🎛 .*&/);
-  assert.match(commands[6].description, /^ℹ️ /);
+  assert.match(commands[7].description, /^ℹ️ /);
 
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
@@ -168,6 +168,15 @@ test('new links use numbered default memos and keep explicit ones', async () => 
 
   const links = rawDb().prepare('SELECT * FROM links ORDER BY id').all();
   assert.deepEqual(await Promise.all(links.map(linkMemo)), ['link 1', 'link 2', 'custom']);
+});
+
+test('security command returns the expandable security model', async () => {
+  await onMessage(message('/security', 100));
+  const rich = callsOf('sendRichMessage').at(-1).args.rich_message.html;
+  assert.match(rich, /Security model/);
+  assert.match(rich, /<details>/);
+  assert.match(rich, /identity key/i);
+  assert.match(rich, /No logs, no analytics/);
 });
 
 test('privacy command explains what is stored', async () => {
@@ -1515,6 +1524,22 @@ test('an owner album answer ships as one batch', async () => {
   }
 });
 
+test('sender album pending rows carry no sender identity', async () => {
+  await setupLink();
+  await onMessage(message(undefined, 200, {
+    media_group_id: 'ag-sec',
+    message_id: 601,
+    caption: 'one',
+    message_thread_id: firstSenderThread(),
+  }));
+  const rows = rawDb().prepare('SELECT user_key, group_key FROM pending').all();
+  assert.ok(rows.length >= 1);
+  for (const row of rows) {
+    assert.match(row.user_key, /^msg:\d+$/);
+    assert.equal(row.group_key, 'ag-sec');
+  }
+});
+
 test('an orphaned owner album is taken over and shipped once', async () => {
   const hold = CONFIG.albumHoldMs;
   const margin = CONFIG.albumTakeoverMs;
@@ -1531,14 +1556,13 @@ test('an orphaned owner album is taken over and shipped once', async () => {
 
     // The leader died mid-hold: two rows sit with no handler to deliver them.
     const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
-    const senderKey = await senderKeyFor(link, 200);
     const now = Math.floor(Date.now() / 1000);
     await store.addPending({
-      user_key: `album:${link.id}:${senderKey}`, link_id: link.id,
+      user_key: `oalbum:${link.id}`, link_id: link.id,
       group_key: 'og9', message_id: 991, created_at: now,
     });
     await store.addPending({
-      user_key: `album:${link.id}:${senderKey}`, link_id: link.id,
+      user_key: `oalbum:${link.id}`, link_id: link.id,
       group_key: 'og9', message_id: 992, created_at: now,
     });
 

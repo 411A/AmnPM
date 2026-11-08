@@ -69,7 +69,7 @@ jobs:
       - name: 🧹 Retention & migration
         id: retention
         continue-on-error: true
-        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/retention.test.js tests/migration.test.js
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/retention.test.js tests/migration.test.js tests/keyring.test.js
 
       - name: Policy invariants
         id: policy

@@ -16,7 +16,7 @@ test('owner key is stable and the salt is encrypted at rest', async () => {
   assert.equal(a, await userKeyFor(1));
   assert.match(a, /^[0-9a-f]{64}$/);
   const stored = rawDb().prepare("SELECT v FROM meta WHERE k = 'install_salt'").get().v;
-  assert.match(stored, /^enc:1:/);
+  assert.match(stored, /^id:1:/);
 });
 
 test('owner cap is atomic and released', async () => {

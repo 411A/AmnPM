@@ -5,8 +5,8 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, topicLabel, conversationChatId } from '../lib/keys.js';
-import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
+import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, topicLabel, conversationChatId, openReplyTarget } from '../lib/keys.js';
+import { contentKek, CURRENT_CONTENT_VERSION } from '../lib/keyring.js';
 import { renameTopics, ensureSenderTopic, recreateSenderTopic, isTopicNameTaken } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { maybeSweep } from '../lib/retention.js';
@@ -69,7 +69,7 @@ async function createLink(ownerKey, chatId, memo, now) {
       const token = await nextToken();
       const tokenLookup = await tokenLookupFor(token);
       const dek = crypto.randomBytes(32);
-      const wrapped = await crypto.encrypt(KEYS[CURRENT_KEK_VERSION], dek, `link:${tokenLookup}:dek:v1`);
+      const wrapped = await crypto.encrypt(contentKek(CURRENT_CONTENT_VERSION), dek, `link:${tokenLookup}:dek:v1`);
       const chat = await crypto.encrypt(dek, String(chatId), `link:${tokenLookup}:owner_chat:v1`);
       const sealedToken = await crypto.encrypt(dek, token, `link:${tokenLookup}:token:v1`);
       const memoText = ids.sanitizeMemo(memo);
@@ -86,7 +86,7 @@ async function createLink(ownerKey, chatId, memo, now) {
           owner_chat_nonce: chat.nonce,
           dek_wrapped: wrapped.ct,
           dek_nonce: wrapped.nonce,
-          kek_version: CURRENT_KEK_VERSION,
+          kek_version: CURRENT_CONTENT_VERSION,
           created_at: now,
         });
         if (!link) throw new Error('link insert not found');
@@ -117,10 +117,11 @@ async function nextDefaultMemo(ownerKey) {
   return `${CONFIG.defaultMemo} ${n}`;
 }
 
-async function askMode(link, senderId, userKey, senderKey, groupKey, firstName, lang, messageId, threadId, current, now) {
+async function askMode(link, senderId, userKey, sessionKey, senderKey, groupKey, firstName, lang, messageId, threadId, current, now) {
   const payload = {
     link_id: link.id,
     user_key: userKey,
+    session_key: sessionKey,
     sender_id: senderId,
     sender_key: senderKey,
     group_key: groupKey,
@@ -355,6 +356,7 @@ async function command(msg, lang, now) {
   if (head === '/settings') return settingsPage(msg, lang);
   if (head === '/help') return sendRichHere(msg, t(lang, 'help'));
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
+  if (head === '/security') return sendRichHere(msg, t(lang, 'security'));
   if (head === '/about') return sendRichHere(msg, render.about(lang));
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
@@ -364,18 +366,6 @@ async function command(msg, lang, now) {
     return sendHere(msg, t(lang, 'modeCleared'));
   }
   return undefined;
-}
-
-function replyTarget(text) {
-  if (String(text).startsWith('{')) {
-    try {
-      const value = JSON.parse(text);
-      return { chatId: Number(value.chat_id), threadId: Number(value.thread_id) || 0 };
-    } catch {
-      // old plain format below
-    }
-  }
-  return { chatId: Number(text), threadId: 0 };
 }
 
 async function copyToSender(msg, link, chatId, senderKey, thread, replyTo, now, batchIds = null) {
@@ -445,7 +435,7 @@ async function copyAlbumToSender(msg, link, chatId, senderKey, thread, replyTo, 
   if (!msg.media_group_id) {
     return copyToSender(msg, link, chatId, senderKey, thread, replyTo, now);
   }
-  const userKey = `album:${link.id}:${senderKey}`;
+  const userKey = `oalbum:${link.id}`;
   const groupKey = String(msg.media_group_id);
   const added = await store.addPending({
     user_key: userKey,
@@ -476,13 +466,15 @@ async function replyToWindow(msg, window, lang, now) {
     await store.closeReplyWindow(window.owner_key);
     return sendHere(msg, t(lang, 'answerExpired'));
   }
-  const dek = await linkDek(link);
-  const target = replyTarget(await crypto.decrypt(
-    dek,
-    window.target_ct,
-    window.target_nonce,
-    `link:${link.id}:reply:v1`,
-  ));
+  const opened = await openReplyTarget(link, window.target_ct, window.target_nonce);
+  if (!opened) {
+    await store.closeReplyWindow(window.owner_key);
+    return sendHere(msg, t(lang, 'answerExpired'));
+  }
+  const target = {
+    chatId: Number(opened.chat_id),
+    threadId: Number(opened.thread_id) || 0,
+  };
 
   const salt = await ownerSalt();
   const senderKey = await senderKeyFor(link, target.chatId, salt);
@@ -718,9 +710,10 @@ async function plain(msg, lang, now) {
     if (count > CONFIG.throttlePerMinute) return sendHere(msg, t(lang, 'throttle'));
   }
 
-  const groupKey = msg.media_group_id ? String(msg.media_group_id) : `s${msg.message_id}`;
+  const pendingKey = `msg:${link.id}`;
+  const groupKey = msg.media_group_id ? String(msg.media_group_id) : `m:${crypto.randomHex(8)}`;
   const added = await store.addPending({
-    user_key: sessionKey,
+    user_key: pendingKey,
     link_id: link.id,
     group_key: groupKey,
     message_id: msg.message_id,
@@ -731,13 +724,13 @@ async function plain(msg, lang, now) {
   if (msg.media_group_id) {
     // Only the earliest inserted pending row for the album asks for a mode,
     // even when every item arrived before the first handler checked.
-    if (!(await store.isFirstPending(sessionKey, groupKey, msg.message_id))) return undefined;
+    if (!(await store.isFirstPending(pendingKey, groupKey, msg.message_id))) return undefined;
   }
 
   const firstName = msg.from?.first_name ?? '';
   // shortcut: every message asks once; the last mode is marked, and the tap is
   // also the completion barrier for albums (no timers on the platform).
-  return askMode(link, chatId, sessionKey, senderKey, groupKey, firstName, lang,
+  return askMode(link, chatId, pendingKey, sessionKey, senderKey, groupKey, firstName, lang,
     msg.message_id, msg.message_thread_id ?? 0, current, now);
 }
 

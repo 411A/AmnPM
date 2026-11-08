@@ -1,6 +1,6 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
-import { openJob, sealActions, linkDek } from './keys.js';
+import { openJob, sealActions, actionKey } from './keys.js';
 import * as store from './store.js';
 import { purgeLink } from './lifecycle.js';
 import { ownerKeyboard } from './render.js';
@@ -39,7 +39,7 @@ async function send(job, payload) {
 async function sendControls(link, payload, sentIds, now, blockedLink = false, blockedAll = false) {
   const lang = payload.lang ?? (await store.getOwner(link.owner_key))?.lang ?? 'en';
 
-  const dek = await linkDek(link);
+  const key = await actionKey(link);
   const [answer, read, blockLink, blockAll] = await sealActions(link, [
     { kind: 'answer', payload: {
       link_id: link.id,
@@ -69,7 +69,7 @@ async function sendControls(link, payload, sentIds, now, blockedLink = false, bl
       scope: 'all',
       blocked: !blockedAll,
     } },
-  ], now, CONFIG.actionTtlSeconds, dek);
+  ], now, CONFIG.actionTtlSeconds, key);
 
   const message = {
     chat_id: payload.chat_id,

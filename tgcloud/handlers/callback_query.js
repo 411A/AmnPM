@@ -2,9 +2,8 @@ import { api } from 'sdk';
 import { CONFIG } from '../lib/config.js';
 import * as store from '../lib/store.js';
 import * as ids from '../lib/ids.js';
-import * as crypto from '../lib/crypto.js';
 import { t, normalizeLang } from '../lib/i18n.js';
-import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
+import { actionKey, openAction, ownerChatId, sealAction, sealReplyTarget, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { deliver, aliasFor } from '../lib/delivery.js';
 import { purgeLink } from '../lib/lifecycle.js';
 import { maybeSweep } from '../lib/retention.js';
@@ -137,8 +136,8 @@ async function mode(q, k, opened, lang, now) {
   // that same message instead of opening a new one.
   await answer(q);
 
-  const session = await store.getSession(p.user_key);
-  if (session?.link_id === link.id) await store.setSessionMode(p.user_key, chosen, now);
+  const session = await store.getSession(p.session_key ?? p.user_key);
+  if (session?.link_id === link.id) await store.setSessionMode(session.user_key, chosen, now);
 
   let indicator = '';
   if (chosen === 'history') {
@@ -297,12 +296,10 @@ async function replyWindow(q, opened, lang, now) {
       }
     }
   }
-  const dek = await linkDek(link);
-  const target = JSON.stringify({
+  const sealed = await sealReplyTarget(link, {
     chat_id: p.sender_chat_id,
     thread_id: p.sender_thread_id ?? 0,
   });
-  const sealed = await crypto.encrypt(dek, target, `link:${link.id}:reply:v1`);
   const ownerChat = await ownerChatId(link);
   const previous = await store.getReplyWindow(link.owner_key, now);
   const thread = q.message?.chat?.id === ownerChat
@@ -379,7 +376,7 @@ async function block(q, opened, lang, now) {
   const blockedLink = await store.hasBlock(link.owner_key, link.id, p.sender_key);
   const blockedAll = await store.hasBlock(link.owner_key, 0, globalKey);
 
-  const dek = await linkDek(link);
+  const actionSealKey = await actionKey(link);
   const base = {
     link_id: link.id,
     sender_key: p.sender_key,
@@ -387,9 +384,9 @@ async function block(q, opened, lang, now) {
   };
   const [nextLink, nextAll] = await Promise.all([
     sealAction(link, 'block', { ...base, scope: 'link', blocked: !blockedLink },
-      now, CONFIG.actionTtlSeconds, dek),
+      now, CONFIG.actionTtlSeconds, actionSealKey),
     sealAction(link, 'block', { ...base, scope: 'all', blocked: !blockedAll },
-      now, CONFIG.actionTtlSeconds, dek),
+      now, CONFIG.actionTtlSeconds, actionSealKey),
   ]);
   await toggleBlockButton(q, blockedLink, blockedAll, lang, nextLink, nextAll);
 

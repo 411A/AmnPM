@@ -26,6 +26,7 @@ const en = {
     '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in.</li>\n' +
     '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
+    '<li><b>{e.lock} /security</b><br>Show the exact security model.</li>\n' +
     '<li><b>{e.info} /about</b><br>Show version, source & verification.</li>\n' +
     '</ul>\n' +
     '</details>\n' +
@@ -48,6 +49,25 @@ const en = {
     'Links, memos, and sender ids are encrypted at rest.\n' +
     'Runs securely inside Telegram’s own infrastructure (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>).\n' +
     '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Links are also removed after 12 months without activity (checked at most weekly while the bot is active); a reminder is sent about 30 days before. A one-way fingerprint of retired links is kept so the same link is never issued again. Telegram keeps its own copy of messages. A notice may not arrive if the bot is blocked. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
+  security:
+    '{e.lock} <b>Security model</b>\n' +
+    'Exactly what is protected, and what is not.\n' +
+    '<details><summary><b>Stored data</b></summary>\n' +
+    'No message content is stored after delivery. Links, memos, and topic names are encrypted with a per-link key. Sender routing and block values are keyed hashes; the Telegram user id is not stored in the block list.\n' +
+    '</details>\n' +
+    '<details><summary><b>Key domains</b></summary>\n' +
+    'Content, identity/routing, and action capabilities use separate key domains. A leak of one domain does not open the others. A full compromise of all domains does.\n' +
+    '</details>\n' +
+    '<details><summary><b>Buttons and replies</b></summary>\n' +
+    'Reply, read, and block buttons use split ciphertext: the database holds an incomplete value, and the Telegram button holds the missing fragment. A database and key leak alone cannot open an action; the owner message is also needed.\n' +
+    '</details>\n' +
+    '<details><summary><b>Blocking</b></summary>\n' +
+    'Blocking uses a per-link keyed hash (owner-wide for Block everywhere). A full compromise of the identity key allows enumeration of Telegram ids. Telegram itself always knows the sender.\n' +
+    '</details>\n' +
+    '<details><summary><b>Retention and limits</b></summary>\n' +
+    'Links with no activity for 12 months are removed; a reminder is sent about 30 days before. Telegram keeps its own history. A compromised runtime or bot token can see incoming updates, and media metadata can identify a sender; metadata is not stripped by default. Client-side topic deletion is invisible to the bot.\n' +
+    '</details>\n' +
+    'No logs, no analytics.',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
@@ -222,6 +242,7 @@ const fa = {
     '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید.</li>\n' +
     '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
+    '<li><b>{e.lock} /security</b><br>نمایش مدل امنیتی دقیق.</li>\n' +
     '<li><b>{e.info} /about</b><br>نمایش نسخه، منبع و تأیید.</li>\n' +
     '</ul>\n' +
     '</details>\n' +
@@ -244,6 +265,25 @@ const fa = {
     'لینک‌ها، یادداشت‌ها و شناسه فرستنده‌ها در حالت سکون رمزنگاری می‌شوند.\n' +
     'به‌صورت امن داخل زیرساخت خود تلگرام (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>) اجرا می‌شود.\n' +
     '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. لینک‌ها پس از ۱۲ ماه بی‌فعالیتی هم حذف می‌شوند (حداکثر هفته‌ای یک‌بار و زمانی که ربات فعال است بررسی می‌شود)؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. اثر انگشت یک‌طرفه لینک‌های بازنشسته نگه داشته می‌شود تا همان لینک هرگز دوباره ساخته نشود. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. اگر ربات مسدود باشد ممکن است اطلاع‌رسانی نرسد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
+  security:
+    '{e.lock} <b>مدل امنیتی</b>\n' +
+    'دقیقاً چه چیزی محافظت می‌شود و چه چیزی نه.\n' +
+    '<details><summary><b>داده‌های ذخیره‌شده</b></summary>\n' +
+    'هیچ محتوای پیامی پس از تحویل ذخیره نمی‌شود. لینک‌ها، یادداشت‌ها و نام موضوع‌ها با کلید هر لینک رمزنگاری می‌شوند. کلیدهای مسیریابی و مسدودسازی هش کلیددار هستند؛ شناسه تلگرام کاربر در فهرست مسدود ذخیره نمی‌شود.\n' +
+    '</details>\n' +
+    '<details><summary><b>حوزه‌های کلید</b></summary>\n' +
+    'محتوا، هویت/مسیریابی و توانایی‌های اقدام از حوزه‌های کلید جداگانه استفاده می‌کنند. افشای یک حوزه، حوزه‌های دیگر را باز نمی‌کند؛ افشای کامل همه حوزه‌ها این کار را می‌کند.\n' +
+    '</details>\n' +
+    '<details><summary><b>دکمه‌ها و پاسخ‌ها</b></summary>\n' +
+    'دکمه‌های پاسخ، خواندن و مسدودسازی از متن رمزی تکه‌تکه استفاده می‌کنند: پایگاه داده یک مقدار ناقص دارد و دکمه تلگرام قطعه گمشده را نگه می‌دارد. افشای پایگاه داده و کلید به‌تنهایی نمی‌تواند یک اقدام را باز کند؛ پیام صاحب هم لازم است.\n' +
+    '</details>\n' +
+    '<details><summary><b>مسدودسازی</b></summary>\n' +
+    'مسدودسازی از هش کلیددار مخصوص هر لینک (و در حالت مسدودسازی سراسری، مخصوص صاحب) استفاده می‌کند. افشای کامل کلید هویت امکان شمارش شناسه‌های تلگرام را می‌دهد. خود تلگرام همیشه فرستنده را می‌داند.\n' +
+    '</details>\n' +
+    '<details><summary><b>نگهداری و محدودیت‌ها</b></summary>\n' +
+    'لینک‌هایی که ۱۲ ماه فعالیت ندارند حذف می‌شوند؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. تلگرام تاریخچه خودش را نگه می‌دارد. اجرای نفوذشده یا توکن ربات می‌تواند به‌روزرسانی‌های ورودی را ببیند، و متادیتای رسانه می‌تواند فرستنده را شناسایی کند؛ متادیتا به‌طور پیش‌فرض حذف نمی‌شود. حذف موضوع از سمت کاربر برای ربات نامرئی است.\n' +
+    '</details>\n' +
+    'بدون لاگ، بدون تحلیل.',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
