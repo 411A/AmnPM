@@ -456,13 +456,6 @@ export async function beginSenderRecreate(id, threadId, now) {
   return (result.rowsAffected ?? result.changes) > 0;
 }
 
-export async function beginTopicRecreate(id, threadId, now) {
-  const result = await db.run(sql`UPDATE topics
-    SET thread_id = 0, state = 'creating', created_at = ${now}
-    WHERE id = ${id} AND thread_id = ${threadId} AND state = 'open'`);
-  return (result.rowsAffected ?? result.changes) > 0;
-}
-
 export async function takeStaleSenderTopic(id, cutoff, now) {
   const result = await db.run(sql`UPDATE sender_topics SET created_at = ${now}
     WHERE id = ${id} AND state = 'creating' AND created_at <= ${cutoff}`);
