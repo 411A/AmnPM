@@ -70,6 +70,23 @@ test('owner chat ids fall back to the old link-DEK rows', async () => {
   assert.equal(await keys.ownerChatId({ ...link, owner_chat_ct: legacy.ct, owner_chat_nonce: legacy.nonce }), 100);
 });
 
+test('sender conversation ids fall back to the old link-DEK rows', async () => {
+  const link = await setupLink();
+  const aad = `conversation:${link.id}:s:history:chat:v1`;
+  const dek = await keys.linkDek(link);
+  const legacy = await crypto.encrypt(dek, '200', aad);
+  await store.createConversation({
+    link_id: link.id,
+    sender_key: 's',
+    mode: 'history',
+    sender_chat_ct: `enc:${legacy.nonce}:${legacy.ct}`,
+    created_at: 1,
+    last_at: 1,
+  });
+  const conversation = await store.getConversation(link.id, 's', 'history');
+  assert.equal(await keys.conversationChatId(link, conversation), 200);
+});
+
 test('a new action token round-trips through openAction', async () => {
   const link = await setupLink();
   const payload = { sender_chat_id: 200, message_id: 7, sender_key: 'k' };

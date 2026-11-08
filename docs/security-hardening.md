@@ -63,15 +63,15 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 |---|---|
 | Syntax check | 38 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **180/180** (baseline 171; +7 keyring, +1 `/security`, +1 album identity) |
+| Full test suite | **181/181** (baseline 171; +8 keyring, +1 `/security`, +1 album identity) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
-| Real-account `e2e_all.py` (revision 99) | **36/36** |
-| Real-account `e2e_extra.py` (revision 99) | **11/11** |
+| Real-account `e2e_all.py` (revision 100) | **36/36** |
+| Real-account `e2e_extra.py` (revision 100) | **11/11** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass: title, key-domain section, expandable blocks; `/help` lists the command |
-| tgcloud | revision **99**, webhook in sync, tree clean |
+| tgcloud | revision **100**, webhook in sync, tree clean |
 | Branch / PR | `more-secure` / PR #1; CI success |
 
 Note: two early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
