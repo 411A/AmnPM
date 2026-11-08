@@ -194,6 +194,7 @@ export async function drain(maxJobs = 3) {
                   opened.payload.chat_id,
                   opened.payload.lang ?? 'en',
                   nowSec(),
+                  false,
                 );
               } catch {
                 // a broken link is retried by the retention sweep

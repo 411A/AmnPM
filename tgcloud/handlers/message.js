@@ -9,7 +9,7 @@ import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, t
 import { KEYS, CURRENT_KEK_VERSION } from '../lib/secret.js';
 import { renameTopics, ensureSenderTopic, recreateSenderTopic, isTopicNameTaken } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
-import { maybeReconcileOwner, maybeSweep } from '../lib/retention.js';
+import { maybeSweep } from '../lib/retention.js';
 import { deepLink, ownerSalt, userKeyFor, chatKeyFor, sessionKeyFrom, senderKeyFrom, senderKeyFor, sessionKeyFor, tokenLookupFor } from '../lib/links.js';
 import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
@@ -754,10 +754,6 @@ export default async function onMessage(update) {
         store.sweepPending(now - 86_400),
         store.sweepRateLimits(now - 86_400),
       ]);
-      const ownerKey = await userKeyFor(msg.chat.id);
-      if (await store.getOwner(ownerKey)) {
-        await maybeReconcileOwner(ownerKey, msg.chat.id, now);
-      }
     }
     const lang = normalizeLang(msg.from.language_code);
 

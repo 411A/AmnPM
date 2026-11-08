@@ -6,7 +6,8 @@ import { closeLinkTopics } from './topics.js';
 
 // The one destructive path used by both /revoke and retention. Callers must
 // claim the link first (active -> purging) so two workers cannot purge twice.
-export async function purgeLink(link, chat, lang, now) {
+// Retention disables the per-topic notice so an idle chat is not resurrected.
+export async function purgeLink(link, chat, lang, now, notifyTopics = true) {
   let token = '';
   try {
     token = await linkToken(link);
@@ -39,7 +40,7 @@ export async function purgeLink(link, chat, lang, now) {
 
   if (chat) {
     try {
-      await closeLinkTopics(link, chat, lang);
+      await closeLinkTopics(link, chat, lang, notifyTopics);
     } catch {
       // The stored data still has to go even if Telegram refuses the close.
     }

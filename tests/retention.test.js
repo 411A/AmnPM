@@ -1,14 +1,14 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resetDb, rawDb, callsOf, failNext, setForumTopics } from './stub-sdk.mjs';
+import { resetDb, rawDb, callsOf, failNext } from './stub-sdk.mjs';
 import { applySchema } from './stub-db.mjs';
 import * as schema from '../tgcloud/schema.js';
 import onMessage from '../tgcloud/handlers/message.js';
 import onCallback from '../tgcloud/handlers/callback_query.js';
-import { maybeSweep, maybeReconcileOwner, REMIND_AFTER, PURGE_AFTER } from '../tgcloud/lib/retention.js';
-import { userKeyFor } from '../tgcloud/lib/links.js';
+import { maybeSweep, REMIND_AFTER, PURGE_AFTER } from '../tgcloud/lib/retention.js';
 import { t } from '../tgcloud/lib/i18n.js';
 import * as store from '../tgcloud/lib/store.js';
+import { purgeLink } from '../tgcloud/lib/lifecycle.js';
 
 beforeEach(() => {
   resetDb();
@@ -175,55 +175,6 @@ test('the sweep runs at most once per 168 hours', async () => {
   assert.ok(link());
 });
 
-test('two missing topic checks delete the link, one does not', async () => {
-  await setupLink();
-  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
-  await click(buttons().find((entry) => entry.startsWith('M|')));
-
-  const ownerKey = await userKeyFor(100);
-  const now = Math.floor(Date.now() / 1000) + 60_000;
-  setForumTopics(100, []);
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-
-  await maybeReconcileOwner(ownerKey, 100, now);
-  assert.ok(link(), 'one miss must not delete the link');
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'missing');
-
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-  await maybeReconcileOwner(ownerKey, 100, now + 1);
-  assert.equal(link(), undefined);
-  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM topics').get().n, 0);
-});
-
-test('a full topic page is not treated as a deletion signal', async () => {
-  await setupLink();
-  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
-  await click(buttons().find((entry) => entry.startsWith('M|')));
-
-  const ownerKey = await userKeyFor(100);
-  const now = Math.floor(Date.now() / 1000) + 70_000;
-  setForumTopics(100, Array.from({ length: 100 }, (_, i) => ({ message_thread_id: 10_000 + i })));
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-
-  await maybeReconcileOwner(ownerKey, 100, now);
-  assert.ok(link());
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'open');
-});
-
-test('a failed topic listing changes nothing', async () => {
-  await setupLink();
-  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
-  await click(buttons().find((entry) => entry.startsWith('M|')));
-
-  const ownerKey = await userKeyFor(100);
-  const now = Math.floor(Date.now() / 1000) + 80_000;
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-
-  await maybeReconcileOwner(ownerKey, 100, now);
-  assert.ok(link());
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'open');
-});
-
 test('the 335 and 365 day boundaries are inclusive', async () => {
   await setupLink();
   const now = Math.floor(Date.now() / 1000) + 90_000;
@@ -242,39 +193,27 @@ test('the 335 and 365 day boundaries are inclusive', async () => {
   assert.equal(link(), undefined);
 });
 
-test('the reconcile lease is one per owner per 24 hours', async () => {
+test('334 days is too early and 366 days purges without a reminder', async () => {
   await setupLink();
-  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
-  await click(buttons().find((entry) => entry.startsWith('M|')));
+  const now = Math.floor(Date.now() / 1000) + 95_000;
+  backdate(now - REMIND_AFTER + 60);
+  resetSweep();
 
-  const ownerKey = await userKeyFor(100);
-  const now = Math.floor(Date.now() / 1000) + 100_000;
-  setForumTopics(100, []);
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-
-  assert.equal(await maybeReconcileOwner(ownerKey, 100, now), true);
-  assert.equal(await maybeReconcileOwner(ownerKey, 100, now + 3_600), false);
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'missing');
-});
-
-test('a topic that reappears is restored instead of staying missing', async () => {
-  await setupLink();
-  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
-  await click(buttons().find((entry) => entry.startsWith('M|')));
-  const thread = rawDb().prepare('SELECT thread_id FROM topics').get().thread_id;
-  const ownerKey = await userKeyFor(100);
-  const now = Math.floor(Date.now() / 1000) + 110_000;
-
-  setForumTopics(100, []);
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-  await maybeReconcileOwner(ownerKey, 100, now);
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'missing');
-
-  setForumTopics(100, [{ message_thread_id: thread }]);
-  rawDb().prepare('UPDATE owners SET reconciled_at = 0').run();
-  await maybeReconcileOwner(ownerKey, 100, now + 1);
+  await maybeSweep(now);
   assert.ok(link());
-  assert.equal(rawDb().prepare('SELECT state FROM topics').get().state, 'open');
+  assert.equal(
+    callsOf('sendMessage').filter((call) => /11 months/.test(call.args.text ?? '')).length,
+    0,
+  );
+
+  backdate(now - PURGE_AFTER - 60);
+  resetSweep();
+  await maybeSweep(now);
+  assert.equal(link(), undefined);
+  assert.equal(
+    callsOf('sendMessage').filter((call) => /11 months/.test(call.args.text ?? '')).length,
+    0,
+  );
 });
 
 test('a broken link left by a crashed worker is purged by the sweep', async () => {
@@ -325,6 +264,43 @@ test('the reminder claim is atomic against newer activity', async () => {
   assert.equal(await store.claimReminder(row.id, row.last_activity_at, now + 1), false);
 });
 
+test('a backlog of expired links drains over updates, not weeks', async () => {
+  await onMessage(message('/start', 100));
+  for (let i = 0; i < 5; i += 1) await onMessage(message('/newlink', 100));
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 5);
+
+  const now = Math.floor(Date.now() / 1000) + 170_000;
+  backdate(now - PURGE_AFTER - 60);
+  resetSweep();
+
+  await maybeSweep(now);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 2);
+  assert.equal(await maybeSweep(now + 30), false);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 2);
+
+  await maybeSweep(now + 301);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+});
+
+test('expiry closes topics without posting the revoke notice', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('M|')));
+
+  const now = Math.floor(Date.now() / 1000) + 175_000;
+  backdate(now - PURGE_AFTER - 60);
+  resetSweep();
+  await maybeSweep(now);
+
+  assert.equal(link(), undefined);
+  assert.ok(callsOf('closeForumTopic').length > 0);
+  assert.equal(
+    callsOf('sendMessage').filter((call) => /Topic closed/.test(call.args.text ?? '')).length,
+    0,
+  );
+  assert.ok(callsOf('sendMessage').some((call) => /12 months/.test(call.args.text ?? '')));
+});
+
 test('the sweep lease admits one worker at a time', async () => {
   const now = Math.floor(Date.now() / 1000) + 160_000;
   resetSweep();
@@ -341,6 +317,22 @@ test('the purge and broken claims are one-shot', async () => {
   rawDb().prepare("UPDATE links SET state = 'active'").run();
   assert.equal(await store.setLinkBroken(row.id, 100), true);
   assert.equal(await store.setLinkBroken(row.id, 100), false);
+});
+
+test('purging one link leaves another link\'s memo prompt alone', async () => {
+  await onMessage(message('/start', 100));
+  await onMessage(message('/newlink', 100));
+  await onMessage(message('/newlink', 100));
+  const [first, second] = rawDb().prepare('SELECT * FROM links ORDER BY id').all();
+  rawDb().prepare('UPDATE owners SET memo_link_id = ?, memo_message_id = 123').run(second.id);
+
+  assert.equal(await store.claimLinkPurge(first.id, 100), true);
+  await purgeLink(first, 100, 'en', 100);
+
+  const owner = rawDb().prepare('SELECT memo_link_id, memo_message_id FROM owners').get();
+  assert.equal(owner.memo_link_id, second.id);
+  assert.equal(owner.memo_message_id, 123);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
 });
 
 test('the reminder and deletion texts exist in both languages', () => {

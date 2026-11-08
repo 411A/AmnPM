@@ -156,25 +156,6 @@ export async function listBrokenLinks(limit) {
   return db.all(sql`SELECT * FROM links WHERE state = 'broken' ORDER BY id LIMIT ${limit}`);
 }
 
-export async function claimOwnerReconcile(ownerKey, now, cutoff) {
-  const result = await db.run(sql`UPDATE owners SET reconciled_at = ${now}
-    WHERE owner_key = ${ownerKey} AND reconciled_at <= ${cutoff}`);
-  return (result.rowsAffected ?? result.changes) > 0;
-}
-
-export async function listOwnerTopics(ownerKey) {
-  return db.all(sql`SELECT t.* FROM topics t JOIN links l ON l.id = t.link_id
-    WHERE l.owner_key = ${ownerKey} AND l.state = 'active'`);
-}
-
-export async function listLinkTopics(linkId) {
-  return db.all(sql`SELECT * FROM topics WHERE link_id = ${linkId}`);
-}
-
-export async function setTopicState(id, state) {
-  await db.run(sql`UPDATE topics SET state = ${state} WHERE id = ${id}`);
-}
-
 export async function markTopicDeadByThread(linkId, threadId) {
   await db.run(sql`UPDATE topics SET state = 'dead'
     WHERE link_id = ${linkId} AND thread_id = ${threadId}`);
@@ -205,8 +186,9 @@ export async function finishRetention(now) {
   await setMeta('retention_lease', '0');
 }
 
-export async function releaseRetention(now) {
-  await setMeta('retention_lease', String(now + 300));
+// A short lease lets the next update continue a backlog without waiting a week.
+export async function releaseRetention(now, delay = 300) {
+  await setMeta('retention_lease', String(now + delay));
 }
 
 export async function setLinkMemo(id, memo) {

@@ -8,7 +8,6 @@ import { purgeLink } from './lifecycle.js';
 export const REMIND_AFTER = 335 * 86_400;
 export const PURGE_AFTER = 365 * 86_400;
 export const SWEEP_INTERVAL = 168 * 3_600;
-export const RECONCILE_INTERVAL = 24 * 3_600;
 
 const REMIND_BATCH = 10;
 const PURGE_BATCH = 3;
@@ -35,6 +34,7 @@ async function sendReminders(now) {
       // One attempt only: a failed reminder must not delay the expiry.
     }
   }
+  return links.length >= REMIND_BATCH;
 }
 
 async function purgeExpired(now) {
@@ -51,7 +51,7 @@ async function purgeExpired(now) {
         // still delete the stored rows if the chat id is unreadable
       }
       const lang = await ownerLang(fresh.owner_key);
-      const { memo } = await purgeLink(fresh, chat, lang, now);
+      const { memo } = await purgeLink(fresh, chat, lang, now, false);
       if (chat) {
         try {
           await api.sendMessage({
@@ -67,10 +67,12 @@ async function purgeExpired(now) {
       // a stale purging row is retried by the next sweep
     }
   }
+  return links.length >= PURGE_BATCH;
 }
 
 async function purgeStale(now) {
-  for (const link of await store.listStalePurging(now - PURGE_STALE_AFTER, 1)) {
+  const links = await store.listStalePurging(now - PURGE_STALE_AFTER, 1);
+  for (const link of links) {
     try {
       let chat = 0;
       try {
@@ -78,15 +80,17 @@ async function purgeStale(now) {
       } catch {
         // delete the rows even without a chat id
       }
-      await purgeLink(link, chat, await ownerLang(link.owner_key), now);
+      await purgeLink(link, chat, await ownerLang(link.owner_key), now, false);
     } catch {
       // leave it for the next sweep
     }
   }
+  return links.length >= 1;
 }
 
 async function purgeBroken(now) {
-  for (const link of await store.listBrokenLinks(PURGE_BATCH)) {
+  const links = await store.listBrokenLinks(PURGE_BATCH);
+  for (const link of links) {
     try {
       let chat = 0;
       try {
@@ -94,11 +98,12 @@ async function purgeBroken(now) {
       } catch {
         // delete the rows even without a chat id
       }
-      await purgeLink(link, chat, await ownerLang(link.owner_key), now);
+      await purgeLink(link, chat, await ownerLang(link.owner_key), now, false);
     } catch {
       // leave it for the next sweep
     }
   }
+  return links.length >= PURGE_BATCH;
 }
 
 // Runs at most once per 168 hours. The first run after deploy dates every
@@ -107,76 +112,18 @@ export async function maybeSweep(now) {
   if (!(await store.claimRetentionLease(now, now + 3_600, SWEEP_INTERVAL))) return false;
   try {
     await store.backfillLinkActivity(now);
-    await sendReminders(now);
-    await purgeExpired(now);
-    await purgeBroken(now);
-    await purgeStale(now);
-    await store.finishRetention(now);
+    const moreReminders = await sendReminders(now);
+    const moreExpired = await purgeExpired(now);
+    const moreBroken = await purgeBroken(now);
+    const moreStale = await purgeStale(now);
+    if (moreReminders || moreExpired || moreBroken || moreStale) {
+      await store.releaseRetention(now, 300);
+    } else {
+      await store.finishRetention(now);
+    }
     return true;
   } catch (err) {
     await store.releaseRetention(now);
     throw err;
   }
-}
-
-// Once per owner per 24 hours, in the background of an owner update. Two
-// consecutive misses are required before a topic is treated as deleted.
-export async function maybeReconcileOwner(ownerKey, chatId, now) {
-  if (!(await store.claimOwnerReconcile(ownerKey, now, now - RECONCILE_INTERVAL))) return false;
-
-  let listed;
-  try {
-    listed = await api.getForumTopics({ chat_id: chatId, limit: 100 });
-  } catch {
-    return false;
-  }
-  const list = Array.isArray(listed) ? listed : listed?.topics;
-  // A full page may omit later topics; never infer deletion from a partial list.
-  if (!Array.isArray(list) || list.length >= 100) return false;
-
-  const live = new Set(
-    list
-      .map((topic) => Number(topic?.message_thread_id ?? topic?.thread_id ?? topic?.id))
-      .filter(Boolean),
-  );
-  const topics = await store.listOwnerTopics(ownerKey);
-  if (!topics.length) return false;
-
-  const checkedLinks = new Set();
-  for (const topic of topics) {
-    if (live.has(Number(topic.thread_id))) {
-      if (topic.state === 'missing' || topic.state === 'dead') {
-        await store.setTopicState(topic.id, 'open');
-      }
-      continue;
-    }
-    if (topic.state === 'missing') {
-      await store.setTopicState(topic.id, 'dead');
-      checkedLinks.add(topic.link_id);
-    } else if (topic.state !== 'dead') {
-      await store.setTopicState(topic.id, 'missing');
-    }
-  }
-
-  for (const linkId of checkedLinks) {
-    const link = await store.getLink(linkId);
-    if (!link || link.state !== 'active') continue;
-    const rows = await store.listLinkTopics(linkId);
-    if (!rows.length || !rows.every((topic) => topic.state === 'dead')) continue;
-    if (!(await store.claimLinkPurge(link.id, now))) continue;
-    const fresh = await store.getLink(link.id);
-    if (!fresh) continue;
-    let chat = 0;
-    try {
-      chat = await ownerChatId(fresh);
-    } catch {
-      // delete the rows even without a chat id
-    }
-    try {
-      await purgeLink(fresh, chat, await ownerLang(fresh.owner_key), now);
-    } catch {
-      // a stale row is retried by the retention sweep
-    }
-  }
-  return true;
 }

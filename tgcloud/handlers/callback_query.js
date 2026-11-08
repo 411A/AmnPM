@@ -7,7 +7,7 @@ import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
 import { deliver, aliasFor } from '../lib/delivery.js';
 import { purgeLink } from '../lib/lifecycle.js';
-import { maybeReconcileOwner, maybeSweep } from '../lib/retention.js';
+import { maybeSweep } from '../lib/retention.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
@@ -593,19 +593,6 @@ export default async function onCallback(update) {
       await maybeSweep(nowSec());
     } catch {
       // retention is best effort; the next update retries after the lease
-    }
-    if (Math.random() < 0.02) {
-      try {
-        const ownerId = update?.from?.id;
-        if (ownerId) {
-          const ownerKey = await userKeyFor(ownerId);
-          if (await store.getOwner(ownerKey)) {
-            await maybeReconcileOwner(ownerKey, ownerId, nowSec());
-          }
-        }
-      } catch {
-        // reconcile is a background repair, never a user-visible failure
-      }
     }
   }
 }

@@ -11,7 +11,6 @@ export const owners = table('owners', {
   modes: text('modes').notNull().default('anon,history,forward'),
   memo_link_id: integer('memo_link_id'),
   memo_message_id: integer('memo_message_id'),
-  reconciled_at: integer('reconciled_at').notNull().default(0),
   created_at: integer('created_at').notNull(),
 });
 

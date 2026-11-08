@@ -250,19 +250,21 @@ export async function isTopicNameTaken(ownerKey, link, label, exceptId) {
   return false;
 }
 
-export async function closeLinkTopics(link, chatId, lang) {
+export async function closeLinkTopics(link, chatId, lang, notify = true) {
   const topics = await store.listTopics(link.id);
   const memoText = await linkMemo(link);
   for (const topic of topics) {
     if (!topic.thread_id) continue;
-    try {
-      await api.sendMessage({
-        chat_id: chatId,
-        message_thread_id: topic.thread_id,
-        text: t(lang, 'topicClosed'),
-      });
-    } catch {
-      // best effort
+    if (notify) {
+      try {
+        await api.sendMessage({
+          chat_id: chatId,
+          message_thread_id: topic.thread_id,
+          text: t(lang, 'topicClosed'),
+        });
+      } catch {
+        // best effort
+      }
     }
     try {
       await api.closeForumTopic({ chat_id: chatId, message_thread_id: topic.thread_id });
