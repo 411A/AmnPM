@@ -4,6 +4,7 @@ const database = new DatabaseSync(':memory:');
 const calls = [];
 const failures = new Map();
 const shorts = new Map();
+const forumTopics = new Map();
 let nextId = 100;
 
 function wrap(query) {
@@ -51,6 +52,7 @@ export function resetDb() {
   calls.length = 0;
   failures.clear();
   shorts.clear();
+  forumTopics.clear();
   nextId = 100;
 }
 
@@ -79,6 +81,12 @@ function takeShort(method, length) {
 
 export function callsOf(method) {
   return calls.filter((entry) => entry.method === method);
+}
+
+// Reconcile tests opt in explicitly; an unconfigured chat throws so the
+// background check can never mark real topics missing by accident.
+export function setForumTopics(chatId, topics) {
+  forumTopics.set(Number(chatId), topics);
 }
 
 export const api = {
@@ -141,6 +149,12 @@ export const api = {
   async createForumTopic(args) {
     record('createForumTopic', args);
     return { message_thread_id: nextId++, name: args.name };
+  },
+  async getForumTopics(args) {
+    record('getForumTopics', args);
+    const topics = forumTopics.get(Number(args.chat_id));
+    if (!topics) throw new Error('getForumTopics not configured');
+    return { topics };
   },
   async editForumTopic(args) {
     record('editForumTopic', args);

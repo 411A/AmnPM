@@ -11,6 +11,7 @@ export const owners = table('owners', {
   modes: text('modes').notNull().default('anon,history,forward'),
   memo_link_id: integer('memo_link_id'),
   memo_message_id: integer('memo_message_id'),
+  reconciled_at: integer('reconciled_at').notNull().default(0),
   created_at: integer('created_at').notNull(),
 });
 
@@ -28,10 +29,14 @@ export const links = table('links', {
   dek_nonce: text('dek_nonce').notNull(),
   kek_version: integer('kek_version').notNull(),
   state: text('state').notNull(),
+  state_at: integer('state_at').notNull().default(0),
+  last_activity_at: integer('last_activity_at').notNull().default(0),
+  reminded_at: integer('reminded_at').notNull().default(0),
   created_at: integer('created_at').notNull(),
 }, (t) => [
   uniqueIndex('idx_links_token').on(t.token_lookup),
   index('idx_links_owner').on(t.owner_key, t.state),
+  index('idx_links_state_activity').on(t.state, t.last_activity_at),
 ]);
 
 export const retired_tokens = table('retired_tokens', {

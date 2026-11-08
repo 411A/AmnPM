@@ -5,8 +5,9 @@ import * as ids from '../lib/ids.js';
 import * as crypto from '../lib/crypto.js';
 import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, openAction, ownerChatId, sealAction, linkMemo, linkToken, sealConversationChat } from '../lib/keys.js';
-import { closeLinkTopics } from '../lib/topics.js';
 import { deliver, aliasFor } from '../lib/delivery.js';
+import { purgeLink } from '../lib/lifecycle.js';
+import { maybeReconcileOwner, maybeSweep } from '../lib/retention.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { parseModes } from '../lib/modes.js';
@@ -424,31 +425,13 @@ async function revoke(q, opened, lang, now) {
   const chat = await ownerChatId(link);
   const token = await linkToken(link);
   const url = await deepLink(token);
-  const memoState = await store.getMemoState(link.owner_key);
-  const replyState = await store.getReplyWindow(link.owner_key, now);
 
-  if (memoState?.memo_link_id === link.id && memoState.memo_message_id) {
-    try {
-      await api.deleteMessage({ chat_id: chat, message_id: memoState.memo_message_id });
-    } catch {
-      // already gone
-    }
+  if (!(await store.claimLinkPurge(link.id, now))) {
+    return answer(q, t(lang, 'revokedShort'));
   }
-  if (replyState?.link_id === link.id && replyState.prompt_message_id) {
-    try {
-      await api.deleteMessage({ chat_id: chat, message_id: replyState.prompt_message_id });
-    } catch {
-      // already gone
-    }
-  }
-  await store.setLinkState(link.id, 'revoked');
-  await closeLinkTopics(link, chat, owner?.lang ?? lang);
-  await store.insertRetired(await ids.tokenFp(token), now);
-  await store.retireLinkAliases(link.id, now);
-  await store.deleteLinkScoped(link.id);
-  await store.deleteLinkRow(link.id);
-  await store.releaseSlot(link.owner_key, link.slot);
-  await store.clearMemoState(link.owner_key);
+  const fresh = await store.getLink(link.id);
+  if (!fresh) return answer(q, t(lang, 'revokedShort'));
+  await purgeLink(fresh, chat, owner?.lang ?? lang, now);
 
   const text = t(owner?.lang ?? lang, 'revoked', { link: ids.escapeHtml(url) });
   try {
@@ -605,6 +588,24 @@ export default async function onCallback(update) {
       await drain(drainLimit);
     } catch {
       // the platform records failures; the bot writes no logs
+    }
+    try {
+      await maybeSweep(nowSec());
+    } catch {
+      // retention is best effort; the next update retries after the lease
+    }
+    if (Math.random() < 0.02) {
+      try {
+        const ownerId = update?.from?.id;
+        if (ownerId) {
+          const ownerKey = await userKeyFor(ownerId);
+          if (await store.getOwner(ownerKey)) {
+            await maybeReconcileOwner(ownerKey, ownerId, nowSec());
+          }
+        }
+      } catch {
+        // reconcile is a background repair, never a user-visible failure
+      }
     }
   }
 }

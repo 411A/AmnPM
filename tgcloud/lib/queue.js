@@ -1,9 +1,8 @@
 import { api } from 'sdk';
 import { CONFIG } from './config.js';
 import { openJob, sealActions, linkDek } from './keys.js';
-import * as crypto from './crypto.js';
 import * as store from './store.js';
-import { recreateOwnerTopic } from './topics.js';
+import { purgeLink } from './lifecycle.js';
 import { ownerKeyboard } from './render.js';
 import { t } from './i18n.js';
 import { userKeyFor } from './links.js';
@@ -167,42 +166,46 @@ export async function drain(maxJobs = 3) {
           result = await send(job, opened.payload);
         } catch (err) {
           const description = String(err?.description ?? err);
-          // A Telegram topic can die after creation: every write to it fails with
-          // "message thread not found". Recreate the owner topic and retry once.
-          if (/message thread not found/i.test(description) && opened.payload.thread_id) {
-            const topic = await store.getOwnedTopicByThread(opened.link.owner_key, opened.payload.thread_id);
-            // Prefer the stored row, then the mode sealed at enqueue time: a
-            // forward topic with a conversation must not be reborn as history.
-            const kind = topic?.kind ?? opened.payload.mode
-              ?? (opened.payload.conversation_id ? 'history' : 'anon');
-            const conversationId = topic?.conversation_id ?? opened.payload.conversation_id ?? 0;
-            const newThread = await recreateOwnerTopic(
-              opened.link,
-              opened.payload.chat_id,
-              kind,
-              conversationId,
-              nowSec(),
-            );
-            if (newThread) {
-              opened.payload.thread_id = newThread;
-              const dek = await linkDek(opened.link);
-              const sealed = await crypto.encrypt(
-                dek,
-                JSON.stringify(opened.payload),
-                `link:${opened.link.id}:job:v1`,
-              );
-              await store.setJobPayload(job.id, sealed.ct, sealed.nonce);
-              result = await send(job, opened.payload);
-            } else {
-              throw err;
+          // "message thread not found" means the owner deleted the topic. Never
+          // recreate it: retry the same write once as a transient-error guard,
+          // then treat the link as closed.
+          if (!/message thread not found/i.test(description) || !opened.payload.thread_id) throw err;
+          try {
+            result = await send(job, opened.payload);
+          } catch (retryErr) {
+            const retryDescription = String(retryErr?.description ?? retryErr);
+            if (!/message thread not found/i.test(retryDescription)) throw retryErr;
+            await store.markTopicDeadByThread(opened.link.id, opened.payload.thread_id);
+            let broken = false;
+            if ((await store.countLiveTopics(opened.link.id)) === 0) {
+              await store.setLinkBroken(opened.link.id, nowSec());
+              broken = true;
             }
-          } else {
-            throw err;
+            await store.failJob(job.id);
+            try {
+              await notifyFailure(job);
+            } catch {
+              // best effort; the job is already failed
+            }
+            if (broken) {
+              try {
+                await purgeLink(
+                  opened.link,
+                  opened.payload.chat_id,
+                  opened.payload.lang ?? 'en',
+                  nowSec(),
+                );
+              } catch {
+                // a broken link is retried by the retention sweep
+              }
+            }
+            continue;
           }
         }
         sentIds = Array.isArray(result)
           ? result.map((message) => message.message_id)
           : (result?.message_id ? [result.message_id] : []);
+        await store.touchLinkActivity(opened.link.id, nowSec());
         if (job.kind === 'copy' || job.kind === 'forward') {
           await store.setJobSent(job.id, JSON.stringify(sentIds));
         }

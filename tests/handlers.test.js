@@ -1647,40 +1647,77 @@ test('an exhausted alias space fails closed without duplicating', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /Delivery failed/);
 });
 
-test('a dead anon topic is recreated instead of failing', async () => {
+test('a dead anon topic closes the link instead of recreating it', async () => {
   await setupLink();
   await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().find((entry) => entry.startsWith('M|')));
 
   const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
-  const beforeThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon'").get().thread_id;
   const senderKey = await senderKeyFor(link, 200);
   await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
   failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
   await drain();
 
-  const afterThread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon'").get()?.thread_id ?? 0;
-  assert.ok(afterThread);
-  assert.notEqual(afterThread, beforeThread);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM topics').get().n, 0);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
-  assert.equal(callsOf('sendMessage').filter((call) => /Delivery failed/.test(call.args.text ?? '')).length, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM retired_tokens').get().n, 1);
+  assert.ok(callsOf('sendMessage').some((call) => /Delivery failed/.test(call.args.text ?? '')));
 });
 
-test('a recreated topic keeps its forward kind', async () => {
+test('a dead forward topic closes and purges the link', async () => {
   await setupLink();
   await onMessage(message('hi', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
   await click(buttons().find((entry) => entry.startsWith('F|')));
 
   const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
-  rawDb().prepare("DELETE FROM topics WHERE kind = 'forward'").run();
   const senderKey = await senderKeyFor(link, 200);
   await deliver(link, 200, senderKey, 'forward', [77, 78], 'V', 100, 0);
   failNext('forwardMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  failNext('forwardMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
   await drain();
 
-  const kinds = rawDb().prepare('SELECT DISTINCT kind AS k FROM topics').all().map((row) => row.k);
-  assert.deepEqual(kinds, ['forward']);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM topics').get().n, 0);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+});
+
+test('one thread-not-found retry delivers without recreating the topic', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('M|')));
+
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
+  const before = callsOf('createForumTopic').length;
+  failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  await drain();
+
+  assert.equal(callsOf('createForumTopic').length, before);
+  assert.equal(rawDb().prepare('SELECT state FROM links LIMIT 1').get().state, 'active');
+  assert.equal(rawDb().prepare("SELECT state FROM topics WHERE kind = 'anon'").get().state, 'open');
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 0);
+});
+
+test('one dead topic does not purge a link with another live topic', async () => {
+  await setupLink();
+  await onMessage(message('hello', 200, { first_name: 'V', message_thread_id: firstSenderThread() }));
+  await click(buttons().find((entry) => entry.startsWith('H|')));
+  await drain();
+
+  const link = rawDb().prepare('SELECT * FROM links LIMIT 1').get();
+  const senderKey = await senderKeyFor(link, 200);
+  await deliver(link, 200, senderKey, 'anon', [77], 'V', 100, 0);
+  failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  failNext('copyMessages', { errorCode: 400, description: 'Bad Request: message thread not found' });
+  await drain();
+
+  assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 1);
+  assert.equal(rawDb().prepare('SELECT state FROM links LIMIT 1').get().state, 'active');
+  assert.equal(rawDb().prepare("SELECT state FROM topics WHERE kind = 'anon'").get().state, 'dead');
+  assert.equal(rawDb().prepare("SELECT state FROM topics WHERE kind = 'history'").get().state, 'open');
 });
 
 test('a job stranded in sending is reaped and delivered', async () => {

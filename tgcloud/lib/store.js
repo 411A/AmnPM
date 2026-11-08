@@ -76,11 +76,11 @@ export async function releaseSlot(ownerKey, slot) {
 export async function insertLink(link) {
   await db.run(sql`INSERT INTO links
     (token_lookup, token_ct, token_nonce, memo, slot, owner_key, owner_chat_ct, owner_chat_nonce,
-     dek_wrapped, dek_nonce, kek_version, state, created_at)
+     dek_wrapped, dek_nonce, kek_version, state, state_at, last_activity_at, reminded_at, created_at)
     VALUES (${link.token_lookup}, ${link.token_ct}, ${link.token_nonce}, ${link.memo},
       ${link.slot}, ${link.owner_key}, ${link.owner_chat_ct}, ${link.owner_chat_nonce},
       ${link.dek_wrapped}, ${link.dek_nonce},
-      ${link.kek_version}, 'active', ${link.created_at})`);
+      ${link.kek_version}, 'active', ${link.created_at}, ${link.created_at}, 0, ${link.created_at})`);
   return findLinkByLookup(link.token_lookup);
 }
 
@@ -101,8 +101,112 @@ export async function updateMemo(id, memo) {
   await db.run(sql`UPDATE links SET memo = ${memo} WHERE id = ${id}`);
 }
 
-export async function setLinkState(id, state) {
-  await db.run(sql`UPDATE links SET state = ${state} WHERE id = ${id}`);
+export async function claimLinkPurge(id, now) {
+  const result = await db.run(sql`UPDATE links SET state = 'purging', state_at = ${now}
+    WHERE id = ${id} AND state = 'active'`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function setLinkBroken(id, now) {
+  const result = await db.run(sql`UPDATE links SET state = 'broken', state_at = ${now}
+    WHERE id = ${id} AND state = 'active'`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+// Any delivered message in either direction keeps the link alive.
+export async function touchLinkActivity(id, now) {
+  await db.run(sql`UPDATE links SET last_activity_at = ${now}, reminded_at = 0 WHERE id = ${id}`);
+}
+
+export async function backfillLinkActivity(now) {
+  await db.run(sql`UPDATE links SET last_activity_at = ${now} WHERE last_activity_at = 0`);
+}
+
+// Claim the reminder atomically against the activity value that made it due.
+// A message that landed since the sweep read the row wins and cancels it.
+export async function claimReminder(id, lastActivity, now) {
+  const result = await db.run(sql`UPDATE links SET reminded_at = ${now}
+    WHERE id = ${id} AND last_activity_at = ${lastActivity} AND reminded_at = 0`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function listLinksToRemind(now, remindAfter, purgeAfter, limit) {
+  return db.all(sql`SELECT * FROM links
+    WHERE state = 'active' AND last_activity_at > 0
+      AND last_activity_at <= ${now - remindAfter}
+      AND last_activity_at > ${now - purgeAfter}
+      AND reminded_at = 0
+    ORDER BY last_activity_at LIMIT ${limit}`);
+}
+
+export async function listLinksToPurge(now, purgeAfter, limit) {
+  return db.all(sql`SELECT * FROM links
+    WHERE state = 'active' AND last_activity_at > 0
+      AND last_activity_at <= ${now - purgeAfter}
+    ORDER BY last_activity_at LIMIT ${limit}`);
+}
+
+export async function listStalePurging(cutoff, limit) {
+  return db.all(sql`SELECT * FROM links
+    WHERE state = 'purging' AND state_at <= ${cutoff}
+    ORDER BY id LIMIT ${limit}`);
+}
+
+export async function listBrokenLinks(limit) {
+  return db.all(sql`SELECT * FROM links WHERE state = 'broken' ORDER BY id LIMIT ${limit}`);
+}
+
+export async function claimOwnerReconcile(ownerKey, now, cutoff) {
+  const result = await db.run(sql`UPDATE owners SET reconciled_at = ${now}
+    WHERE owner_key = ${ownerKey} AND reconciled_at <= ${cutoff}`);
+  return (result.rowsAffected ?? result.changes) > 0;
+}
+
+export async function listOwnerTopics(ownerKey) {
+  return db.all(sql`SELECT t.* FROM topics t JOIN links l ON l.id = t.link_id
+    WHERE l.owner_key = ${ownerKey} AND l.state = 'active'`);
+}
+
+export async function listLinkTopics(linkId) {
+  return db.all(sql`SELECT * FROM topics WHERE link_id = ${linkId}`);
+}
+
+export async function setTopicState(id, state) {
+  await db.run(sql`UPDATE topics SET state = ${state} WHERE id = ${id}`);
+}
+
+export async function markTopicDeadByThread(linkId, threadId) {
+  await db.run(sql`UPDATE topics SET state = 'dead'
+    WHERE link_id = ${linkId} AND thread_id = ${threadId}`);
+}
+
+export async function countLiveTopics(linkId) {
+  const row = await db.get(sql`SELECT COUNT(*) AS n FROM topics
+    WHERE link_id = ${linkId} AND state NOT IN ('dead', 'unavailable')`);
+  return Number(row?.n ?? 0);
+}
+
+// One read on the common path: only look at the lease when the interval passed.
+export async function claimRetentionLease(now, leaseUntil, interval) {
+  const last = Number((await getMeta('retention_at')) ?? 0);
+  if (last && now - last < interval) return false;
+  const lease = Number((await getMeta('retention_lease')) ?? 0);
+  if (lease > now) return false;
+  const updated = await db.run(sql`UPDATE meta SET v = ${String(leaseUntil)}
+    WHERE k = 'retention_lease' AND CAST(v AS INTEGER) <= ${now}`);
+  if ((updated.rowsAffected ?? updated.changes) > 0) return true;
+  const inserted = await db.run(sql`INSERT INTO meta (k, v)
+    VALUES ('retention_lease', ${String(leaseUntil)}) ON CONFLICT(k) DO NOTHING`);
+  return (inserted.rowsAffected ?? inserted.changes) > 0;
+}
+
+export async function finishRetention(now) {
+  await setMeta('retention_at', String(now));
+  await setMeta('retention_lease', '0');
+}
+
+export async function releaseRetention(now) {
+  await setMeta('retention_lease', String(now + 300));
 }
 
 export async function setLinkMemo(id, memo) {
@@ -504,11 +608,6 @@ export async function deferJob(id, nextAt) {
 export async function failJob(id) {
   // A failed job is never retried; delete it so the encrypted sender id is not retained.
   await db.run(sql`DELETE FROM jobs WHERE id = ${id}`);
-}
-
-export async function setJobPayload(id, ct, nonce) {
-  await db.run(sql`UPDATE jobs SET payload_ct = ${ct}, payload_nonce = ${nonce}
-    WHERE id = ${id}`);
 }
 
 export async function bumpRate(linkId, senderKey, now, amount = 1) {

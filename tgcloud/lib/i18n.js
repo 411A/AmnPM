@@ -40,14 +40,14 @@ const en = {
     'Each link gets its own topic. Use <code>/rename name</code> inside a topic; the direction/mode emoji stays at the front. Telegram UI renames are invisible to the bot; only /rename keeps the mandatory emoji. The new name is stored on the server immediately, but the app may take hours to a day to display it.\n' +
     '</details>\n' +
     '<details><summary><b>Managing links</b></summary>\n' +
-    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays.\n' +
+    'Open /settings → My links to open, share, rename, or revoke a link. Revoking deletes all data the bot stored for that link. Telegram history stays. A link with no delivered message for 12 months is deleted automatically; a reminder is sent about 30 days before. Deleting the topics of a link also closes it.\n' +
     '</details>',
   privacy:
     '{e.lock} <b>Privacy</b>\n' +
     'No message content is stored.\n' +
     'Links, memos, and sender ids are encrypted at rest.\n' +
     'Runs securely inside Telegram’s own infrastructure (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>).\n' +
-    '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Telegram keeps its own copy of messages. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
+    '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Links are also removed after 12 months without activity (checked at most weekly while the bot is active); a reminder is sent about 30 days before. A one-way fingerprint of retired links is kept so the same link is never issued again. Telegram keeps its own copy of messages. A notice may not arrive if the bot is blocked. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
@@ -187,6 +187,12 @@ const en = {
     'The link was revoked, so the bot deleted its stored data for this link. This topic no longer accepts messages or answers. Telegram keeps its own chat history.',
   topicsDisabled: '{e.info} Enable Topics for this bot in @BotFather to get separate threads.',
   preparing: '{e.hourglass} Preparing your topic — tap the mode again in a moment.',
+  retentionReminder:
+    '{e.warn} This link has had no activity for 11 months.\n' +
+    'It will be deleted in about 30 days or less unless you send or receive a message through it. Telegram history stays.',
+  linkExpired:
+    '{e.trash} Link deleted\n' +
+    '“{memo}” had no activity for 12 months, so the bot deleted the link and its stored data. Telegram history stays.',
   failed: '{e.warn} Delivery failed. Try again.',
 };
 
@@ -230,14 +236,14 @@ const fa = {
     'هر لینک موضوع خودش را دارد. داخل موضوع از <code>/rename نام</code> استفاده کنید؛ ایموجی جهت/حالت همیشه در ابتدا می‌ماند. تغییر نام از رابط تلگرام برای ربات دیده نمی‌شود؛ فقط /rename ایموجی اجباری را حفظ می‌کند. نام جدید فوراً در سرور ذخیره می‌شود، اما ممکن است ساعت‌ها تا یک روز طول بکشد تا برنامه آن را نمایش دهد.\n' +
     '</details>\n' +
     '<details><summary><b>مدیریت لینک‌ها</b></summary>\n' +
-    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند.\n' +
+    'از /settings → لینک‌های من برای باز کردن، اشتراک، تغییر نام یا حذف لینک استفاده کنید. حذف لینک همه داده‌های ذخیره‌شده ربات برای آن را پاک می‌کند. تاریخچه تلگرام می‌ماند. لینکی که ۱۲ ماه پیامی ردوبدل نکند خودکار حذف می‌شود؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. حذف موضوع‌های یک لینک هم آن لینک را می‌بندد.\n' +
     '</details>',
   privacy:
     '{e.lock} <b>حریم خصوصی</b>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.\n' +
     'لینک‌ها، یادداشت‌ها و شناسه فرستنده‌ها در حالت سکون رمزنگاری می‌شوند.\n' +
     'به‌صورت امن داخل زیرساخت خود تلگرام (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>) اجرا می‌شود.\n' +
-    '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
+    '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. لینک‌ها پس از ۱۲ ماه بی‌فعالیتی هم حذف می‌شوند (حداکثر هفته‌ای یک‌بار و زمانی که ربات فعال است بررسی می‌شود)؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. اثر انگشت یک‌طرفه لینک‌های بازنشسته نگه داشته می‌شود تا همان لینک هرگز دوباره ساخته نشود. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. اگر ربات مسدود باشد ممکن است اطلاع‌رسانی نرسد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
@@ -377,6 +383,12 @@ const fa = {
     'لینک حذف شده و ربات داده‌های ذخیره‌شده آن را پاک کرده است. این موضوع دیگر پیام یا پاسخ نمی‌پذیرد. تاریخچه گفتگو در تلگرام باقی می‌ماند.',
   topicsDisabled: '{e.info} برای دریافت موضوع‌های جداگانه، Topics را در @BotFather فعال کنید.',
   preparing: '{e.hourglass} موضوع در حال آماده‌سازی است — لحظه‌ای بعد دوباره حالت را بزنید.',
+  retentionReminder:
+    '{e.warn} این لینک ۱۱ ماه است فعالیتی نداشته.\n' +
+    'اگر تا حدود ۳۰ روز آینده از طریق آن پیام نفرستید یا دریافت نکنید، حذف می‌شود. تاریخچه تلگرام می‌ماند.',
+  linkExpired:
+    '{e.trash} لینک حذف شد\n' +
+    '«{memo}» ۱۲ ماه فعالیتی نداشت؛ بنابراین ربات لینک و داده‌های ذخیره‌شده آن را پاک کرد. تاریخچه تلگرام می‌ماند.',
   failed: '{e.warn} ارسال نشد. دوباره تلاش کنید.',
 };
 
