@@ -5,7 +5,9 @@ import {
   actionKey,
   actionKeyVersions,
   contentKek,
+  identityKek,
   CURRENT_ACTION_VERSION,
+  CURRENT_IDENTITY_VERSION,
 } from './keyring.js';
 
 export { actionKey } from './keyring.js';
@@ -52,9 +54,8 @@ export async function topicLabel(link, topic) {
 }
 
 export async function sealConversationChat(link, chatId, senderKey, mode) {
-  const dek = await linkDek(link);
   const sealed = await c.encrypt(
-    dek,
+    identityKek(CURRENT_IDENTITY_VERSION),
     String(chatId),
     `conversation:${link.id}:${senderKey}:${mode}:chat:v1`,
   );
@@ -63,14 +64,15 @@ export async function sealConversationChat(link, chatId, senderKey, mode) {
 
 export async function conversationChatId(link, conversation) {
   if (!conversation.sender_chat_ct?.startsWith('enc:')) return 0;
-  const dek = await linkDek(link);
   const [, nonce, ct] = conversation.sender_chat_ct.split(':');
-  return Number(await c.decrypt(
-    dek,
-    ct,
-    nonce,
-    `conversation:${link.id}:${conversation.sender_key}:${conversation.mode}:chat:v1`,
-  ));
+  const aad = `conversation:${link.id}:${conversation.sender_key}:${conversation.mode}:chat:v1`;
+  try {
+    return Number(await c.decrypt(identityKek(CURRENT_IDENTITY_VERSION), ct, nonce, aad));
+  } catch {
+    // Pre-domain conversations used the per-link data key.
+    const dek = await linkDek(link);
+    return Number(await c.decrypt(dek, ct, nonce, aad));
+  }
 }
 
 export async function sealConversationLabel(link, label, senderKey, mode) {
@@ -106,10 +108,19 @@ export async function conversationLabel(link, conversation) {
 }
 
 export async function ownerChatId(link) {
-  const dek = await linkDek(link);
-  return Number(
-    await c.decrypt(dek, link.owner_chat_ct, link.owner_chat_nonce, `link:${link.token_lookup}:owner_chat:v1`),
-  );
+  const aad = `link:${link.token_lookup}:owner_chat:v1`;
+  try {
+    return Number(await c.decrypt(
+      identityKek(CURRENT_IDENTITY_VERSION),
+      link.owner_chat_ct,
+      link.owner_chat_nonce,
+      aad,
+    ));
+  } catch {
+    // Pre-domain links encrypted the owner chat under the per-link data key.
+    const dek = await linkDek(link);
+    return Number(await c.decrypt(dek, link.owner_chat_ct, link.owner_chat_nonce, aad));
+  }
 }
 
 async function prepareAction(link, kind, payload, now, ttl, key) {

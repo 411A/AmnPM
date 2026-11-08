@@ -52,6 +52,24 @@ test('content, identity, and action keys are distinct domains', async () => {
   assert.notEqual(crypto.hex(first), contentKek(CURRENT_CONTENT_VERSION));
 });
 
+test('owner chat ids are sealed in the identity domain, not the link data key', async () => {
+  const link = await setupLink();
+  const aad = `link:${link.token_lookup}:owner_chat:v1`;
+  const dek = await keys.linkDek(link);
+  await assert.rejects(crypto.decrypt(dek, link.owner_chat_ct, link.owner_chat_nonce, aad));
+  assert.equal(await keys.ownerChatId(link), 100);
+});
+
+test('owner chat ids fall back to the old link-DEK rows', async () => {
+  const link = await setupLink();
+  const aad = `link:${link.token_lookup}:owner_chat:v1`;
+  const dek = await keys.linkDek(link);
+  const legacy = await crypto.encrypt(dek, '100', aad);
+  rawDb().prepare('UPDATE links SET owner_chat_ct = ?, owner_chat_nonce = ? WHERE id = ?')
+    .run(legacy.ct, legacy.nonce, link.id);
+  assert.equal(await keys.ownerChatId({ ...link, owner_chat_ct: legacy.ct, owner_chat_nonce: legacy.nonce }), 100);
+});
+
 test('a new action token round-trips through openAction', async () => {
   const link = await setupLink();
   const payload = { sender_chat_id: 200, message_id: 7, sender_key: 'k' };

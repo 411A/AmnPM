@@ -6,7 +6,7 @@ import * as crypto from '../lib/crypto.js';
 import * as render from '../lib/render.js';
 import { t, normalizeLang } from '../lib/i18n.js';
 import { linkDek, ownerChatId, sealAction, linkMemo, linkToken, sealTopicName, topicLabel, conversationChatId, openReplyTarget } from '../lib/keys.js';
-import { contentKek, CURRENT_CONTENT_VERSION } from '../lib/keyring.js';
+import { contentKek, identityKek, CURRENT_CONTENT_VERSION, CURRENT_IDENTITY_VERSION } from '../lib/keyring.js';
 import { renameTopics, ensureSenderTopic, recreateSenderTopic, isTopicNameTaken } from '../lib/topics.js';
 import { drain } from '../lib/queue.js';
 import { maybeSweep } from '../lib/retention.js';
@@ -70,7 +70,7 @@ async function createLink(ownerKey, chatId, memo, now) {
       const tokenLookup = await tokenLookupFor(token);
       const dek = crypto.randomBytes(32);
       const wrapped = await crypto.encrypt(contentKek(CURRENT_CONTENT_VERSION), dek, `link:${tokenLookup}:dek:v1`);
-      const chat = await crypto.encrypt(dek, String(chatId), `link:${tokenLookup}:owner_chat:v1`);
+      const chat = await crypto.encrypt(identityKek(CURRENT_IDENTITY_VERSION), String(chatId), `link:${tokenLookup}:owner_chat:v1`);
       const sealedToken = await crypto.encrypt(dek, token, `link:${tokenLookup}:token:v1`);
       const memoText = ids.sanitizeMemo(memo);
       const sealedMemo = await crypto.encrypt(dek, memoText, `link:${tokenLookup}:memo:v1`);

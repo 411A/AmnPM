@@ -8,9 +8,10 @@ source for `/security`; if the code and this page disagree, the code is wrong.
 Three key domains, each with its own named key set in `tgcloud/lib/secret.js`:
 
 - **Content**: wraps each link's per-link data key. Protects link tokens, memos,
-  topic names, owner/sender conversation data, and job payloads.
-- **Identity/routing**: wraps the installation salt. Derives and protects owner
-  keys, sender routing keys, sessions, rate-limit keys, and block keys.
+  topic names, alias labels, and job payloads.
+- **Identity/routing**: wraps the installation salt. Protects owner chat ids,
+  sender conversation chat ids, owner keys, sender routing keys, sessions,
+  rate-limit keys, and block keys.
 - **Action**: derives per-link action keys for reply, read, and block buttons.
 
 The domains are separate so a leak of one does not automatically open the

@@ -24,23 +24,27 @@
    the content key and re-wrapped as `id:` under the identity key. The salt
    value is unchanged, so every existing derived key, block, and link remains
    valid.
-3. **Action tokens use the action domain** — reply/read/block buttons are
+3. **Owner and sender chat ids use the identity domain** — new links seal
+   `owner_chat_ct` with the identity key; new conversations seal
+   `sender_chat_ct` there too. Old rows fall back to the link data key. A
+   content-key leak no longer reveals chat ids.
+4. **Action tokens use the action domain** — reply/read/block buttons are
    sealed and opened with a per-link action key. Old tokens fall back to the
    link data key until their normal TTL. The existing split ciphertext (DB body
    + button suffix) is unchanged.
-4. **Reply windows use the action domain** — the short-lived sender target is
+5. **Reply windows use the action domain** — the short-lived sender target is
    sealed with the action key; old windows fall back to the link data key.
-5. **Album pending rows no longer carry a sender hash** — `pending.user_key`
+6. **Album pending rows no longer carry a sender hash** — `pending.user_key`
    is now a link/direction batch scope (`msg:<link>` / `oalbum:<link>`), and
    non-album groups use a random group key. Grouped media behavior is
    unchanged; the current update's chat id is used for `copyMessages`.
-6. **`/security`** — a RichMessage with expandable sections, added to the
+7. **`/security`** — a RichMessage with expandable sections, added to the
    command menu in English and Persian. `/help` mentions it.
-7. **`.env` key generation** — `tools/gen-secret.mjs` reads named key groups
+8. **`.env` key generation** — `tools/gen-secret.mjs` reads named key groups
    from `.env` (build time only) or preserves the existing `secret.js`, then
    writes the runtime module. Serverless has no runtime environment variables,
    so `secret.js` remains the deployed artifact.
-8. **Security docs** — `docs/security-model.md` states the exact guarantees
+9. **Security docs** — `docs/security-model.md` states the exact guarantees
    and the block-key limitation.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
@@ -59,7 +63,7 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 |---|---|
 | Syntax check | 38 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **178/178** (baseline 171; +5 keyring, +1 `/security`, +1 album identity) |
+| Full test suite | **180/180** (baseline 171; +7 keyring, +1 `/security`, +1 album identity) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
