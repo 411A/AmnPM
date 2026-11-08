@@ -8,6 +8,7 @@ import * as store from '../tgcloud/lib/store.js';
 import * as keys from '../tgcloud/lib/keys.js';
 import * as crypto from '../tgcloud/lib/crypto.js';
 import { ownerSalt } from '../tgcloud/lib/links.js';
+import { CONFIG } from '../tgcloud/lib/config.js';
 import {
   actionKey,
   contentKek,
@@ -41,6 +42,7 @@ async function setupLink() {
 }
 
 test('content, identity, and action keys are distinct domains', async () => {
+  assert.equal(CONFIG.kdfIterations, 0);
   assert.notEqual(contentKek(CURRENT_CONTENT_VERSION), identityKek(CURRENT_IDENTITY_VERSION));
   const first = await actionKey({ id: 1 });
   const again = await actionKey({ id: 1 });
