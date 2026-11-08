@@ -301,6 +301,17 @@ test('expiry closes topics without posting the revoke notice', async () => {
   assert.ok(callsOf('sendMessage').some((call) => /12 months/.test(call.args.text ?? '')));
 });
 
+test('an activity write never moves the clock backwards', async () => {
+  await setupLink();
+  const row = link();
+  rawDb().prepare('UPDATE links SET last_activity_at = ? WHERE id = ?')
+    .run(row.last_activity_at + 100, row.id);
+  await store.touchLinkActivity(row.id, row.last_activity_at);
+  const after = link();
+  assert.equal(Number(after.last_activity_at), Number(row.last_activity_at) + 100);
+  assert.equal(after.reminded_at, 0);
+});
+
 test('the sweep lease admits one worker at a time', async () => {
   const now = Math.floor(Date.now() / 1000) + 160_000;
   resetSweep();

@@ -113,9 +113,12 @@ export async function setLinkBroken(id, now) {
   return (result.rowsAffected ?? result.changes) > 0;
 }
 
-// Any delivered message in either direction keeps the link alive.
+// Any delivered message in either direction keeps the link alive. MAX guards
+// against a one-second clock skew between isolates moving the clock backwards.
 export async function touchLinkActivity(id, now) {
-  await db.run(sql`UPDATE links SET last_activity_at = ${now}, reminded_at = 0 WHERE id = ${id}`);
+  await db.run(sql`UPDATE links
+    SET last_activity_at = MAX(last_activity_at, ${now}), reminded_at = 0
+    WHERE id = ${id}`);
 }
 
 export async function backfillLinkActivity(now) {
