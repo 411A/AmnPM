@@ -74,6 +74,8 @@ Shared links open automatically. You never need to type the token.
 - **No ads, analytics, or application logs.**
 - **Not end-to-end encrypted.** The bot operator can access messages while delivering them. The owner's identity is never shown to senders; anonymous mode also hides the sender's identity from the owner. No mode hides messages from the operator.
 
+Report security issues privately via [SECURITY.md](SECURITY.md). Repository security setup (CodeQL, Dependabot, secret scanning, reporting) is in [docs/github-security.md](docs/github-security.md).
+
 ## Visual guide
 
 Two code-backed maps show what happens to a message.
