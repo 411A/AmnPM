@@ -112,17 +112,17 @@ No other command, button, or behavior removed.
 | API per op | unchanged |
 | Real-account `e2e_all.py` (revision 110) | **36/36** (last broad run before the 24h limit; see note) |
 | Real-account `e2e_extra.py` (revision 110) | **11/11** |
-| Real-account `e2e_rename_limit.py` (revision 113) | **21/21**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, **owner can still rename after the sender renamed**, second owner rename blocked, memo independence, cleanup |
+| Real-account `e2e_rename_limit.py` (revision 117) | **21/21**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, **owner can still rename after the sender renamed**, second owner rename blocked, memo independence, cleanup; language setup also uses **Settings → Language** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
-| `/language` live | pass: **Settings → Language** on both test accounts; `🇬🇧 English` / `فارسی 🇮🇷` row; switching to Persian makes `/privacy` and `/security` Persian even though Telegram reports `en`; switching back restores English |
+| Settings → Language live | pass: `🇬🇧 English` / `فارسی 🇮🇷` row on both test accounts; switching to Persian makes `/privacy` and `/security` Persian even though Telegram reports `en`; switching back restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
 | Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
 | Rename-state purge | link purge deletes owner-topic, sender-topic, and memo rename timestamps; covered by `tests/rename.test.js` |
 | GitHub security | CodeQL, dependency review, and Dependabot config valid; private reporting, vulnerability alerts, and security updates enabled; 0 open code/dependency/secret alerts |
 | Release metadata | `tools/gen-build.mjs` writes build.js, manifest, and notes together; policy test requires the generated header and matching release/hash/commit |
-| tgcloud | revision **116**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI, CodeQL, and dependency review green on `9d1323a` (199 tests) |
+| tgcloud | revision **117**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI, CodeQL, and dependency review green on `cda1a7b` (199 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
 24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113
