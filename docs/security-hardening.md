@@ -111,8 +111,9 @@ cooldown. No command, button, or behavior removed.
 | `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
 | Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
-| tgcloud | revision **114**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `bfcf273` (build stamp, lint, and all 199 tests) |
+| Rename-state purge | link purge deletes owner-topic, sender-topic, and memo rename timestamps; covered by `tests/rename.test.js` |
+| tgcloud | revision **115**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI success on `7a78796` (build stamp, lint, and all 199 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
 24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113
