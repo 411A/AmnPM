@@ -15,7 +15,7 @@ test('welcome explains the bot and modes without listing commands', () => {
     assert.match(text, /😶‍🌫️/);
     assert.match(text, /😎/);
     assert.doesNotMatch(text, /<blockquote>[0-9a-f]{64}<\/blockquote>/);
-    assert.match(text, /matches source|unverified release/);
+    assert.match(text, /matches source|unverified release|منبع مطابقت دارد|تأییدنشده/);
     assert.ok(text.split('\n').length <= 20, text);
   }
 });
@@ -53,7 +53,7 @@ test('about uses a rich table for bot and source', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.about(lang);
     assert.match(text, /AmnPM<\/b><br>/, text);
-    assert.match(text, /(?:running code matches source|unverified release)<\/a><br>/, text);
+    assert.match(text, /(?:running code matches source|unverified release|کد در حال اجرا با منبع مطابقت دارد|انتشار تأییدنشده)<\/a><br>/, text);
     assert.match(text, /<table bordered striped compact>/, text);
     assert.match(text, /<th align="center">/);
     assert.match(text, /<td align="center" valign="middle">/);
@@ -100,6 +100,7 @@ test('verification says the running code matches source without printing the has
   assert.match(text, /unverified/);
   assert.match(text, /https:\/\/github\.com\/411A\/AmnPM\/releases"/);
   assert.equal(text.includes(hash), false);
+  assert.match(render.verifyLine('fa'), /انتشار تأییدنشده/);
 
   BUILD.verified = true;
   BUILD.release = 'v1.0.0';
@@ -107,6 +108,7 @@ test('verification says the running code matches source without printing the has
   assert.match(text, /running code matches source/);
   assert.match(text, /releases\/tag\/v1\.0\.0/);
   assert.equal(text.includes(hash), false);
+  assert.match(render.verifyLine('fa'), /کد در حال اجرا با منبع مطابقت دارد/);
 
   BUILD.verified = previousVerified;
   BUILD.release = previousRelease;

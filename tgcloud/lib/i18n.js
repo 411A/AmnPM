@@ -105,6 +105,8 @@ const en = {
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
+  verifyOk: 'running code matches source',
+  verifyBad: 'unverified release',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +
@@ -329,6 +331,8 @@ const fa = {
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
+  verifyOk: 'کد در حال اجرا با منبع مطابقت دارد',
+  verifyBad: 'انتشار تأییدنشده',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +

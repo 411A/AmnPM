@@ -7,15 +7,16 @@ import { MODES } from './modes.js';
 
 const ltr = (name) => `${LTR_MARK}${name}`;
 
-export function verifyLine() {
+export function verifyLine(lang = 'en') {
   const base = CONFIG.repoUrl;
   const page = BUILD.release && BUILD.release !== 'dev'
     ? `${base}/releases/tag/${encodeURIComponent(BUILD.release)}`
     : `${base}/releases`;
   const link = escapeHtml(page);
+  const label = t(lang, BUILD.verified ? 'verifyOk' : 'verifyBad');
   return BUILD.verified
-    ? `${EMOJI.check} <a href="${link}">running code matches source</a>`
-    : `${EMOJI.unverified} <a href="${link}">unverified release</a>`;
+    ? `${EMOJI.check} <a href="${link}">${label}</a>`
+    : `${EMOJI.unverified} <a href="${link}">${label}</a>`;
 }
 
 export function shareUrl(link) {
@@ -32,7 +33,7 @@ export function linkButtons(link) {
 }
 
 export function welcome(lang) {
-  return t(lang, 'welcome', { verify: verifyLine(), repo: escapeHtml(CONFIG.repoUrl) });
+  return t(lang, 'welcome', { verify: verifyLine(lang), repo: escapeHtml(CONFIG.repoUrl) });
 }
 
 export function linkIntro(lang, link, memo) {
@@ -48,7 +49,7 @@ export function about(lang) {
     contact: escapeHtml(CONFIG.contactUrl),
     repo: escapeHtml(CONFIG.repoUrl),
     developer: escapeHtml(CONFIG.developerUrl),
-    verify: verifyLine(),
+    verify: verifyLine(lang),
   });
 }
 
