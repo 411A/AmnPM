@@ -1,9 +1,9 @@
 import { api } from 'sdk';
 import * as store from './store.js';
-import { EMOJI } from './constants.js';
+import { EMOJI, RTL_MARK } from './constants.js';
 
 // Bump to reapply bot metadata on the next /start.
-const CONFIG_VERSION = 7;
+const CONFIG_VERSION = 8;
 
 const NAME = 'AmnPM';
 
@@ -32,7 +32,7 @@ const COMMANDS_FA = [
 const DESCRIPTION_EN =
   'AmnPM turns one link into a private, anonymous inbox. Create a link, share it, and receive messages without exposing your identity. Owners can answer, block, and revoke links.';
 const DESCRIPTION_FA =
-  'AmnPM یک لینک را به صندوق خصوصی و ناشناس تبدیل می‌کند. لینک بسازید، به اشتراک بگذارید و بدون افشای هویت پیام دریافت کنید. صاحب لینک می‌تواند پاسخ دهد، مسدود کند و لینک را حذف کند.';
+  `${RTL_MARK}AmnPM یک لینک را به صندوق خصوصی و ناشناس تبدیل می‌کند. لینک بسازید، به اشتراک بگذارید و بدون افشای هویت پیام دریافت کنید. صاحب لینک می‌تواند پاسخ دهد، مسدود کند و لینک را حذف کند.`;
 
 const SHORT_EN = 'Private, anonymous inboxes behind one link. Create a link, share it, receive messages.';
 const SHORT_FA = 'صندوق خصوصی و ناشناس با یک لینک. لینک بسازید، به اشتراک بگذارید و پیام دریافت کنید.';

@@ -2,6 +2,8 @@
 // Forces LTR layout in a topic name so the direction emoji stays on the left even
 // when the custom name is RTL.
 export const LTR_MARK = '\u200E';
+// Forces RTL layout when a Persian message starts with a Latin word.
+export const RTL_MARK = '\u200F';
 
 export const EMOJI = {
   brand: '🕊️',

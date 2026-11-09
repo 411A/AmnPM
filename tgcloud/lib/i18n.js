@@ -1,4 +1,4 @@
-import { EMOJI } from './constants.js';
+import { EMOJI, RTL_MARK } from './constants.js';
 
 const en = {
   welcome:
@@ -472,6 +472,16 @@ export function normalizeLang(code) {
   return String(code ?? '').toLowerCase().startsWith('fa') ? 'fa' : 'en';
 }
 
+const FIRST_STRONG = /[A-Za-z\u00C0-\u024F]|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+const LTR_STRONG = /[A-Za-z\u00C0-\u024F]/;
+const RTL_STRONG = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+
+function startsLatin(text) {
+  const plain = text.replace(/<[^>]*>/g, '');
+  const first = plain.match(FIRST_STRONG)?.[0] ?? '';
+  return LTR_STRONG.test(first) && RTL_STRONG.test(plain);
+}
+
 export function t(lang, key, vars = {}) {
   const table = STRINGS[lang] ?? STRINGS.en;
   let text = table[key] ?? STRINGS.en[key] ?? key;
@@ -479,5 +489,6 @@ export function t(lang, key, vars = {}) {
   for (const [name, value] of Object.entries(vars)) {
     text = text.replaceAll(`{${name}}`, String(value));
   }
+  if (lang === 'fa' && startsLatin(text)) text = `${RTL_MARK}${text}`;
   return text;
 }

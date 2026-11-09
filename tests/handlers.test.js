@@ -130,6 +130,10 @@ test('bot metadata config runs once', async () => {
   assert.match(commands[2].description, /^🎛 .*&/);
   assert.match(commands[7].description, /^ℹ️ /);
 
+  const faDescription = callsOf('setMyDescription')
+    .find((call) => call.args.language_code === 'fa').args.description;
+  assert.ok(faDescription.startsWith('\u200F'));
+
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
   assert.equal(callsOf('setMyProfilePhoto').length, 0);

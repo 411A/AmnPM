@@ -19,6 +19,19 @@ test('welcome explains the bot and modes without listing commands', () => {
   }
 });
 
+test('Persian text starting with a Latin word is forced RTL', () => {
+  assert.ok(t('fa', 'welcome').startsWith('\u200F'));
+  assert.ok(t('fa', 'about').startsWith('\u200F'));
+  assert.ok(t('fa', 'linkMenuTitle', { memo: 'Work', token: 'abc' }).startsWith('\u200F'));
+  assert.ok(!t('fa', 'linkMenuTitle', { memo: 'کار', token: 'abc' }).startsWith('\u200F'));
+  assert.ok(!t('fa', 'privacy').startsWith('\u200F'));
+  assert.ok(!t('en', 'welcome').includes('\u200F'));
+
+  const welcome = t('fa', 'welcome');
+  assert.match(welcome, /Telegram Serverless/);
+  assert.equal((welcome.match(/\u200F/g) ?? []).length, 1, 'only the first word is marked');
+});
+
 test('help lists every command once in the required order inside collapsed details', () => {
   for (const lang of ['en', 'fa']) {
     const text = t(lang, 'help');
