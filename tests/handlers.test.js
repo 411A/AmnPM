@@ -147,6 +147,11 @@ test('about renders bot and source as a rich table', async () => {
   assert.match(sent.args.rich_message.html, /GitHub/);
   assert.match(sent.args.rich_message.html, /©️ 2026 - Present/);
   assert.match(sent.args.rich_message.html, /TechKraken/);
+  assert.match(sent.args.rich_message.html, /@JSONiceBot/);
+  assert.match(sent.args.rich_message.html, /@HidEgoBot/);
+  assert.match(sent.args.rich_message.html, /@ReForeBot/);
+  assert.ok(sent.args.rich_message.html.indexOf('@JSONiceBot') < sent.args.rich_message.html.indexOf('<table'));
+  assert.doesNotMatch(sent.args.rich_message.html, /No message content is stored/);
   const rows = sent.args.reply_markup.inline_keyboard;
   assert.equal(rows.length, 1);
   assert.deepEqual(rows[0].map((button) => button.url), [
@@ -251,8 +256,10 @@ test('about opened from settings edits the message with links above the back but
   await click('m:about', 100);
   const edit = callsOf('editMessageText').at(-1);
   assert.match(edit.args.rich_message.html, /<table/);
-  assert.match(edit.args.rich_message.html, /No message content is stored/);
   assert.match(edit.args.rich_message.html, /©️ 2026 - Present/);
+  assert.match(edit.args.rich_message.html, /@JSONiceBot/);
+  assert.ok(edit.args.rich_message.html.indexOf('@JSONiceBot') < edit.args.rich_message.html.indexOf('<table'));
+  assert.doesNotMatch(edit.args.rich_message.html, /No message content is stored/);
   const rows = edit.args.reply_markup.inline_keyboard;
   assert.equal(rows.length, 2);
   assert.deepEqual(rows[0].map((button) => button.url), [

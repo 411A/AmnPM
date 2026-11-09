@@ -108,13 +108,18 @@ const en = {
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +
+    '<b>Other bots</b>\n' +
+    '<ul>\n' +
+    '<li><a href="https://t.me/JSONiceBot">@JSONiceBot</a> — View Telegram message details &amp; other JSON files key-values interactively.</li>\n' +
+    '<li><a href="https://t.me/HidEgoBot">@HidEgoBot</a> — Create your own secure anonymous bot</li>\n' +
+    '<li><a href="https://t.me/ReForeBot">@ReForeBot</a> — Store &amp; forward any post on reply through inline</li>\n' +
+    '</ul>\n' +
     '<table bordered striped compact>\n' +
     '<tr><th align="center">Resource</th><th align="center">Link</th></tr>\n' +
     '<tr><td align="center" valign="middle">Bot</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
     '<tr><td align="center" valign="middle">Source</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
-    '©️ 2026 - Present · <a href="{developer}">TechKraken</a>\n' +
-    'No message content is stored.',
+    '©️ 2026 - Present · <a href="{developer}">TechKraken</a>',
   contactDeveloper: 'Contact Developer',
   developerChannel: 'Developer Channel',
   linksTitle:
@@ -327,13 +332,18 @@ const fa = {
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +
+    '<b>سایر ربات‌ها</b>\n' +
+    '<ul>\n' +
+    '<li><a href="https://t.me/JSONiceBot">@JSONiceBot</a> — مشاهده جزئیات پیام تلگرام و سایر کلید-مقدارهای فایل JSON به‌صورت تعاملی.</li>\n' +
+    '<li><a href="https://t.me/HidEgoBot">@HidEgoBot</a> — ساخت ربات ناشناس امن خودتان.</li>\n' +
+    '<li><a href="https://t.me/ReForeBot">@ReForeBot</a> — ذخیره و ارسال هر پست از طریق پاسخ با اینلاین.</li>\n' +
+    '</ul>\n' +
     '<table bordered striped compact>\n' +
     '<tr><th align="center">مورد</th><th align="center">لینک</th></tr>\n' +
     '<tr><td align="center" valign="middle">ربات</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
     '<tr><td align="center" valign="middle">منبع</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
-    '©️ 2026 - تاکنون · <a href="{developer}">TechKraken</a>\n' +
-    'هیچ محتوای پیامی ذخیره نمی‌شود.',
+    '©️ 2026 - تاکنون · <a href="{developer}">TechKraken</a>',
   contactDeveloper: 'تماس با توسعه‌دهنده',
   developerChannel: 'کانال توسعه‌دهنده',
   linksTitle:

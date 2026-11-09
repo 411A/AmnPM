@@ -59,6 +59,11 @@ test('about uses a rich table for bot and source', () => {
     assert.match(text, /<td align="center" valign="middle">/);
     assert.match(text, /@AmnPMBot/);
     assert.match(text, /GitHub/);
+    assert.match(text, /@JSONiceBot/);
+    assert.match(text, /@HidEgoBot/);
+    assert.match(text, /@ReForeBot/);
+    assert.ok(text.indexOf('@JSONiceBot') < text.indexOf('<table'));
+    assert.doesNotMatch(text, /No message content is stored/);
     assert.match(text, /©️ 2026 - (?:Present|تاکنون)/);
     assert.match(text, /<a href="https:\/\/t\.me\/TechKraken">TechKraken<\/a>/);
     assert.doesNotMatch(text, /<blockquote>/);
