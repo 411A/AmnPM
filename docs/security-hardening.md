@@ -88,26 +88,31 @@ cooldown. No command, button, or behavior removed.
 
 | Check | Result |
 |---|---|
-| Syntax check | 39 JS files + 2 JSON: pass |
+| Syntax check | 41 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **195/195** (baseline 171; +24 hardening/verification tests) |
+| Full test suite | **198/198** (baseline 171; +27 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
-| Real-account `e2e_all.py` (revision 110) | **36/36** |
+| Real-account `e2e_all.py` (revision 110) | **36/36** (last broad run before the 24h limit; see note) |
 | Real-account `e2e_extra.py` (revision 110) | **11/11** |
+| Real-account `e2e_rename_limit.py` (revision 112) | **19/19**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, shared per-link topic limit, memo independence, cleanup |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
 | `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
-| tgcloud | revision **110**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `9fce831` (build stamp, lint, and all 191 tests) |
+| tgcloud | revision **112**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI success on `826d93c` (build stamp, lint, and all 198 tests) |
 
-Note: early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
-callback edits (one at the final revoke, one at a direct reply). On revisions 106
-and 107 the first attempt again timed out at the final revoke; the retry passed
-36/36 with no code change. Revision 110 passed on the first attempt. The
-failures were not reproducible.
+Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
+24-hour limit suite (`e2e_rename_limit.py`) passed **19/19** on revision 112
+using only the two test accounts and only links it created, selected by unique
+labels. It also passed **19/19** again with owner/visitor roles swapped
+(HydraElit owner, Ali visitor), which avoids the full link cap on Ali’s account.
+The broader suite was not rerun after the limit because it selects links by menu
+order, which could touch non-test links. Later retries hit Pyrogram
+`updates.GetState` timeouts while the VPN was off; those were network failures,
+not feature failures. No production link was opened, renamed, or revoked.
 
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
