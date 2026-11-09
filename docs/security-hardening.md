@@ -88,17 +88,20 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
-| Real-account `e2e_all.py` (revision 107) | **36/36** on retry; first attempt hit the known revoke-callback timeout (see note below) |
-| Real-account `e2e_extra.py` (revision 107) | **11/11** |
+| Real-account `e2e_all.py` (revision 110) | **36/36** |
+| Real-account `e2e_extra.py` (revision 110) | **11/11** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
-| `/security` live RichMessage | pass in English and Persian: four plain-language sections; no file upload; GitHub link works; `/help` lists the command |
-| tgcloud | revision **107**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `d01b54c` (build stamp, lint, and all 190 tests) |
+| `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
+| `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
+| `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
+| tgcloud | revision **110**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI success on `9fce831` (build stamp, lint, and all 191 tests) |
 
 Note: early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
 callback edits (one at the final revoke, one at a direct reply). On revisions 106
 and 107 the first attempt again timed out at the final revoke; the retry passed
-36/36 with no code change. The failures were not reproducible.
+36/36 with no code change. Revision 110 passed on the first attempt. The
+failures were not reproducible.
 
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
