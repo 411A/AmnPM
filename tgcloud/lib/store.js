@@ -664,6 +664,21 @@ export async function deleteLinkScoped(linkId) {
   return counts;
 }
 
+// Rename cooldowns are keyed by internal topic/link ids, not link_id, so they
+// need their own lookup before the topic rows are deleted.
+export async function deleteRenameState(linkId) {
+  const keys = [`rename:memo:${linkId}`];
+  for (const row of await db.all(sql`SELECT id FROM topics WHERE link_id = ${linkId}`)) {
+    keys.push(`rename:owner-topic:${row.id}`);
+  }
+  for (const row of await db.all(sql`SELECT id FROM sender_topics WHERE link_id = ${linkId}`)) {
+    keys.push(`rename:sender-topic:${row.id}`);
+  }
+  for (const key of keys) {
+    await db.run(sql`DELETE FROM meta WHERE k = ${key}`);
+  }
+}
+
 export async function deleteLinkRow(linkId) {
   const result = await db.run(sql`DELETE FROM links WHERE id = ${linkId}`);
   return result.rowsAffected ?? result.changes;

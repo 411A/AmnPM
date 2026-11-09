@@ -48,6 +48,7 @@ export async function purgeLink(link, chat, lang, now, notifyTopics = true) {
 
   if (token) await store.insertRetired(await ids.tokenFp(token), now);
   await store.retireLinkAliases(link.id, now);
+  await store.deleteRenameState(link.id);
   await store.deleteLinkScoped(link.id);
   await store.deleteLinkRow(link.id);
   await store.releaseSlot(link.owner_key, link.slot);

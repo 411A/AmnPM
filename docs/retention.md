@@ -14,7 +14,7 @@
 - Day 365+: the link is atomically claimed, owner topics are closed/renamed,
   all link-scoped rows are deleted, the token fingerprint is retired, and one
   deletion notice is sent best-effort. Notification failure never blocks
-  deletion.
+  deletion. Rename-limit timestamps in `meta` are deleted with the link.
 - A delivery that fails with `message thread not found` twice marks that owner
   topic dead. If no live owner topic remains, the link is purged immediately.
   No topic is ever recreated by delivery; a sender must reopen the link.

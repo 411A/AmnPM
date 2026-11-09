@@ -4,6 +4,7 @@ import { resetDb, rawDb } from './stub-sdk.mjs';
 import { applySchema } from './stub-db.mjs';
 import * as schema from '../tgcloud/schema.js';
 import { renameWait, markRenamed, formatWait, RENAME_WINDOW_SECONDS } from '../tgcloud/lib/rename.js';
+import * as store from '../tgcloud/lib/store.js';
 
 beforeEach(() => {
   resetDb();
@@ -37,4 +38,20 @@ test('wait time is short and readable', () => {
   assert.equal(formatWait(90), '2m');
   assert.equal(formatWait(RENAME_WINDOW_SECONDS - 60), '23h 59m');
   assert.equal(formatWait(RENAME_WINDOW_SECONDS), '24h');
+});
+
+test('link purge removes only that link rename state', async () => {
+  const now = 1_800_000_000;
+  rawDb().prepare("INSERT INTO topics (id, link_id, kind, thread_id, name, state) VALUES (10, 1, 'anon', 100, '', 'open')").run();
+  rawDb().prepare("INSERT INTO sender_topics (id, link_id, sender_key, thread_id, name, state, created_at) VALUES (20, 1, 'k', 200, '', 'open', 0)").run();
+
+  await markRenamed('owner-topic', 10, now);
+  await markRenamed('sender-topic', 20, now);
+  await markRenamed('memo', 1, now);
+  await markRenamed('memo', 2, now);
+
+  await store.deleteRenameState(1);
+
+  const keys = rawDb().prepare("SELECT k FROM meta WHERE k LIKE 'rename:%' ORDER BY k").all().map((row) => row.k);
+  assert.deepEqual(keys, ['rename:memo:2']);
 });

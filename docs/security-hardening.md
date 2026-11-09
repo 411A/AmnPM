@@ -75,7 +75,7 @@
     `rename:sender-topic:<row id>`, `rename:memo:<link id>`), so no schema change
     is needed. `/rename` sends the limit notice before the edit; the memo prompt
     includes the limit before the owner sends the new memo. A blocked attempt
-    returns the remaining time.
+    returns the remaining time. Purging a link deletes its rename timestamps.
 15. **Docs organization** — rename limits live only in this file.
     `security-model.md` covers security guarantees and points to the short
     `/security` page. README and `/help` describe `/about` as open source, not as
@@ -99,7 +99,7 @@ cooldown. No command, button, or behavior removed.
 |---|---|
 | Syntax check | 41 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **198/198** (baseline 171; +27 hardening/verification tests) |
+| Full test suite | **199/199** (baseline 171; +28 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
@@ -112,7 +112,7 @@ cooldown. No command, button, or behavior removed.
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
 | Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
 | tgcloud | revision **114**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `bfcf273` (build stamp, lint, and all 198 tests) |
+| Branch / PR | `more-secure` / PR #1; CI success on `bfcf273` (build stamp, lint, and all 199 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
 24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113
