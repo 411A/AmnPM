@@ -87,7 +87,7 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 | `/security` live RichMessage | pass: title, key-domain section, expandable blocks; `/help` lists the command |
 | `/security` validator | pass: sent as `amnpm-validator-cc43c93.js` in English and Persian, with current UTC/Tehran time, commit, hash, and the “cannot inspect the running server” note; locally run against GitHub at `cc43c93` → **PASS** |
 | tgcloud | revision **106**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI deferred by GitHub Actions degraded performance (local suite, lint, and build check pass) |
+| Branch / PR | `more-secure` / PR #1; CI success on `2dcf5d6` (build stamp, lint, and all 191 tests) |
 
 Note: early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
 callback edits (one at the final revoke, one at a direct reply). On revision 106
