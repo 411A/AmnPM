@@ -100,19 +100,20 @@ cooldown. No command, button, or behavior removed.
 | API per op | unchanged |
 | Real-account `e2e_all.py` (revision 110) | **36/36** (last broad run before the 24h limit; see note) |
 | Real-account `e2e_extra.py` (revision 110) | **11/11** |
-| Real-account `e2e_rename_limit.py` (revision 112) | **19/19**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, shared per-link topic limit, memo independence, cleanup |
+| Real-account `e2e_rename_limit.py` (revision 113) | **21/21**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, **owner can still rename after the sender renamed**, second owner rename blocked, memo independence, cleanup |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
 | `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
-| tgcloud | revision **112**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `826d93c` (build stamp, lint, and all 198 tests) |
+| tgcloud | revision **113**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI success on `31decea` (build stamp, lint, and all 198 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
-24-hour limit suite (`e2e_rename_limit.py`) passed **19/19** on revision 112
-using only the two test accounts and only links it created, selected by unique
-labels. It also passed **19/19** again with owner/visitor roles swapped
-(HydraElit owner, Ali visitor), which avoids the full link cap on Ali’s account.
+24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113
+with owner/visitor roles swapped (HydraElit owner, Ali visitor), which avoids the
+full link cap on Ali’s account. It uses only links it created, selected by unique
+labels, and revokes only those. The suite explicitly checks that the owner can
+still rename the owner topic after the sender renamed the sender topic.
 The broader suite was not rerun after the limit because it selects links by menu
 order, which could touch non-test links. Later retries hit Pyrogram
 `updates.GetState` timeouts while the VPN was off; those were network failures,
