@@ -27,8 +27,8 @@ const en = {
     '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in (once per 24h).</li>\n' +
     '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
-    '<li><b>{e.lock} /security</b><br>Show the exact security model.</li>\n' +
-    '<li><b>{e.info} /about</b><br>Show version, source & verification.</li>\n' +
+    '<li><b>{e.lock} /security</b><br>Show the plain-language security page.</li>\n' +
+    '<li><b>{e.info} /about</b><br>Show version and the public source.</li>\n' +
     '</ul>\n' +
     '</details>\n' +
     '<details><summary><b>Send modes</b></summary>\n' +
@@ -259,8 +259,8 @@ const fa = {
     '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید (یک بار در ۲۴ ساعت).</li>\n' +
     '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
-    '<li><b>{e.lock} /security</b><br>نمایش مدل امنیتی دقیق.</li>\n' +
-    '<li><b>{e.info} /about</b><br>نمایش نسخه، منبع و تأیید.</li>\n' +
+    '<li><b>{e.lock} /security</b><br>نمایش صفحه امنیتی ساده.</li>\n' +
+    '<li><b>{e.info} /about</b><br>نمایش نسخه و منبع عمومی.</li>\n' +
     '</ul>\n' +
     '</details>\n' +
     '<details><summary><b>حالت‌های ارسال</b></summary>\n' +

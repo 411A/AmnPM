@@ -104,8 +104,8 @@ for (const { label, ok, detail } of checks) {
 }
 
 if (checks.some((entry) => !entry.ok)) {
-  console.error('\nThe deployed code does not match the published source.');
+  console.error('\nThe deployed snapshot does not match the published source.');
   process.exit(1);
 }
 
-console.log(`\n${preflight ? 'PREFLIGHT MATCH' : 'MATCH'}: running code equals the published source (${remoteHash}).`);
+console.log(`\n${preflight ? 'PREFLIGHT MATCH' : 'MATCH'}: deployed snapshot equals the published source (${remoteHash}).`);

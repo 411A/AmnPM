@@ -26,7 +26,7 @@ AmnPM uses Telegram Topics to keep conversations separate: one anonymous thread 
 
 No ads. No analytics. No message archive.
 
-AmnPM is open source under [AGPL-3.0](LICENSE). The bot runs on Telegram Serverless with no runtime dependencies; `/about` shows the release and whether the running code matches the published source.
+AmnPM is open source under [AGPL-3.0](LICENSE). The bot runs on Telegram Serverless with no runtime dependencies; `/about` shows the release and links to the public source.
 
 ## Quick start
 
@@ -60,7 +60,9 @@ Senders write first, then pick one of the modes you allow. The mode is the relea
 | `/rename <name>` | Owner or sender | Renames the current topic. The direction and mode markers stay at the front. |
 | `/help` | Everyone | Command reference and short guides. |
 | `/privacy` | Everyone | Explains what is stored and what is not. |
-| `/about` | Everyone | Release, source, and whether the running code is verified. |
+| `/security` | Everyone | The short, plain-language security page. |
+| `/language` | Everyone | Change the bot language; accepts `en`, `fa`, or `auto`. |
+| `/about` | Everyone | Release, source, and open-source link. |
 
 Shared links open automatically. You never need to type the token.
 
@@ -175,7 +177,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 **Release and verification**
 
-The commands below assume a POSIX shell (WSL, Git Bash, or macOS/Linux). The release flow proves that the deployed bundle, local source, release manifest, and GitHub asset all describe the same code before the bot claims it is verified.
+The commands below assume a POSIX shell (WSL, Git Bash, or macOS/Linux). The release flow proves that the deployed snapshot, local source, release manifest, and GitHub asset all describe the same code before the release is marked verified.
 
 ```bash
 # 1. Freeze the code commit and create the unverified stamp.
@@ -204,7 +206,7 @@ node tools/verify-deployed.mjs --github
 tgcloud status
 ```
 
-The final run prints `MATCH` only when the deployed build, local manifest, and GitHub asset are all marked verified and the published manifest matches the local one byte for byte. The manifest can carry the release claim before the build is stamped; the deployed `build.js` stays `verified: false` until step 4, and the final check requires both. `gen-build` refuses `--verified true` on a dirty tree, a commit that is not an ancestor of `HEAD`, or any `tgcloud` source change after that commit; the generated `build.js` stamp is exempt. The bundle hash is unchanged by the stamp because `build.js` is excluded from it.
+The final run prints `MATCH` only when the deployed snapshot, local manifest, and GitHub asset are all marked verified and the published manifest matches the local one byte for byte. The manifest can carry the release claim before the build is stamped; the deployed `build.js` stays `verified: false` until step 4, and the final check requires both. `gen-build` refuses `--verified true` on a dirty tree, a commit that is not an ancestor of `HEAD`, or any `tgcloud` source change after that commit; the generated `build.js` stamp is exempt. The bundle hash is unchanged by the stamp because `build.js` is excluded from it.
 
 **Upgrade warning.** This revision uses a new session/sender key derivation and token format. Databases written by older revisions are not migrated in place. Start from a fresh database and create new links; old links will not resolve.
 

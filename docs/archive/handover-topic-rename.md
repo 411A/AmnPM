@@ -1,5 +1,9 @@
 # Handover: Telegram topic rename visibility
 
+> **Historical snapshot.** This predates the current 24-hour rename limits and
+> the plain-language security pages. It is kept for incident history only; its
+> “current” sections are not the current state. Never touch links 6/7/8.
+
 ## HARD BOUNDARY: production accounts
 
 Links **6 and 7 are other users' production accounts** (and link 8 must be
@@ -131,7 +135,7 @@ to copy.
 - `tgcloud/lib/i18n.js` — rename/memo strings
 - `real-account-tests/` — live harness (git-excluded); `e2e.py`,
   `e2e_all.py`, `e2e_extra.py`; sessions in `%LOCALAPPDATA%\amnpm-e2e`
-- `docs/audit-2026-11-03.md` — earlier audit, platform-limit section
+- `docs/archive/audit-2026-11-03.md` — earlier audit, platform-limit section
 
 ## State of the repo
 

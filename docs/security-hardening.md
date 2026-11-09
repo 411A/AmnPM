@@ -38,8 +38,8 @@
    is now a link/direction batch scope (`msg:<link>` / `oalbum:<link>`), and
    non-album groups use a random group key. Grouped media behavior is
    unchanged; the current update's chat id is used for `copyMessages`.
-7. **`/security`** — a RichMessage with expandable sections, added to the
-   command menu in English and Persian. `/help` mentions it.
+7. **`/security`** — a RichMessage with short, plain-language sections, added to
+   the command menu in English and Persian. `/help` mentions it.
 8. **`.env` key generation** — `tools/gen-secret.mjs` reads named key groups
    from `.env` (build time only) or preserves the existing `secret.js`, then
    writes the runtime module. Serverless has no runtime environment variables,
@@ -119,12 +119,6 @@ order, which could touch non-test links. Later retries hit Pyrogram
 `updates.GetState` timeouts while the VPN was off; those were network failures,
 not feature failures. No production link was opened, renamed, or revoked.
 
-Kept: replies, read receipts, per-sender block, block-all/unblock, sender
-topics, all three modes, forward mode, sender renames, owner renames, memos,
-revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security` and `/language`; topic renames and memo edits now have a 24-hour
-cooldown. No command, button, or behavior removed.
-
 The SQL and API counts are unchanged on every measured path. The small p95
 differences are run-to-run noise; the only new cryptographic work is one
 per-link HMAC when an action button is created or opened, and one random batch
@@ -142,7 +136,8 @@ in a way that changes the query count.
 6. `node tools/check-build.mjs`; it must report `build check ok`.
 7. `tgcloud push`.
 8. `tgcloud status` and `tgcloud webhook`.
-9. Run the two real-account suites and the retention suite.
+9. Run the three real-account suites: `e2e_all.py`, `e2e_extra.py`, and
+   `e2e_rename_limit.py`; then run the retention suite.
 
 Do not deploy a secret that reuses one key across domains; the generator
 validates and preserves existing groups. Do not deploy a `build.js` whose hash

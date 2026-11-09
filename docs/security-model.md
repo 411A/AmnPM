@@ -1,7 +1,8 @@
 # Security model
 
-This page states exactly what AmnPM protects and what it does not. It is the
-source for `/security`; if the code and this page disagree, the code is wrong.
+This page is the complete technical version. `/security` is the short,
+plain-language version for users; if a claim in either place disagrees with the
+code, the code is wrong.
 
 ## Keys
 
@@ -57,10 +58,11 @@ Existing data is migrated without changing its plaintext:
 
 A block must recognize the same sender on future messages. That requires a
 stable value derived from the sender's Telegram id. AmnPM stores a per-link
-keyed hash (owner-wide for Block everywhere) in the identity domain, not the id. The key is the barrier: if the
-identity key is compromised, the hash can be enumerated because Telegram ids
-are a small space. No hash construction can avoid that while keeping automatic
-blocking. A full identity-key compromise links the block list.
+keyed hash (owner-wide for Block everywhere) in the identity domain, not the id.
+The key is the barrier: if the identity key is compromised, the hash can be
+enumerated because Telegram ids are a small space. No hash construction can
+avoid that while keeping automatic blocking. A full identity-key compromise
+links the block list.
 
 ## Key rotation and data-lock safety
 
@@ -113,11 +115,24 @@ next send can resurrect the same topic. The TTL is the guaranteed cleanup.
 
 ## Open source and hosted service
 
-The repository publishes the source and a reproducible bundle hash. `tools/check-build.mjs` fails CI if `tgcloud/lib/build.js` is stale: the hash must match the source tree and `release/manifest.json`. The hash is the SHA-256 of each `.js` file in sorted walk order, as relative path + NUL + bytes; `build.js` and `secret.js` are excluded. This is an internal supply-chain control, not a user-facing proof.
+The repository publishes the source and a reproducible bundle hash.
+`tools/check-build.mjs` fails CI if `tgcloud/lib/build.js` is stale: the hash
+must match the source tree and `release/manifest.json`. The hash is the SHA-256
+of each `.js` file in sorted walk order, as relative path + NUL + bytes;
+`build.js` and `secret.js` are excluded. This is an internal supply-chain
+control, not a user-facing proof.
 
-The bot is a hosted service. A remote user cannot inspect the running Telegram Serverless isolate, and the platform exposes no signed deployment digest or TEE attestation. The `/security` page says this in plain language and points to the public source. Self-hosting the same source is the only way for a user to avoid trusting the operator. The user-facing trust signals are “open source” and the ability to run their own copy.
+The bot is a hosted service. A remote user cannot inspect the running Telegram
+Serverless isolate, and the platform exposes no signed deployment digest or TEE
+attestation. The `/security` page says this in plain language and points to the
+public source. Self-hosting the same source is the only way for a user to avoid
+trusting the operator. The user-facing trust signals are “open source” and the
+ability to run their own copy.
 
-The user-facing `/security` and `/privacy` pages are deliberately short and reassuring; they omit detailed limitations such as media metadata, operator key access, and Telegram’s own message copy. This document is the complete version for technical readers.
+The user-facing `/security` and `/privacy` pages are deliberately short and
+reassuring; they omit detailed limitations such as media metadata, operator key
+access, and Telegram’s own message copy. This document is the complete version
+for technical readers.
 
 ## Limits
 
@@ -130,7 +145,3 @@ The user-facing `/security` and `/privacy` pages are deliberately short and reas
   later write and resurrect the topic.
 - The block list remains the unavoidable pseudo-identity while automatic
   per-sender blocking is a feature.
-- Topic renames are limited to once per 24 hours **per topic**, so an owner
-  topic and a sender topic have separate budgets. Memo changes are limited to
-  once per 24 hours per link. The limit is stored as a timestamp in the existing
-  `meta` table; no schema change is required.
