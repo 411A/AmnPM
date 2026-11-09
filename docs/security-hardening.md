@@ -61,12 +61,13 @@
 12. **Friendly copy** — `/security` and `/privacy` no longer mention media
     metadata, stolen servers/tokens, operator decryption, or Telegram’s own
     message copy. Those limitations remain in `docs/security-model.md` for
-    technical readers.
-13. **Language override** — `/language en|fa|auto` stores a per-user preference
-    in `meta` and applies it to private-chat commands and menu callbacks. The
-    default is still Telegram’s `from.language_code`. `/help` and the command
-    menu list the command. English `/about` bot usernames no longer carry an RLM;
+    technical readers. English `/about` bot usernames no longer carry an RLM;
     Persian keeps it.
+13. **Language menu** — `/settings` has a Language button below Receive modes.
+    It opens one row with `🇬🇧 English` and `فارسی 🇮🇷`. The choice is stored per
+    user in `meta` and applies to private-chat commands and menu callbacks. The
+    default is Telegram’s `from.language_code` until chosen. `/help` and the
+    command menu no longer list `/language`.
 14. **Rename limits** — topic renames are limited to once per 24 hours **per
     topic**; memo changes are limited once per 24 hours **per link**. Owner
     topics and sender topics have separate counters, so a sender renaming their
@@ -95,8 +96,9 @@ the secret is generated; the install-salt re-wrap is lazy.
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
 revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security` and `/language`; topic renames and memo edits now have a 24-hour
-cooldown. No command, button, or behavior removed.
+`/security` and the **Settings → Language** menu; the standalone `/language`
+command was removed. Topic renames and memo edits now have a 24-hour cooldown.
+No other command, button, or behavior removed.
 
 ## Final results (after this branch)
 
@@ -113,7 +115,7 @@ cooldown. No command, button, or behavior removed.
 | Real-account `e2e_rename_limit.py` (revision 113) | **21/21**: notice before rename, allowed first rename, blocked second rename with title unchanged, same-label no-op, memo prompt limit, memo allowed after topic limit, second memo alert, sender rename allowed/blocked, **owner can still rename after the sender renamed**, second owner rename blocked, memo independence, cleanup |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
-| `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
+| `/language` live | pass: **Settings → Language** on both test accounts; `🇬🇧 English` / `فارسی 🇮🇷` row; switching to Persian makes `/privacy` and `/security` Persian even though Telegram reports `en`; switching back restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
 | Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
 | Rename-state purge | link purge deletes owner-topic, sender-topic, and memo rename timestamps; covered by `tests/rename.test.js` |

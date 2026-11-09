@@ -15,8 +15,26 @@ export function homeMenu(lang) {
       inline_keyboard: [
         [{ text: t(lang, 'homeLinks'), callback_data: CALLBACK.LINKS }],
         [{ text: t(lang, 'homeModes'), callback_data: CALLBACK.MODES }],
+        [{ text: t(lang, 'homeLanguage'), callback_data: CALLBACK.LANGUAGE }],
         [{ text: t(lang, 'homeHelp'), callback_data: CALLBACK.HELP }],
         [{ text: t(lang, 'homeAbout'), callback_data: CALLBACK.ABOUT }],
+      ],
+    },
+  };
+}
+
+export function languageMenu(lang, current) {
+  const option = (code, label) => ({
+    text: label,
+    callback_data: code === 'en' ? CALLBACK.LANG_EN : CALLBACK.LANG_FA,
+    ...(current === code ? { style: STYLE.enabled } : {}),
+  });
+  return {
+    text: t(lang, 'languageTitle'),
+    keyboard: {
+      inline_keyboard: [
+        [option('en', '🇬🇧 English'), option('fa', 'فارسی 🇮🇷')],
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }],
       ],
     },
   };

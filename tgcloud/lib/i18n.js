@@ -22,8 +22,7 @@ const en = {
     '<ul>\n' +
     '<li><b>{e.start} /start</b><br>Welcome & your main link.</li>\n' +
     '<li><b>{e.link} /newlink [note]</b><br>Create a link; the note is its label.</li>\n' +
-    '<li><b>{e.control} /settings</b><br>Manage links, receive modes, help & about.</li>\n' +
-    '<li><b>{e.info} /language en|fa|auto</b><br>Change the bot language.</li>\n' +
+    '<li><b>{e.control} /settings</b><br>Manage links, receive modes, language, help & about.</li>\n' +
     '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in (once per 24h).</li>\n' +
     '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
@@ -102,10 +101,10 @@ const en = {
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
-  languageUsage: 'Use <code>/language en</code>, <code>/language fa</code>, or <code>/language auto</code>.',
+  languageTitle:
+    '{e.globe} <b>Language</b>\n' +
+    'Choose the language for this chat.',
   languageSet: 'Language set to English.',
-  languageAuto: 'Language follows Telegram again.',
-  languagePrivate: 'Set the language in a private chat with the bot.',
   verifyOk: 'open source',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
@@ -140,10 +139,12 @@ const en = {
     '<blockquote expandable><b>What each option does</b>\n' +
     '{e.chain} My links — see every active link. Open it, share it, change its note, or revoke it.\n' +
     '{e.settings} Receive modes — turn anonymous, history, or forward on or off for senders. At least one stays on.\n' +
+    '{e.globe} Language — change the language of this chat; below Receive modes.\n' +
     '{e.book} Help — command reference & short guides for modes, topics, and link management.\n' +
-    '{e.info} About — bot version, source code & the running-code check.</blockquote>',
+    '{e.info} About — bot version and public source.</blockquote>',
   homeLinks: '{e.chain} My links',
   homeModes: '{e.settings} Receive modes',
+  homeLanguage: '{e.globe} Language',
   homeHelp: '{e.book} Help',
   homeAbout: '{e.info} About',
   openMain: '{e.link} Open main link',
@@ -254,8 +255,7 @@ const fa = {
     '<ul>\n' +
     '<li><b>{e.start} /start</b><br>صفحه خوش‌آمد و لینک اصلی.</li>\n' +
     '<li><b>{e.link} /newlink [یادداشت]</b><br>ساخت لینک؛ یادداشت برچسب آن است.</li>\n' +
-    '<li><b>{e.control} /settings</b><br>مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.</li>\n' +
-    '<li><b>{e.info} /language en|fa|auto</b><br>تغییر زبان ربات.</li>\n' +
+    '<li><b>{e.control} /settings</b><br>مدیریت لینک‌ها، حالت‌های دریافت، زبان، راهنما و درباره.</li>\n' +
     '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید (یک بار در ۲۴ ساعت).</li>\n' +
     '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
@@ -334,10 +334,10 @@ const fa = {
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
-  languageUsage: 'از <code>/language en</code>، <code>/language fa</code> یا <code>/language auto</code> استفاده کنید.',
+  languageTitle:
+    '{e.globe} <b>زبان</b>\n' +
+    'زبان این گفتگو را انتخاب کنید.',
   languageSet: 'زبان روی فارسی تنظیم شد.',
-  languageAuto: 'زبان دوباره از تلگرام پیروی می‌کند.',
-  languagePrivate: 'زبان را در چت خصوصی با ربات تنظیم کنید.',
   verifyOk: 'متن‌باز',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
@@ -372,10 +372,12 @@ const fa = {
     '<blockquote expandable><b>هر گزینه چه می‌کند</b>\n' +
     '{e.chain} لینک‌های من — همه لینک‌های فعال. باز کردن، اشتراک، تغییر یادداشت یا حذف.\n' +
     '{e.settings} حالت‌های دریافت — روشن یا خاموش کردن ناشناس، با سابقه یا هدایت برای فرستنده‌ها. حداقل یکی روشن می‌ماند.\n' +
+    '{e.globe} زبان — تغییر زبان این گفتگو؛ زیر حالت‌های دریافت.\n' +
     '{e.book} راهنما — فهرست دستورات و راهنمای کوتاه حالت‌ها، موضوع‌ها و مدیریت لینک‌ها.\n' +
-    '{e.info} درباره — نسخه ربات، کد منبع و بررسی کد در حال اجرا.</blockquote>',
+    '{e.info} درباره — نسخه ربات و منبع عمومی.</blockquote>',
   homeLinks: '{e.chain} لینک‌های من',
   homeModes: '{e.settings} حالت‌های دریافت',
+  homeLanguage: '{e.globe} زبان',
   homeHelp: '{e.book} راهنما',
   homeAbout: '{e.info} درباره',
   openMain: '{e.link} باز کردن لینک اصلی',

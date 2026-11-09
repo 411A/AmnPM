@@ -123,13 +123,12 @@ test('bot metadata config runs once', async () => {
   const commands = callsOf('setMyCommands')[0].args.commands;
   assert.deepEqual(
     commands.map((entry) => entry.command),
-    ['start', 'newlink', 'settings', 'language', 'rename', 'help', 'privacy', 'security', 'about'],
+    ['start', 'newlink', 'settings', 'rename', 'help', 'privacy', 'security', 'about'],
   );
   assert.ok(commands.every((entry) => !entry.description.includes('\n')));
   assert.match(commands[0].description, /^🔰 /);
   assert.match(commands[2].description, /^🎛 .*&/);
-  assert.match(commands[3].description, /^ℹ️ /);
-  assert.match(commands[8].description, /^ℹ️ /);
+  assert.match(commands[7].description, /^ℹ️ /);
 
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
@@ -209,24 +208,36 @@ test('security command returns the plain-language security model', async () => {
   assert.notEqual(rich.is_rtl, true);
 });
 
-test('language override changes command responses', async () => {
-  await onMessage(message('/language fa', 100));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /زبان روی فارسی تنظیم شد/);
+test('language menu switches settings and command responses', async () => {
+  await onMessage(message('/settings', 100));
+  await click('m:language', 100);
+
+  let menu = callsOf('editMessageText').at(-1).args;
+  assert.match(menu.text, /Language/);
+  const options = menu.reply_markup.inline_keyboard[0];
+  assert.deepEqual(options.map((button) => button.text), ['🇬🇧 English', 'فارسی 🇮🇷']);
+  assert.deepEqual(options.map((button) => button.callback_data), ['m:lang:en', 'm:lang:fa']);
+  assert.equal(options[0].style, 'success');
+  assert.equal(options[1].style, undefined);
+
+  await click('m:lang:fa', 100);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /زبان روی فارسی تنظیم شد/);
+  const homeFa = callsOf('editMessageText').at(-1).args;
+  assert.match(homeFa.text, /تنظیمات/);
+  assert.match(
+    homeFa.reply_markup.inline_keyboard.flat().find((button) => button.callback_data === 'm:language').text,
+    /زبان/,
+  );
 
   await onMessage(message('/privacy', 100));
   assert.match(callsOf('sendMessage').at(-1).args.text, /حریم خصوصی/);
 
-  await onMessage(message('/language en', 100));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /Language set to English/);
-
+  await onMessage(message('/settings', 100));
+  await click('m:language', 100);
+  await click('m:lang:en', 100);
+  assert.match(callsOf('answerCallbackQuery').at(-1).args.text, /Language set to English/);
   await onMessage(message('/privacy', 100));
   assert.match(callsOf('sendMessage').at(-1).args.text, /Privacy/);
-
-  await onMessage(message('/language auto', 100, { language_code: 'fa' }));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /زبان دوباره از تلگرام/);
-
-  await onMessage(message('/privacy', 100, { language_code: 'fa' }));
-  assert.match(callsOf('sendMessage').at(-1).args.text, /حریم خصوصی/);
 });
 
 test('Persian rich messages are marked RTL', async () => {
@@ -266,7 +277,7 @@ test('/settings opens the home menu without a back button', async () => {
   const keyboard = sent.args.reply_markup.inline_keyboard;
   assert.deepEqual(
     keyboard.flat().map((button) => button.callback_data),
-    ['m:links', 'm:modes', 'm:help', 'm:about'],
+    ['m:links', 'm:modes', 'm:language', 'm:help', 'm:about'],
   );
 });
 

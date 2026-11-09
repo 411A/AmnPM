@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as render from '../tgcloud/lib/render.js';
 import { t } from '../tgcloud/lib/i18n.js';
 
-const COMMANDS = ['/start', '/newlink', '/settings', '/language', '/rename', '/help', '/privacy', '/security', '/about'];
+const COMMANDS = ['/start', '/newlink', '/settings', '/rename', '/help', '/privacy', '/security', '/about'];
 
 test('welcome explains the bot and modes without listing commands', () => {
   for (const lang of ['en', 'fa']) {

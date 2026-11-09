@@ -56,12 +56,11 @@ Senders write first, then pick one of the modes you allow. The mode is the relea
 | --- | --- | --- |
 | `/start` | Everyone | Welcome. Owners with an active link get a button to their oldest link. |
 | `/newlink [note]` | Owner | Creates a link. The optional note labels the link and its topics. |
-| `/settings` | Owner | Manage links, receive modes, help, and about. |
+| `/settings` | Owner | Manage links, receive modes, language, help, and about. |
 | `/rename <name>` | Owner or sender | Renames the current topic. The direction and mode markers stay at the front. |
 | `/help` | Everyone | Command reference and short guides. |
 | `/privacy` | Everyone | Explains what is stored and what is not. |
 | `/security` | Everyone | The short, plain-language security page. |
-| `/language` | Everyone | Change the bot language; accepts `en`, `fa`, or `auto`. |
 | `/about` | Everyone | Release, source, and open-source link. |
 
 Shared links open automatically. You never need to type the token.
@@ -103,6 +102,7 @@ The interactive versions include the source references behind every box: [securi
 - **Read** adds a 👀 reaction to the sender's message and removes the button.
 - **Revoke** is in `/settings` → **My links** → the link → **Revoke**. It stops the link immediately and deletes the bot's stored data. Telegram history remains.
 - Rename a topic with `/rename name` inside it. The direction and mode marker stays at the front.
+- Language is in `/settings` → **Language**, below **Receive modes**: `🇬🇧 English` or `فارسی 🇮🇷`.
 
 ### For senders
 

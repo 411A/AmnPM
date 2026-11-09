@@ -7,7 +7,7 @@ import { actionKey, openAction, ownerChatId, sealAction, sealReplyTarget, linkMe
 import { deliver, aliasFor } from '../lib/delivery.js';
 import { purgeLink } from '../lib/lifecycle.js';
 import { maybeSweep } from '../lib/retention.js';
-import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
+import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu, languageMenu } from '../lib/menu.js';
 import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
 import { renameWait, formatWait } from '../lib/rename.js';
 import { parseModes } from '../lib/modes.js';
@@ -491,6 +491,18 @@ async function menu(q, data, lang, now) {
     if (!owner) return answer(q);
     await editMenu(q, modesMenu(lang, parseModes(owner.modes)));
     return answer(q);
+  }
+  if (data === CALLBACK.LANGUAGE) {
+    await editMenu(q, languageMenu(lang, lang));
+    return answer(q);
+  }
+  if (data === CALLBACK.LANG_EN || data === CALLBACK.LANG_FA) {
+    const choice = data === CALLBACK.LANG_EN ? 'en' : 'fa';
+    const ownerKey = await userKeyFor(q.message.chat.id);
+    await store.setMeta(`lang:${ownerKey}`, choice);
+    await store.ensureOwner(ownerKey, now, choice);
+    await editMenu(q, homeMenu(choice));
+    return answer(q, t(choice, 'languageSet'));
   }
   if (data === CALLBACK.LINKS) {
     await editMenu(q, await linksMenu(lang, await userKeyFor(q.message.chat.id), now));
