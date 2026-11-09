@@ -62,6 +62,39 @@ identity key is compromised, the hash can be enumerated because Telegram ids
 are a small space. No hash construction can avoid that while keeping automatic
 blocking. A full identity-key compromise links the block list.
 
+## Key rotation and data-lock safety
+
+A version number maps to one key forever. To rotate, **add a new version** and
+set `CURRENT_*` to it; keep every old version. Old rows store the version they
+were written with:
+
+- Content: `links.kek_version` selects the old content key. Safe to add a new
+  content version.
+- Action: old tokens try every action version, then fall back to the link data
+  key. Safe to add a new action version; keep old versions until tokens expire.
+- Identity: the installation salt stores `id:<version>`. Old identity keys must
+  remain. New owner/sender chat ids do **not** store an identity version yet, so
+  `CURRENT_IDENTITY_KEK_VERSION` must not advance until the fallback or a
+  re-encryption migration lands. The generator refuses the change.
+
+There is no automatic re-encryption. Retiring an old key requires a migration
+that re-wraps or re-encrypts every row still using it. The generator always
+merges existing versions, never drops them, refuses to replace a key under an
+existing version, refuses a missing current version, and refuses to invent a
+fresh content key without an existing secret or `--init`.
+
+What cannot be guaranteed:
+
+- If every copy of `secret.js` (and `.env` if used) is lost, the stored
+  ciphertext cannot be recovered. Keep an offline backup.
+- If the database is lost, keys cannot restore it.
+- If the installation salt value itself is changed (not just re-wrapped), every
+  derived owner/sender/block key changes and old routing/block data is orphaned.
+- Manually editing `secret.js` or the database can bypass every guard.
+
+The tool can prevent accidental key replacement/drop; it cannot prevent key
+loss or platform data loss.
+
 ## Actions and replies
 
 Reply, read, and block payloads are encrypted and split: the database stores an

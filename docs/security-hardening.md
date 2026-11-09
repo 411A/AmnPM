@@ -44,8 +44,14 @@
    from `.env` (build time only) or preserves the existing `secret.js`, then
    writes the runtime module. Serverless has no runtime environment variables,
    so `secret.js` remains the deployed artifact.
-9. **Security docs** — `docs/security-model.md` states the exact guarantees
-   and the block-key limitation.
+9. **Data-lock safeguards** — the generator merges existing versions and never
+   drops them; it refuses to replace a key under an existing version, refuses a
+   missing `CURRENT_*`, refuses a fresh content key without an existing secret
+   or `--init`, and refuses to advance `CURRENT_IDENTITY_KEK_VERSION` while
+   owner/sender chat ids lack a version fallback. `.env.example` documents every
+   group and the version rules.
+10. **Security docs** — `docs/security-model.md` states the exact guarantees,
+    the block-key limitation, and the rotation/data-lock rules.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -63,7 +69,7 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 |---|---|
 | Syntax check | 38 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **181/181** (baseline 171; +8 keyring, +1 `/security`, +1 album identity) |
+| Full test suite | **188/188** (baseline 171; +15 hardening tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
