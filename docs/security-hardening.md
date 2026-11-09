@@ -81,18 +81,18 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
-| Real-account `e2e_all.py` (revision 100) | **36/36** |
-| Real-account `e2e_extra.py` (revision 100) | **11/11** |
+| Real-account `e2e_all.py` (revision 106) | **36/36** on retry; first attempt hit the known revoke-callback timeout (see note below) |
+| Real-account `e2e_extra.py` (revision 106) | **11/11** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass: title, key-domain section, expandable blocks; `/help` lists the command |
-| `/security` validator | pending live check on the deployed revision |
-| tgcloud | revision **105**, webhook in sync, tree clean (before the validator stamp) |
-| Branch / PR | `more-secure` / PR #1; CI success |
+| `/security` validator | pass: sent as `amnpm-validator-cc43c93.js` in English and Persian, with current UTC/Tehran time, commit, hash, and the “cannot inspect the running server” note; locally run against GitHub at `cc43c93` → **PASS** |
+| tgcloud | revision **106**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI deferred by GitHub Actions degraded performance (local suite, lint, and build check pass) |
 
-Note: two early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
-callback edits (one at the final revoke, one at a direct reply). After a pause,
-the same suite passed 36/36 with no code change. The failures were not
-reproducible.
+Note: early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
+callback edits (one at the final revoke, one at a direct reply). On revision 106
+the first attempt again timed out at the final revoke; the retry passed 36/36
+with no code change. The failures were not reproducible.
 
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
@@ -109,9 +109,15 @@ in a way that changes the query count.
 
 1. `node tools/gen-secret.mjs` (or fill `.env` first and run it).
 2. Confirm `secret.js` exports the three named groups and versions.
-3. `tgcloud push`.
-4. `tgcloud status` and `tgcloud webhook`.
-5. Run the two real-account suites and the retention suite.
+3. Commit all source changes; the tree must be clean.
+4. `node tools/gen-build.mjs --release v1.0.0 --commit <source-commit> --verified true`.
+5. Copy the new commit and bundle hash into `release/manifest.json` and
+   `release/notes.md`, then commit the stamp.
+6. `node tools/check-build.mjs`; it must report `build check ok`.
+7. `tgcloud push`.
+8. `tgcloud status` and `tgcloud webhook`.
+9. Run the two real-account suites and the retention suite.
 
 Do not deploy a secret that reuses one key across domains; the generator
-validates and preserves existing groups.
+validates and preserves existing groups. Do not deploy a `build.js` whose hash
+or file list does not match the committed source.
