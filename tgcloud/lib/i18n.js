@@ -24,7 +24,7 @@ const en = {
     '<li><b>{e.link} /newlink [note]</b><br>Create a link; the note is its label.</li>\n' +
     '<li><b>{e.control} /settings</b><br>Manage links, receive modes, help & about.</li>\n' +
     '<li><b>{e.info} /language en|fa|auto</b><br>Change the bot language.</li>\n' +
-    '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in.</li>\n' +
+    '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in (once per 24h).</li>\n' +
     '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
     '<li><b>{e.lock} /security</b><br>Show the exact security model.</li>\n' +
@@ -164,12 +164,17 @@ const en = {
     '<blockquote expandable>The link stops working immediately. All data the bot stored for this link is deleted, including its topics and reply targets. Telegram chat history remains. This cannot be undone.</blockquote>',
   revoked: '{e.cross} <s>{link}</s>\nLink revoked. Data cleared.',
   revokedShort: 'Revoked.',
-  memoPrompt: '{e.memo} Send the new memo (max {max} characters).',
+  memoPrompt:
+    '{e.memo} Send the new memo (max {max} characters).\n' +
+    'Changing a memo is limited to once every 24 hours.',
   memoChanged: '{e.memo} <b>Memo updated</b>\n<blockquote>{memo}</blockquote>',
   memoTaken: '{e.warn} Another link already uses that name. Try "{suggestion}" instead.',
   menuExpired: '{e.warn} This menu is out of date. Open /settings again.',
   albumPartialSender: '{e.warn} Part of your album arrived too late and was not sent. Please resend it.',
   renameUsage: '{e.tag} Send <code>/rename name</code> inside the topic you want to rename.',
+  renameNotice: 'Renaming a topic is limited to once every 24 hours.',
+  renameWait: 'You can rename a topic again in {time}. This limit is once every 24 hours.',
+  memoWait: 'You can change a memo again in {time}. This limit is once every 24 hours.',
   renamed: '{e.tag} Topic renamed to {name}.\nThe new name is saved on the server; your app may take hours to a day to show it.',
   renameNoTopic: '{e.warn} Use <code>/rename name</code> inside a topic (not in All).',
   renameUnknown: '{e.warn} This topic belongs to an older or revoked link, so the bot cannot rename it. Open a current topic and try again.',
@@ -251,7 +256,7 @@ const fa = {
     '<li><b>{e.link} /newlink [یادداشت]</b><br>ساخت لینک؛ یادداشت برچسب آن است.</li>\n' +
     '<li><b>{e.control} /settings</b><br>مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.</li>\n' +
     '<li><b>{e.info} /language en|fa|auto</b><br>تغییر زبان ربات.</li>\n' +
-    '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید.</li>\n' +
+    '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید (یک بار در ۲۴ ساعت).</li>\n' +
     '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
     '<li><b>{e.lock} /security</b><br>نمایش مدل امنیتی دقیق.</li>\n' +
@@ -391,12 +396,17 @@ const fa = {
     '<blockquote expandable>لینک بلافاصله از کار می‌افتد. همه داده‌های ذخیره‌شده ربات برای این لینک، از جمله موضوع‌ها و مقصدهای پاسخ، پاک می‌شوند. تاریخچه تلگرام می‌ماند. این کار قابل بازگشت نیست.</blockquote>',
   revoked: '{e.cross} <s>{link}</s>\nلینک حذف شد. داده‌ها پاک شد.',
   revokedShort: 'حذف شد.',
-  memoPrompt: '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).',
+  memoPrompt:
+    '{e.memo} یادداشت جدید را بفرستید (حداکثر {max} نویسه).\n' +
+    'تغییر یادداشت فقط یک بار در هر ۲۴ ساعت ممکن است.',
   memoChanged: '{e.memo} <b>یادداشت به‌روز شد</b>\n<blockquote>{memo}</blockquote>',
   memoTaken: '{e.warn} نام دیگری برای لینک دیگری استفاده شده. «{suggestion}» را امتحان کنید.',
   menuExpired: '{e.warn} این منو قدیمی است. دوباره /settings را باز کنید.',
   albumPartialSender: '{e.warn} بخشی از آلبوم دیر رسید و ارسال نشد. لطفاً دوباره بفرستید.',
   renameUsage: '{e.tag} داخل موضوعی که می‌خواهید تغییر نام دهد، بنویسید: <code>/rename نام</code>',
+  renameNotice: 'تغییر نام موضوع فقط یک بار در هر ۲۴ ساعت ممکن است.',
+  renameWait: 'تغییر نام موضوع بعدی تا {time} دیگر ممکن است. این محدودیت یک بار در هر ۲۴ ساعت است.',
+  memoWait: 'تغییر یادداشت بعدی تا {time} دیگر ممکن است. این محدودیت یک بار در هر ۲۴ ساعت است.',
   renamed: '{e.tag} نام موضوع به {name} تغییر کرد.\nنام جدید در سرور ذخیره شد؛ ممکن است ساعت‌ها تا یک روز طول بکشد تا در برنامه شما نمایش داده شود.',
   renameNoTopic: '{e.warn} برای تغییر نام، <code>/rename نام</code> را داخل یکی از موضوع‌ها (نه در All) بفرستید.',
   renameUnknown: '{e.warn} این موضوع به یک لینک قدیمی یا حذف‌شده تعلق دارد و قابل تغییر نام نیست. یک موضوع فعلی را باز کنید و دوباره تلاش کنید.',

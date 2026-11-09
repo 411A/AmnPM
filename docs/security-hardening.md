@@ -67,6 +67,11 @@
     default is still Telegram’s `from.language_code`. `/help` and the command
     menu list the command. English `/about` bot usernames no longer carry an RLM;
     Persian keeps it.
+14. **Rename limits** — topic renames and memo changes are each limited to once
+    per 24 hours per user. The timestamp is stored in the existing `meta` table
+    (`rename:<kind>:<user hash>`), so no schema change is needed. `/rename` sends
+    the limit notice before the edit; the memo prompt includes the limit before
+    the owner sends the new memo. A blocked attempt returns the remaining time.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -76,7 +81,8 @@ the secret is generated; the install-salt re-wrap is lazy.
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
 revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security` and `/language`. No command, button, or behavior removed.
+`/security` and `/language`; topic renames and memo edits now have a 24-hour
+cooldown. No command, button, or behavior removed.
 
 ## Final results (after this branch)
 
@@ -84,7 +90,7 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 |---|---|
 | Syntax check | 39 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **191/191** (baseline 171; +20 hardening/verification tests) |
+| Full test suite | **195/195** (baseline 171; +24 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
@@ -106,7 +112,8 @@ failures were not reproducible.
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
 revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security` and `/language`. No command, button, or behavior removed.
+`/security` and `/language`; topic renames and memo edits now have a 24-hour
+cooldown. No command, button, or behavior removed.
 
 The SQL and API counts are unchanged on every measured path. The small p95
 differences are run-to-run noise; the only new cryptographic work is one

@@ -9,6 +9,7 @@ import { purgeLink } from '../lib/lifecycle.js';
 import { maybeSweep } from '../lib/retention.js';
 import { homeMenu, linksMenu, linkMenu, editMenu, editRichMenu, requestMemo, modesMenu } from '../lib/menu.js';
 import { deepLink, ownerSalt, senderKeyFor, userKeyFor } from '../lib/links.js';
+import { renameWait, formatWait } from '../lib/rename.js';
 import { parseModes } from '../lib/modes.js';
 import * as render from '../lib/render.js';
 import { drain } from '../lib/queue.js';
@@ -454,6 +455,9 @@ async function memoPrompt(q, opened, lang, now) {
   if (await store.getReplyWindow(opened.link.owner_key, now)) {
     return answer(q, t(lang, 'replyBusy'), true);
   }
+  const salt = await ownerSalt();
+  const wait = await renameWait(await ownerChatId(opened.link), 'memo', now, salt);
+  if (wait) return answer(q, t(lang, 'memoWait', { time: formatWait(wait) }), true);
   const openedMemo = await requestMemo(opened.link, lang, q.message?.message_thread_id ?? 0);
   if (!openedMemo) return answer(q, t(lang, 'replyBusy'), true);
   return answer(q);

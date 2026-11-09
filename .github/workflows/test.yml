@@ -79,7 +79,7 @@ jobs:
       - name: Policy invariants
         id: policy
         continue-on-error: true
-        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/policy.test.js
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/policy.test.js tests/rename.test.js
 
       - name: Plan invariants
         id: plan

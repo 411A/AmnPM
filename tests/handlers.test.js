@@ -47,6 +47,10 @@ function buttons() {
     .filter(Boolean);
 }
 
+function clearRenameLimits() {
+  rawDb().prepare("DELETE FROM meta WHERE k LIKE 'rename:%'").run();
+}
+
 function lastMenuButtons() {
   return callsOf('editMessageText').at(-1)?.args.reply_markup?.inline_keyboard?.flat() ?? [];
 }
@@ -913,6 +917,7 @@ test('a renamed label cannot repeat another topic label', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /already used/);
   assert.equal(callsOf('editForumTopic').length, before);
 
+  clearRenameLimits();
   await onMessage(message('/rename Family', 100, { message_thread_id: historyThread }));
   assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
   assert.equal(callsOf('editForumTopic').length, before + 1);
@@ -960,6 +965,33 @@ test('re-setting the same label skips the API call', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
 });
 
+test('a second topic rename within 24h is refused', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename First', 100, { message_thread_id: thread }));
+  await onMessage(message('/rename Second', 100, { message_thread_id: thread }));
+
+  assert.match(callsOf('sendMessage').at(-1).args.text, /24h/);
+  assert.equal(callsOf('editForumTopic').length, 1);
+});
+
+test('a second memo change within 24h is refused', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('firstmemo', 100));
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+
+  const alerts = callsOf('answerCallbackQuery').filter((call) => call.args.show_alert);
+  assert.match(alerts.at(-1).args.text, /24h/);
+});
+
 test('a rename without topic rights says so directly', async () => {
   await setupLink();
   await deliverAnonymous();
@@ -984,6 +1016,7 @@ test('a memo change reports topics that kept old names', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /Manage Topics/);
   assert.match(rawDb().prepare('SELECT memo FROM links LIMIT 1').get().memo, /^enc:/);
 
+  clearRenameLimits();
   await openLinkList();
   await click(buttons().find((entry) => entry.startsWith('D|')), 100);
   await click(buttons().find((entry) => entry.startsWith('E|')), 100);

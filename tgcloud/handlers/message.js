@@ -15,6 +15,7 @@ import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
 import { parseModes } from '../lib/modes.js';
 import { homeMenu, requestMemo } from '../lib/menu.js';
+import { renameWait, markRenamed, formatWait } from '../lib/rename.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -284,6 +285,11 @@ async function renameTopic(msg, arg, lang) {
     if (await isTopicNameTaken(ownerKey, link, label, topic.id)) {
       return send(chatId, t(lang, 'renameTaken'), { message_thread_id: threadId });
     }
+    const wait = await renameWait(msg.from.id, 'topic', nowSec(), salt);
+    if (wait) {
+      return send(chatId, t(lang, 'renameWait', { time: formatWait(wait) }), { message_thread_id: threadId });
+    }
+    await send(chatId, t(lang, 'renameNotice'), { message_thread_id: threadId });
     const name = render.customTopicName(topic.kind, label, await linkMemo(link));
     const edit = () => api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
     const failed = (err) => {
@@ -324,6 +330,7 @@ async function renameTopic(msg, arg, lang) {
       // the display changed but was not stored; a retry heals both.
       return send(chatId, t(lang, 'renameFailed'), { message_thread_id: threadId });
     }
+    await markRenamed(msg.from.id, 'topic', nowSec(), salt);
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
   }
 
@@ -333,11 +340,17 @@ async function renameTopic(msg, arg, lang) {
     const link = await store.getLink(row.link_id);
     if (!link) continue;
     const name = render.customSenderTopicName(label);
+    const wait = await renameWait(msg.from.id, 'topic', nowSec(), salt);
+    if (wait) {
+      return send(chatId, t(lang, 'renameWait', { time: formatWait(wait) }), { message_thread_id: threadId });
+    }
+    await send(chatId, t(lang, 'renameNotice'), { message_thread_id: threadId });
     try {
       await api.editForumTopic({ chat_id: chatId, message_thread_id: threadId, name });
     } catch (err) {
       return send(chatId, t(lang, rightsError(err) ? 'renameRights' : 'renameFailed'), { message_thread_id: threadId });
     }
+    await markRenamed(msg.from.id, 'topic', nowSec(), salt);
     return send(chatId, t(lang, 'renamed', { name: ids.escapeHtml(name) }), { message_thread_id: threadId });
   }
   return send(chatId, t(lang, 'renameUnknown'), { message_thread_id: threadId });
@@ -634,6 +647,9 @@ async function plain(msg, lang, now) {
       await store.clearMemoState(ownerKey);
       return sendHere(msg, t(lang, 'deleteNotice'));
     }
+    const chat = await ownerChatId(link);
+    const wait = await renameWait(chat, 'memo', now, salt);
+    if (wait) return sendHere(msg, t(lang, 'memoWait', { time: formatWait(wait) }));
     if (await memoInUse(ownerKey, memoText, link.id)) {
       // Keep the prompt: the owner can send a different label right away.
       return sendHere(msg, t(lang, 'memoTaken', { suggestion: await nextFreeMemo(ownerKey) }));
@@ -641,8 +657,8 @@ async function plain(msg, lang, now) {
     const dek = await linkDek(link);
     const sealed = await crypto.encrypt(dek, memoText, `link:${link.token_lookup}:memo:v1`);
     await store.updateMemo(link.id, `enc:${sealed.nonce}:${sealed.ct}`);
+    await markRenamed(chat, 'memo', now, salt);
     const updated = await store.getLink(link.id);
-    const chat = await ownerChatId(updated);
     let renamed = { failed: 0, rights: false };
     try {
       renamed = await renameTopics(updated, chat);

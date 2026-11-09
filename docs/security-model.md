@@ -130,3 +130,6 @@ The user-facing `/security` and `/privacy` pages are deliberately short and reas
   later write and resurrect the topic.
 - The block list remains the unavoidable pseudo-identity while automatic
   per-sender blocking is a feature.
+- Topic renames and memo changes are each limited to once per 24 hours per user.
+  The limit is stored as a timestamp in the existing `meta` table; no schema
+  change is required.
