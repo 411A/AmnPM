@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🕊️ AmnPM
+# [🕊️ AmnPM](https://t.me/AmnPMBot)
 
 **A private, anonymous inbox behind one link.**
 
