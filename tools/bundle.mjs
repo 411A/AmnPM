@@ -2,10 +2,9 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-// Keep this traversal and hashing identical to the validator and gen-build:
-// sorted directory walk, relative path, NUL, bytes; build.js and secret.js are
-// excluded. Any change here is a bundle-format change.
-export function collectBundle(root) {
+// Sorted walk, relative path, NUL, bytes. build.js and secret.js are excluded.
+// Keep this identical to any external verifier; changing it changes every hash.
+export function bundleHash(root) {
   const absolute = [];
   (function walk(dir) {
     for (const name of readdirSync(dir).sort()) {
@@ -17,12 +16,11 @@ export function collectBundle(root) {
     }
   })(root);
 
-  const files = absolute.map((file) => relative(root, file).split(sep).join('/'));
   const hash = createHash('sha256');
-  for (let i = 0; i < files.length; i += 1) {
-    hash.update(files[i]);
+  for (const file of absolute) {
+    hash.update(relative(root, file).split(sep).join('/'));
     hash.update('\0');
-    hash.update(readFileSync(absolute[i]));
+    hash.update(readFileSync(file));
   }
-  return { files, bundleHash: hash.digest('hex') };
+  return hash.digest('hex');
 }

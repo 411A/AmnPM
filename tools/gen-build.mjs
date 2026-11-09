@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectBundle } from './bundle.mjs';
+import { bundleHash } from './bundle.mjs';
 
 const root = fileURLToPath(new URL('../tgcloud/', import.meta.url));
 const repo = fileURLToPath(new URL('../', import.meta.url));
@@ -11,7 +11,7 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (process.argv[i].startsWith('--')) args[process.argv[i].slice(2)] = process.argv[i + 1];
 }
 
-const { files, bundleHash } = collectBundle(root);
+const hash = bundleHash(root);
 
 // Only a clean tree whose app source still matches --commit may claim the
 // deployed source was verified. Release/stamp commits may follow --commit, but
@@ -39,9 +39,8 @@ if (args.verified === 'true') {
 const build = {
   release: args.release ?? 'dev',
   commit: args.commit ?? 'local',
-  bundleHash,
+  bundleHash: hash,
   verified: args.verified === 'true',
-  files,
 };
 
 writeFileSync(

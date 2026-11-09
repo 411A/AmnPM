@@ -64,7 +64,7 @@ jobs:
       - name: 🛡️ Source guardrails
         id: source
         continue-on-error: true
-        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js tests/validator.test.js
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js
 
       - name: 🧵 Topic coordination
         id: topics

@@ -2,9 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as render from '../tgcloud/lib/render.js';
 import { t } from '../tgcloud/lib/i18n.js';
-import { BUILD } from '../tgcloud/lib/build.js';
 
-const COMMANDS = ['/start', '/newlink', '/settings', '/rename', '/help', '/privacy', '/about'];
+const COMMANDS = ['/start', '/newlink', '/settings', '/rename', '/help', '/privacy', '/security', '/about'];
 
 test('welcome explains the bot and modes without listing commands', () => {
   for (const lang of ['en', 'fa']) {
@@ -15,7 +14,7 @@ test('welcome explains the bot and modes without listing commands', () => {
     assert.match(text, /😶‍🌫️/);
     assert.match(text, /😎/);
     assert.doesNotMatch(text, /<blockquote>[0-9a-f]{64}<\/blockquote>/);
-    assert.match(text, /(?:source and build verified|unverified release|منبع و بیلد تأیید شده|تأییدنشده)/);
+    assert.match(text, /(?:open source|متن‌باز)/);
     assert.ok(text.split('\n').length <= 20, text);
   }
 });
@@ -53,7 +52,7 @@ test('about uses a rich table for bot and source', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.about(lang);
     assert.match(text, /AmnPM<\/b><br>/, text);
-    assert.match(text, /(?:source and build verified|unverified release|منبع و بیلد تأیید شده|انتشار تأییدنشده)<\/a><br>/, text);
+    assert.match(text, /(?:open source|متن‌باز)<\/a><br>/, text);
     assert.match(text, /<table bordered striped compact>/, text);
     assert.match(text, /<th align="center">/);
     assert.match(text, /<td align="center" valign="middle">/);
@@ -94,28 +93,11 @@ test('link intro puts the note on its own line and the link in its own block', (
   }
 });
 
-test('verification says the source and build are verified without printing the hash', () => {
-  const previousVerified = BUILD.verified;
-  const previousRelease = BUILD.release;
-  const hash = BUILD.bundleHash;
-  assert.ok(hash);
-
-  BUILD.verified = false;
-  BUILD.release = 'dev';
-  let text = render.verifyLine();
-  assert.match(text, /unverified/);
-  assert.match(text, /https:\/\/github\.com\/411A\/AmnPM\/releases"/);
-  assert.equal(text.includes(hash), false);
-  assert.match(render.verifyLine('fa'), /انتشار تأییدنشده/);
-
-  BUILD.verified = true;
-  BUILD.release = 'v1.0.0';
-  text = render.verifyLine();
-  assert.match(text, /source and build verified/);
-  assert.match(text, /releases\/tag\/v1\.0\.0/);
-  assert.equal(text.includes(hash), false);
-  assert.match(render.verifyLine('fa'), /منبع و بیلد تأیید شده/);
-
-  BUILD.verified = previousVerified;
-  BUILD.release = previousRelease;
+test('verification links to the public source without technical details', () => {
+  for (const lang of ['en', 'fa']) {
+    const text = render.verifyLine(lang);
+    assert.match(text, /https:\/\/github\.com\/411A\/AmnPM/);
+    assert.match(text, /(?:open source|متن‌باز)/);
+    assert.doesNotMatch(text, /release|hash|build|commit/i);
+  }
 });

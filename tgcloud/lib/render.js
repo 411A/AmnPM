@@ -1,5 +1,4 @@
 import { CONFIG } from './config.js';
-import { BUILD } from './build.js';
 import { t } from './i18n.js';
 import { escapeHtml, cleanLabel } from './ids.js';
 import { EMOJI, LTR_MARK } from './constants.js';
@@ -8,15 +7,7 @@ import { MODES } from './modes.js';
 const ltr = (name) => `${LTR_MARK}${name}`;
 
 export function verifyLine(lang = 'en') {
-  const base = CONFIG.repoUrl;
-  const page = BUILD.release && BUILD.release !== 'dev'
-    ? `${base}/releases/tag/${encodeURIComponent(BUILD.release)}`
-    : `${base}/releases`;
-  const link = escapeHtml(page);
-  const label = t(lang, BUILD.verified ? 'verifyOk' : 'verifyBad');
-  return BUILD.verified
-    ? `${EMOJI.check} <a href="${link}">${label}</a>`
-    : `${EMOJI.unverified} <a href="${link}">${label}</a>`;
+  return `${EMOJI.check} <a href="${escapeHtml(CONFIG.repoUrl)}">${t(lang, 'verifyOk')}</a>`;
 }
 
 export function shareUrl(link) {

@@ -81,14 +81,6 @@ export function callsOf(method) {
   return calls.filter((entry) => entry.method === method);
 }
 
-export class InputFile {
-  constructor(bytes, name, options = {}) {
-    this.bytes = bytes;
-    this.name = name;
-    this.type = options.type;
-  }
-}
-
 export const api = {
   async getMe() {
     record('getMe', {});
@@ -121,14 +113,6 @@ export const api = {
   async sendMessage(args) {
     record('sendMessage', args);
     return { message_id: nextId++, chat: { id: args.chat_id }, text: args.text };
-  },
-  async sendDocument(args) {
-    record('sendDocument', args);
-    return {
-      message_id: nextId++,
-      chat: { id: args.chat_id },
-      document: { file_name: args.document?.name, mime_type: args.document?.type },
-    };
   },
   async sendRichMessage(args) {
     record('sendRichMessage', args);

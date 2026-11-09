@@ -167,7 +167,7 @@ test('owner start shows one main-link button only after a link exists', async ()
   assert.equal(sent.args.reply_markup, undefined);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
   assert.match(sent.args.text, /Use \/newlink/);
-  assert.match(sent.args.text, /source and build verified|unverified release/);
+  assert.match(sent.args.text, /open source|متن‌باز/);
 
   await onMessage(message('/newlink', 100));
   await onMessage(message('/start', 100));
@@ -189,34 +189,27 @@ test('new links use numbered default memos and keep explicit ones', async () => 
   assert.deepEqual(await Promise.all(links.map(linkMemo)), ['link 1', 'link 2', 'custom']);
 });
 
-test('security command returns the expandable security model', async () => {
+test('security command returns the plain-language security model', async () => {
   await onMessage(message('/security', 100));
   const rich = callsOf('sendRichMessage').at(-1).args.rich_message;
-  assert.match(rich.html, /Security model/);
+  assert.match(rich.html, /Security/);
   assert.match(rich.html, /<details>/);
-  assert.match(rich.html, /identity key/i);
-  assert.match(rich.html, /Running code/);
-  assert.match(rich.html, /TEE attestation/);
-  assert.match(rich.html, /No logs, no analytics/);
+  assert.match(rich.html, /What is stored/);
+  assert.match(rich.html, /Who can see what/);
+  assert.match(rich.html, /Open source/);
+  assert.match(rich.html, /https:\/\/github\.com\/411A\/AmnPM/);
+  assert.doesNotMatch(rich.html, /TEE|attestation|validator|bundle hash/i);
+  assert.equal(callsOf('sendDocument').length, 0);
   assert.notEqual(rich.is_rtl, true);
-
-  const doc = callsOf('sendDocument').at(-1).args;
-  assert.match(doc.document.name, /^amnpm-validator-[0-9a-f]+\.js$/);
-  assert.match(doc.caption, /Source validator/);
-  assert.match(doc.caption, /cannot inspect the running server/);
-  assert.match(doc.caption, /UTC/);
-  const body = new TextDecoder().decode(doc.document.bytes);
-  assert.match(body, /AmnPM source validator/);
-  assert.match(body, /const TARGET = /);
-  assert.match(body, /cannot inspect the running server/);
 });
 
 test('Persian rich messages are marked RTL', async () => {
   await onMessage(message('/security', 100, { language_code: 'fa' }));
   const rich = callsOf('sendRichMessage').at(-1).args.rich_message;
   assert.equal(rich.is_rtl, true);
-  assert.match(rich.html, /مدل امنیتی/);
-  assert.match(callsOf('sendDocument').at(-1).args.caption, /اعتبارسنج منبع/);
+  assert.match(rich.html, /امنیت/);
+  assert.match(rich.html, /متن‌باز/);
+  assert.equal(callsOf('sendDocument').length, 0);
 });
 
 test('Persian rich menu edits are marked RTL', async () => {

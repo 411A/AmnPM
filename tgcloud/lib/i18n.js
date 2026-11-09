@@ -50,27 +50,20 @@ const en = {
     'Runs securely inside Telegram’s own infrastructure (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>).\n' +
     '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Links are also removed after 12 months without activity (checked at most weekly while the bot is active); a reminder is sent about 30 days before. A one-way fingerprint of retired links is kept so the same link is never issued again. Telegram keeps its own copy of messages. A notice may not arrive if the bot is blocked. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
   security:
-    '{e.lock} <b>Security model</b>\n' +
-    'Exactly what is protected, and what is not.\n' +
-    '<details><summary><b>Stored data</b></summary>\n' +
-    'No message content is stored after delivery. Links, memos, and topic names are encrypted with a per-link key. Sender routing and block values are keyed hashes; the Telegram user id is not stored in the block list.\n' +
+    '{e.lock} <b>Security</b>\n' +
+    'The short version: the bot keeps as little as possible, and the code is public.\n' +
+    '<details><summary><b>What is stored</b></summary>\n' +
+    'Links, notes, and topic names are encrypted. Messages are deleted after delivery. No message archive, no ads, no analytics, no logs.\n' +
     '</details>\n' +
-    '<details><summary><b>Key domains</b></summary>\n' +
-    'Content, identity/routing, and action capabilities use separate key domains. A leak of one domain does not open the others. A full compromise of all domains does.\n' +
+    '<details><summary><b>Who can see what</b></summary>\n' +
+    'Telegram always knows who sent a message and when. The bot sees a message while delivering it. The link owner sees the messages sent to their link. Senders never see the owner’s identity.\n' +
     '</details>\n' +
-    '<details><summary><b>Buttons and replies</b></summary>\n' +
-    'Reply, read, and block buttons use split ciphertext: the database holds an incomplete value, and the Telegram button holds the missing fragment. A database and key leak alone cannot open an action; the owner message is also needed.\n' +
+    '<details><summary><b>Limits</b></summary>\n' +
+    'Encryption protects stored data, not a stolen server or bot token. Photos and files may contain hidden metadata that identifies the sender. Telegram keeps its own copy of messages. Links with no activity for 12 months are removed.\n' +
     '</details>\n' +
-    '<details><summary><b>Blocking</b></summary>\n' +
-    'Blocking uses a per-link keyed hash (owner-wide for Block everywhere). A full compromise of the identity key allows enumeration of Telegram ids. Telegram itself always knows the sender.\n' +
-    '</details>\n' +
-    '<details><summary><b>Retention and limits</b></summary>\n' +
-    'Links with no activity for 12 months are removed; a reminder is sent about 30 days before. Telegram keeps its own history. A compromised runtime or bot token can see incoming updates, and media metadata can identify a sender; metadata is not stripped by default. Client-side topic deletion is invisible to the bot.\n' +
-    '</details>\n' +
-    '<details><summary><b>Running code</b></summary>\n' +
-    'The validator file checks the public GitHub source at the build commit against the embedded bundle hash. A mismatch fails. This proves the source and build, not the running server. Proving the running code needs a platform-signed deployment digest or a TEE attestation; Telegram Serverless does not expose one. To avoid trusting the operator, self-host the same source: <a href="{repo}">{repo}</a>.\n' +
-    '</details>\n' +
-    'No logs, no analytics.',
+    '<details><summary><b>Open source</b></summary>\n' +
+    'The full code is public on <a href="{repo}">GitHub</a>. You can read it, check it, or run your own copy. This hosted bot is run by its operator, like any hosted service.\n' +
+    '</details>',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
@@ -108,15 +101,7 @@ const en = {
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
-  verifyOk: 'source and build verified',
-  verifyBad: 'unverified release',
-  validatorCaption:
-    '{e.lock} <b>Source validator</b>\n' +
-    'Generated: {time}\n' +
-    'Commit: <code>{commit}</code>\n' +
-    'Bundle: <code>{hash}</code>\n' +
-    'Run <code>node {file}</code>.\n' +
-    'It checks the public GitHub source and build hash; it cannot inspect the running server.',
+  verifyOk: 'open source',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +
@@ -287,27 +272,20 @@ const fa = {
     'به‌صورت امن داخل زیرساخت خود تلگرام (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>) اجرا می‌شود.\n' +
     '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. لینک‌ها پس از ۱۲ ماه بی‌فعالیتی هم حذف می‌شوند (حداکثر هفته‌ای یک‌بار و زمانی که ربات فعال است بررسی می‌شود)؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. اثر انگشت یک‌طرفه لینک‌های بازنشسته نگه داشته می‌شود تا همان لینک هرگز دوباره ساخته نشود. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. اگر ربات مسدود باشد ممکن است اطلاع‌رسانی نرسد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
   security:
-    '{e.lock} <b>مدل امنیتی</b>\n' +
-    'دقیقاً چه چیزی محافظت می‌شود و چه چیزی نه.\n' +
-    '<details><summary><b>داده‌های ذخیره‌شده</b></summary>\n' +
-    'هیچ محتوای پیامی پس از تحویل ذخیره نمی‌شود. لینک‌ها، یادداشت‌ها و نام موضوع‌ها با کلید هر لینک رمزنگاری می‌شوند. کلیدهای مسیریابی و مسدودسازی هش کلیددار هستند؛ شناسه تلگرام کاربر در فهرست مسدود ذخیره نمی‌شود.\n' +
+    '{e.lock} <b>امنیت</b>\n' +
+    'خلاصه: ربات تا حد امکان داده کمتری نگه می‌دارد و کدش عمومی است.\n' +
+    '<details><summary><b>چه چیزی ذخیره می‌شود</b></summary>\n' +
+    'لینک‌ها، یادداشت‌ها و نام موضوع‌ها رمزنگاری می‌شوند. پیام‌ها بعد از تحویل حذف می‌شوند. هیچ آرشیو پیام، تبلیغات، تحلیل یا لاگی وجود ندارد.\n' +
     '</details>\n' +
-    '<details><summary><b>حوزه‌های کلید</b></summary>\n' +
-    'محتوا، هویت/مسیریابی و توانایی‌های اقدام از حوزه‌های کلید جداگانه استفاده می‌کنند. افشای یک حوزه، حوزه‌های دیگر را باز نمی‌کند؛ افشای کامل همه حوزه‌ها این کار را می‌کند.\n' +
+    '<details><summary><b>چه کسی چه چیزی می‌بیند</b></summary>\n' +
+    'تلگرام همیشه می‌داند چه کسی پیام فرستاده و چه زمانی. ربات پیام را برای تحویل می‌بیند. صاحب لینک پیام‌های ارسال‌شده به لینکش را می‌بیند. فرستنده هویت صاحب لینک را نمی‌بیند.\n' +
     '</details>\n' +
-    '<details><summary><b>دکمه‌ها و پاسخ‌ها</b></summary>\n' +
-    'دکمه‌های پاسخ، خواندن و مسدودسازی از متن رمزی تکه‌تکه استفاده می‌کنند: پایگاه داده یک مقدار ناقص دارد و دکمه تلگرام قطعه گمشده را نگه می‌دارد. افشای پایگاه داده و کلید به‌تنهایی نمی‌تواند یک اقدام را باز کند؛ پیام صاحب هم لازم است.\n' +
+    '<details><summary><b>محدودیت‌ها</b></summary>\n' +
+    'رمزنگاری از داده‌های ذخیره‌شده محافظت می‌کند، نه از سرور یا توکن ربات دزدیده‌شده. عکس‌ها و فایل‌ها ممکن است متادیتای پنهانی داشته باشند که فرستنده را نشان دهد. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. لینک‌های بدون فعالیت ۱۲ ماه حذف می‌شوند.\n' +
     '</details>\n' +
-    '<details><summary><b>مسدودسازی</b></summary>\n' +
-    'مسدودسازی از هش کلیددار مخصوص هر لینک (و در حالت مسدودسازی سراسری، مخصوص صاحب) استفاده می‌کند. افشای کامل کلید هویت امکان شمارش شناسه‌های تلگرام را می‌دهد. خود تلگرام همیشه فرستنده را می‌داند.\n' +
-    '</details>\n' +
-    '<details><summary><b>نگهداری و محدودیت‌ها</b></summary>\n' +
-    'لینک‌هایی که ۱۲ ماه فعالیت ندارند حذف می‌شوند؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. تلگرام تاریخچه خودش را نگه می‌دارد. اجرای نفوذشده یا توکن ربات می‌تواند به‌روزرسانی‌های ورودی را ببیند، و متادیتای رسانه می‌تواند فرستنده را شناسایی کند؛ متادیتا به‌طور پیش‌فرض حذف نمی‌شود. حذف موضوع از سمت کاربر برای ربات نامرئی است.\n' +
-    '</details>\n' +
-    '<details><summary><b>کد در حال اجرا</b></summary>\n' +
-    'فایل اعتبارسنج، منبع عمومی GitHub را در کامیت بیلد با هش بسته مقایسه می‌کند؛ ناسازگاری باعث خطا می‌شود. این کار منبع و بیلد را ثابت می‌کند، نه سرور در حال اجرا را. اثبات فرایند در حال اجرا به digest امضاشده پلتفرم یا attestation مبتنی بر TEE نیاز دارد؛ Telegram Serverless چنین چیزی ارائه نمی‌دهد. برای اینکه به اپراتور اعتماد نکنید، همان منبع را خودتان میزبانی کنید: <a href="{repo}">{repo}</a>.\n' +
-    '</details>\n' +
-    'بدون لاگ، بدون تحلیل.',
+    '<details><summary><b>متن‌باز</b></summary>\n' +
+    'کد کامل روی <a href="{repo}">GitHub</a> عمومی است. می‌توانید آن را بخوانید، بررسی کنید یا نسخه خودتان را اجرا کنید. این ربات میزبانی‌شده مثل هر سرویس آنلاین دیگری توسط اپراتورش اجرا می‌شود.\n' +
+    '</details>',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
     '{e.memo} <b>{memo}</b>\n' +
@@ -345,15 +323,7 @@ const fa = {
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
-  verifyOk: 'منبع و بیلد تأیید شده',
-  verifyBad: 'انتشار تأییدنشده',
-  validatorCaption:
-    '{e.lock} <b>اعتبارسنج منبع</b>\n' +
-    'تولید: {time}\n' +
-    'کامیت: <code>{commit}</code>\n' +
-    'بسته: <code>{hash}</code>\n' +
-    'اجرا: <code>node {file}</code>\n' +
-    'منبع عمومی GitHub و هش بیلد را بررسی می‌کند؛ سرور در حال اجرا را نمی‌تواند بازرسی کند.',
+  verifyOk: 'متن‌باز',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +

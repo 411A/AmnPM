@@ -52,14 +52,12 @@
    group and the version rules.
 10. **Security docs** — `docs/security-model.md` states the exact guarantees,
     the block-key limitation, and the rotation/data-lock rules.
-11. **Source/build evidence** — `tools/bundle.mjs` is the single bundle hash
-    implementation; `tools/check-build.mjs` fails CI if `build.js` or
-    `release/manifest.json` is stale; `/security` sends a standalone Node 18+
-    validator with the pinned commit, file list, bundle hash, and generated
-    time. The validator checks the public GitHub source against the hash and
-    reports missing/extra files. It explicitly says this is not proof of the
-    running server. `/about` now says “source and build verified” instead of
-    claiming the running code matches.
+11. **Internal build stamp and plain-language `/security`** — `tools/bundle.mjs`
+    is the single bundle hash implementation; `tools/check-build.mjs` fails CI if
+    `build.js` or `release/manifest.json` is stale. `/security` no longer sends a
+    validator file. It uses four short sections: what is stored, who can see
+    what, limits, and open source. It avoids TEE/attestation jargon. `/about`
+    links to the public source as “open source”.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -75,19 +73,18 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 
 | Check | Result |
 |---|---|
-| Syntax check | 41 JS files + 2 JSON: pass |
+| Syntax check | 39 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **191/191** (baseline 171; +20 hardening/verification tests) |
+| Full test suite | **190/190** (baseline 171; +19 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
 | Real-account `e2e_all.py` (revision 106) | **36/36** on retry; first attempt hit the known revoke-callback timeout (see note below) |
 | Real-account `e2e_extra.py` (revision 106) | **11/11** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
-| `/security` live RichMessage | pass: title, key-domain section, expandable blocks; `/help` lists the command |
-| `/security` validator | pass: sent as `amnpm-validator-cc43c93.js` in English and Persian, with current UTC/Tehran time, commit, hash, and the “cannot inspect the running server” note; locally run against GitHub at `cc43c93` → **PASS** |
-| tgcloud | revision **106**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `2dcf5d6` (build stamp, lint, and all 191 tests) |
+| `/security` live RichMessage | pass: four plain-language sections; no file upload; `/help` lists the command |
+| tgcloud | revision **106**, webhook in sync, tree clean (before the simplification deploy) |
+| Branch / PR | `more-secure` / PR #1; CI success on `2dcf5d6` (before the simplification) |
 
 Note: early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many
 callback edits (one at the final revoke, one at a direct reply). On revision 106
