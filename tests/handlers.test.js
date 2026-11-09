@@ -918,7 +918,8 @@ test('a renamed label cannot repeat another topic label', async () => {
   assert.match(callsOf('sendMessage').at(-1).args.text, /already used/);
   assert.equal(callsOf('editForumTopic').length, before);
 
-  clearRenameLimits();
+  // The history topic has its own rename budget; the anon topic's rename does
+  // not block it.
   await onMessage(message('/rename Family', 100, { message_thread_id: historyThread }));
   assert.match(callsOf('sendMessage').at(-1).args.text, /renamed/i);
   assert.equal(callsOf('editForumTopic').length, before + 1);

@@ -10,22 +10,23 @@ beforeEach(() => {
   applySchema(Object.values(schema), (text) => rawDb().prepare(text).run());
 });
 
-test('topic and memo cooldowns are separate per link', async () => {
+test('owner topic, sender topic, and memo limits are independent', async () => {
   const now = 1_800_000_000;
 
-  assert.equal(await renameWait(1, 'topic', now), 0);
-  await markRenamed(1, 'topic', now);
+  assert.equal(await renameWait('owner-topic', 10, now), 0);
+  await markRenamed('owner-topic', 10, now);
 
-  assert.equal(await renameWait(1, 'topic', now + 60), RENAME_WINDOW_SECONDS - 60);
-  assert.equal(await renameWait(1, 'memo', now + 60), 0);
-  assert.equal(await renameWait(2, 'topic', now + 60), 0);
-  assert.equal(await renameWait(1, 'topic', now + RENAME_WINDOW_SECONDS), 0);
+  assert.equal(await renameWait('owner-topic', 10, now + 60), RENAME_WINDOW_SECONDS - 60);
+  assert.equal(await renameWait('owner-topic', 11, now + 60), 0);
+  assert.equal(await renameWait('sender-topic', 10, now + 60), 0);
+  assert.equal(await renameWait('memo', 10, now + 60), 0);
+  assert.equal(await renameWait('owner-topic', 10, now + RENAME_WINDOW_SECONDS), 0);
 });
 
 test('marking again moves the same row, not a second one', async () => {
   const now = 1_800_000_000;
-  await markRenamed(1, 'topic', now);
-  await markRenamed(1, 'topic', now + 60);
+  await markRenamed('owner-topic', 10, now);
+  await markRenamed('owner-topic', 10, now + 60);
 
   const rows = rawDb().prepare("SELECT k, v FROM meta WHERE k LIKE 'rename:%'").all();
   assert.equal(rows.length, 1);

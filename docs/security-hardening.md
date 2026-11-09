@@ -67,11 +67,15 @@
     default is still Telegram’s `from.language_code`. `/help` and the command
     menu list the command. English `/about` bot usernames no longer carry an RLM;
     Persian keeps it.
-14. **Rename limits** — topic renames and memo changes are each limited to once
-    per 24 hours per link. The timestamp is stored in the existing `meta` table
-    (`rename:<kind>:<link id>`), so no schema change is needed. `/rename` sends
-    the limit notice before the edit; the memo prompt includes the limit before
-    the owner sends the new memo. A blocked attempt returns the remaining time.
+14. **Rename limits** — topic renames are limited to once per 24 hours **per
+    topic**; memo changes are limited once per 24 hours **per link**. Owner
+    topics and sender topics have separate counters, so a sender renaming their
+    own topic never blocks the owner. The timestamp is stored in the existing
+    `meta` table (`rename:owner-topic:<topic id>`,
+    `rename:sender-topic:<row id>`, `rename:memo:<link id>`), so no schema change
+    is needed. `/rename` sends the limit notice before the edit; the memo prompt
+    includes the limit before the owner sends the new memo. A blocked attempt
+    returns the remaining time.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.

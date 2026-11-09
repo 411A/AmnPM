@@ -2,18 +2,19 @@ import * as store from './store.js';
 
 export const RENAME_WINDOW_SECONDS = 86_400;
 
-// One meta row per link and kind, no schema change. In-memory state would reset
-// with every serverless isolate and could not enforce a 24-hour window. The
-// topic and memo counters are separate: each link gets one of each per window.
-export async function renameWait(linkId, kind, now) {
-  const last = Number(await store.getMeta(`rename:${kind}:${linkId}`) ?? 0);
+// One meta row per rename target, no schema change. Owner topics, sender topics,
+// and memos use different scopes, so one side's rename never consumes the
+// other side's budget. In-memory state would reset with every serverless
+// isolate and could not enforce a 24-hour window.
+export async function renameWait(scope, id, now) {
+  const last = Number(await store.getMeta(`rename:${scope}:${id}`) ?? 0);
   return last > 0 && last + RENAME_WINDOW_SECONDS > now
     ? last + RENAME_WINDOW_SECONDS - now
     : 0;
 }
 
-export async function markRenamed(linkId, kind, now) {
-  await store.setMeta(`rename:${kind}:${linkId}`, String(now));
+export async function markRenamed(scope, id, now) {
+  await store.setMeta(`rename:${scope}:${id}`, String(now));
 }
 
 export function formatWait(seconds) {
