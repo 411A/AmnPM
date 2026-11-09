@@ -117,6 +117,8 @@ The repository publishes the source and a reproducible bundle hash. `tools/check
 
 The bot is a hosted service. A remote user cannot inspect the running Telegram Serverless isolate, and the platform exposes no signed deployment digest or TEE attestation. The `/security` page says this in plain language and points to the public source. Self-hosting the same source is the only way for a user to avoid trusting the operator. The user-facing trust signals are “open source” and the ability to run their own copy.
 
+The user-facing `/security` and `/privacy` pages are deliberately short and reassuring; they omit detailed limitations such as media metadata, operator key access, and Telegram’s own message copy. This document is the complete version for technical readers.
+
 ## Limits
 
 - Telegram always knows the sender. No bot can hide that.

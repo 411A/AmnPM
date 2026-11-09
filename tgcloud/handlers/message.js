@@ -343,10 +343,32 @@ async function renameTopic(msg, arg, lang) {
   return send(chatId, t(lang, 'renameUnknown'), { message_thread_id: threadId });
 }
 
+async function savedLang(chatId, fallback) {
+  const saved = await store.getMeta(`lang:${await userKeyFor(chatId)}`);
+  return saved === 'en' || saved === 'fa' ? saved : fallback;
+}
+
+async function setLanguage(msg, arg, lang, now) {
+  if (msg.chat.type !== 'private') return sendHere(msg, t(lang, 'languagePrivate'));
+  const choice = arg.trim().toLowerCase();
+  const ownerKey = await userKeyFor(msg.chat.id);
+  if (choice === 'auto') {
+    const telegramLang = normalizeLang(msg.from.language_code);
+    await store.setMeta(`lang:${ownerKey}`, 'auto');
+    await store.ensureOwner(ownerKey, now, telegramLang);
+    return sendHere(msg, t(telegramLang, 'languageAuto'));
+  }
+  if (choice !== 'en' && choice !== 'fa') return sendHere(msg, t(lang, 'languageUsage'));
+  await store.setMeta(`lang:${ownerKey}`, choice);
+  await store.ensureOwner(ownerKey, now, choice);
+  return sendHere(msg, t(choice, 'languageSet'));
+}
+
 async function command(msg, lang, now) {
   const [head, ...rest] = String(msg.text ?? '').trim().split(/\s+/);
   const arg = rest.join(' ').trim();
   const chatId = msg.chat.id;
+  if (msg.chat.type === 'private') lang = await savedLang(chatId, lang);
 
   if (head === '/start') {
     if (arg) return openLink(msg, arg, lang, now);
@@ -354,6 +376,7 @@ async function command(msg, lang, now) {
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/settings') return settingsPage(msg, lang);
+  if (head === '/language') return setLanguage(msg, arg, lang, now);
   if (head === '/help') return sendRichHere(msg, t(lang, 'help'), lang === 'fa');
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
   if (head === '/security') return sendRichHere(msg, t(lang, 'security', { repo: CONFIG.repoUrl }), lang === 'fa');

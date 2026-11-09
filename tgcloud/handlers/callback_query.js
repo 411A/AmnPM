@@ -518,7 +518,11 @@ export default async function onCallback(update) {
     const q = update;
     if (!q?.data || !q.from) return;
     const now = nowSec();
-    const lang = normalizeLang(q.from.language_code);
+    let lang = normalizeLang(q.from.language_code);
+    if (q.message?.chat?.type === 'private') {
+      const saved = await store.getMeta(`lang:${await userKeyFor(q.message.chat.id)}`);
+      if (saved === 'en' || saved === 'fa') lang = saved;
+    }
     const [k, prefix, suffix] = String(q.data).split(CALLBACK.SEP);
 
     // Unsealed menu buttons are only meaningful in the chat that owns them.

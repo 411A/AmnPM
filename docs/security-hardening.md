@@ -56,8 +56,17 @@
     is the single bundle hash implementation; `tools/check-build.mjs` fails CI if
     `build.js` or `release/manifest.json` is stale. `/security` no longer sends a
     validator file. It uses four short sections: what is stored, who can see
-    what, limits, and open source. It avoids TEE/attestation jargon. `/about`
+    what, retention, and open source. It avoids TEE/attestation jargon. `/about`
     links to the public source as “open source”.
+12. **Friendly copy** — `/security` and `/privacy` no longer mention media
+    metadata, stolen servers/tokens, operator decryption, or Telegram’s own
+    message copy. Those limitations remain in `docs/security-model.md` for
+    technical readers.
+13. **Language override** — `/language en|fa|auto` stores a per-user preference
+    in `meta` and applies it to private-chat commands and menu callbacks. The
+    default is still Telegram’s `from.language_code`. `/help` and the command
+    menu list the command. English `/about` bot usernames no longer carry an RLM;
+    Persian keeps it.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -67,7 +76,7 @@ the secret is generated; the install-salt re-wrap is lazy.
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
 revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security`. No command, button, or behavior removed.
+`/security` and `/language`. No command, button, or behavior removed.
 
 ## Final results (after this branch)
 
@@ -75,7 +84,7 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 |---|---|
 | Syntax check | 39 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **190/190** (baseline 171; +19 hardening/verification tests) |
+| Full test suite | **191/191** (baseline 171; +20 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
@@ -94,7 +103,7 @@ and 107 the first attempt again timed out at the final revoke; the retry passed
 Kept: replies, read receipts, per-sender block, block-all/unblock, sender
 topics, all three modes, forward mode, sender renames, owner renames, memos,
 revoke, albums in both directions, retention, help/privacy/about. Added:
-`/security`. No command, button, or behavior removed.
+`/security` and `/language`. No command, button, or behavior removed.
 
 The SQL and API counts are unchanged on every measured path. The small p95
 differences are run-to-run noise; the only new cryptographic work is one

@@ -119,12 +119,13 @@ test('bot metadata config runs once', async () => {
   const commands = callsOf('setMyCommands')[0].args.commands;
   assert.deepEqual(
     commands.map((entry) => entry.command),
-    ['start', 'newlink', 'settings', 'rename', 'help', 'privacy', 'security', 'about'],
+    ['start', 'newlink', 'settings', 'language', 'rename', 'help', 'privacy', 'security', 'about'],
   );
   assert.ok(commands.every((entry) => !entry.description.includes('\n')));
   assert.match(commands[0].description, /^🔰 /);
   assert.match(commands[2].description, /^🎛 .*&/);
-  assert.match(commands[7].description, /^ℹ️ /);
+  assert.match(commands[3].description, /^ℹ️ /);
+  assert.match(commands[8].description, /^ℹ️ /);
 
   await configureBotOnce();
   assert.equal(callsOf('setMyName').length, 1);
@@ -199,8 +200,29 @@ test('security command returns the plain-language security model', async () => {
   assert.match(rich.html, /Open source/);
   assert.match(rich.html, /https:\/\/github\.com\/411A\/AmnPM/);
   assert.doesNotMatch(rich.html, /TEE|attestation|validator|bundle hash/i);
+  assert.doesNotMatch(rich.html, /metadata|stolen server|operator/i);
   assert.equal(callsOf('sendDocument').length, 0);
   assert.notEqual(rich.is_rtl, true);
+});
+
+test('language override changes command responses', async () => {
+  await onMessage(message('/language fa', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /زبان روی فارسی تنظیم شد/);
+
+  await onMessage(message('/privacy', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /حریم خصوصی/);
+
+  await onMessage(message('/language en', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Language set to English/);
+
+  await onMessage(message('/privacy', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Privacy/);
+
+  await onMessage(message('/language auto', 100, { language_code: 'fa' }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /زبان دوباره از تلگرام/);
+
+  await onMessage(message('/privacy', 100, { language_code: 'fa' }));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /حریم خصوصی/);
 });
 
 test('Persian rich messages are marked RTL', async () => {

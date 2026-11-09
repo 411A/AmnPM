@@ -23,6 +23,7 @@ const en = {
     '<li><b>{e.start} /start</b><br>Welcome & your main link.</li>\n' +
     '<li><b>{e.link} /newlink [note]</b><br>Create a link; the note is its label.</li>\n' +
     '<li><b>{e.control} /settings</b><br>Manage links, receive modes, help & about.</li>\n' +
+    '<li><b>{e.info} /language en|fa|auto</b><br>Change the bot language.</li>\n' +
     '<li><b>{e.tag} /rename name</b><br>Rename the topic you are writing in.</li>\n' +
     '<li><b>{e.book} /help</b><br>Show this guide.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>Explain what is stored.</li>\n' +
@@ -48,7 +49,7 @@ const en = {
     'No message content is stored.\n' +
     'Links, memos, and sender ids are encrypted at rest.\n' +
     'Runs securely inside Telegram’s own infrastructure (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>).\n' +
-    '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Links are also removed after 12 months without activity (checked at most weekly while the bot is active); a reminder is sent about 30 days before. A one-way fingerprint of retired links is kept so the same link is never issued again. Telegram keeps its own copy of messages. A notice may not arrive if the bot is blocked. The deployment key lets the operator decrypt stored fields, so encryption protects the database, not the operator. The bot writes no logs.</blockquote>',
+    '<blockquote expandable>Revoking a link deletes every stored row for it and destroys its key. Links are also removed after 12 months without activity, with a reminder about 30 days before. The bot writes no logs.</blockquote>',
   security:
     '{e.lock} <b>Security</b>\n' +
     'The short version: the bot keeps as little as possible, and the code is public.\n' +
@@ -56,13 +57,13 @@ const en = {
     'Links, notes, and topic names are encrypted. Messages are deleted after delivery. No message archive, no ads, no analytics, no logs.\n' +
     '</details>\n' +
     '<details><summary><b>Who can see what</b></summary>\n' +
-    'Telegram always knows who sent a message and when. The bot sees a message while delivering it. The link owner sees the messages sent to their link. Senders never see the owner’s identity.\n' +
+    'The bot handles a message only to deliver it and does not keep a copy. The link owner sees the messages sent to their link. Senders never see the owner’s identity.\n' +
     '</details>\n' +
-    '<details><summary><b>Limits</b></summary>\n' +
-    'Encryption protects stored data, not a stolen server or bot token. Photos and files may contain hidden metadata that identifies the sender. Telegram keeps its own copy of messages. Links with no activity for 12 months are removed.\n' +
+    '<details><summary><b>Retention</b></summary>\n' +
+    'Links with no activity for 12 months are removed. You can revoke a link at any time; its stored data is deleted.\n' +
     '</details>\n' +
     '<details><summary><b>Open source</b></summary>\n' +
-    'The full code is public on <a href="{repo}">GitHub</a>. You can read it, check it, or run your own copy. This hosted bot is run by its operator, like any hosted service.\n' +
+    'The full code is public on <a href="{repo}">GitHub</a>. You can read it, check it, or run your own copy.\n' +
     '</details>',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
@@ -101,6 +102,10 @@ const en = {
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
+  languageUsage: 'Use <code>/language en</code>, <code>/language fa</code>, or <code>/language auto</code>.',
+  languageSet: 'Language set to English.',
+  languageAuto: 'Language follows Telegram again.',
+  languagePrivate: 'Set the language in a private chat with the bot.',
   verifyOk: 'open source',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
@@ -108,13 +113,13 @@ const en = {
     '<br>\n' +
     '<b>Other bots</b>\n' +
     '<blockquote expandable>\n' +
-    '<a href="https://t.me/JSONiceBot">\u200F@JSONiceBot</a> — View Telegram message details &amp; other JSON files key-values interactively.<br>\n' +
-    '<a href="https://t.me/HidEgoBot">\u200F@HidEgoBot</a> — Create your own secure anonymous bot<br>\n' +
-    '<a href="https://t.me/ReForeBot">\u200F@ReForeBot</a> — Store &amp; forward any post on reply through inline\n' +
+    '<a href="https://t.me/JSONiceBot">@JSONiceBot</a> — View Telegram message details &amp; other JSON files key-values interactively.<br>\n' +
+    '<a href="https://t.me/HidEgoBot">@HidEgoBot</a> — Create your own secure anonymous bot<br>\n' +
+    '<a href="https://t.me/ReForeBot">@ReForeBot</a> — Store &amp; forward any post on reply through inline\n' +
     '</blockquote>\n' +
     '<table bordered striped compact>\n' +
     '<tr><th align="center">Resource</th><th align="center">Link</th></tr>\n' +
-    '<tr><td align="center" valign="middle">Bot</td><td align="center" valign="middle"><a href="{contact}">\u200F@AmnPMBot</a></td></tr>\n' +
+    '<tr><td align="center" valign="middle">Bot</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
     '<tr><td align="center" valign="middle">Source</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
     '©️ 2026 - Present · <a href="{developer}">TechKraken</a>',
@@ -245,6 +250,7 @@ const fa = {
     '<li><b>{e.start} /start</b><br>صفحه خوش‌آمد و لینک اصلی.</li>\n' +
     '<li><b>{e.link} /newlink [یادداشت]</b><br>ساخت لینک؛ یادداشت برچسب آن است.</li>\n' +
     '<li><b>{e.control} /settings</b><br>مدیریت لینک‌ها، حالت‌های دریافت، راهنما و درباره.</li>\n' +
+    '<li><b>{e.info} /language en|fa|auto</b><br>تغییر زبان ربات.</li>\n' +
     '<li><b>{e.tag} /rename نام</b><br>تغییر نام موضوعی که در آن می‌نویسید.</li>\n' +
     '<li><b>{e.book} /help</b><br>نمایش این راهنما.</li>\n' +
     '<li><b>{e.lock} /privacy</b><br>توضیح اینکه چه چیزی ذخیره می‌شود.</li>\n' +
@@ -270,7 +276,7 @@ const fa = {
     'هیچ محتوای پیامی ذخیره نمی‌شود.\n' +
     'لینک‌ها، یادداشت‌ها و شناسه فرستنده‌ها در حالت سکون رمزنگاری می‌شوند.\n' +
     'به‌صورت امن داخل زیرساخت خود تلگرام (<a href="https://core.telegram.org/bots/serverless">Telegram Serverless</a>) اجرا می‌شود.\n' +
-    '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. لینک‌ها پس از ۱۲ ماه بی‌فعالیتی هم حذف می‌شوند (حداکثر هفته‌ای یک‌بار و زمانی که ربات فعال است بررسی می‌شود)؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. اثر انگشت یک‌طرفه لینک‌های بازنشسته نگه داشته می‌شود تا همان لینک هرگز دوباره ساخته نشود. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. اگر ربات مسدود باشد ممکن است اطلاع‌رسانی نرسد. کلید استقرار به اپراتور اجازه رمزگشایی فیلدهای ذخیره‌شده را می‌دهد؛ رمزنگاری از پایگاه داده محافظت می‌کند، نه از اپراتور. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
+    '<blockquote expandable>حذف یک لینک همه ردیف‌های ذخیره‌شده آن را پاک می‌کند و کلیدش را از بین می‌برد. لینک‌ها پس از ۱۲ ماه بی‌فعالیتی هم حذف می‌شوند و حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. ربات هیچ لاگی نمی‌نویسد.</blockquote>',
   security:
     '{e.lock} <b>امنیت</b>\n' +
     'خلاصه: ربات تا حد امکان داده کمتری نگه می‌دارد و کدش عمومی است.\n' +
@@ -278,13 +284,13 @@ const fa = {
     'لینک‌ها، یادداشت‌ها و نام موضوع‌ها رمزنگاری می‌شوند. پیام‌ها بعد از تحویل حذف می‌شوند. هیچ آرشیو پیام، تبلیغات، تحلیل یا لاگی وجود ندارد.\n' +
     '</details>\n' +
     '<details><summary><b>چه کسی چه چیزی می‌بیند</b></summary>\n' +
-    'تلگرام همیشه می‌داند چه کسی پیام فرستاده و چه زمانی. ربات پیام را برای تحویل می‌بیند. صاحب لینک پیام‌های ارسال‌شده به لینکش را می‌بیند. فرستنده هویت صاحب لینک را نمی‌بیند.\n' +
+    'ربات پیام را فقط برای تحویل پردازش می‌کند و نسخه‌ای نگه نمی‌دارد. صاحب لینک پیام‌های ارسال‌شده به لینکش را می‌بیند. فرستنده هویت صاحب لینک را نمی‌بیند.\n' +
     '</details>\n' +
-    '<details><summary><b>محدودیت‌ها</b></summary>\n' +
-    'رمزنگاری از داده‌های ذخیره‌شده محافظت می‌کند، نه از سرور یا توکن ربات دزدیده‌شده. عکس‌ها و فایل‌ها ممکن است متادیتای پنهانی داشته باشند که فرستنده را نشان دهد. تلگرام نسخه خودش از پیام‌ها را نگه می‌دارد. لینک‌های بدون فعالیت ۱۲ ماه حذف می‌شوند.\n' +
+    '<details><summary><b>نگهداری</b></summary>\n' +
+    'لینک‌هایی که ۱۲ ماه فعالیت ندارند حذف می‌شوند. هر زمان بخواهید می‌توانید لینک را حذف کنید؛ داده‌های ذخیره‌شده آن پاک می‌شود.\n' +
     '</details>\n' +
     '<details><summary><b>متن‌باز</b></summary>\n' +
-    'کد کامل روی <a href="{repo}">GitHub</a> عمومی است. می‌توانید آن را بخوانید، بررسی کنید یا نسخه خودتان را اجرا کنید. این ربات میزبانی‌شده مثل هر سرویس آنلاین دیگری توسط اپراتورش اجرا می‌شود.\n' +
+    'کد کامل روی <a href="{repo}">GitHub</a> عمومی است. می‌توانید آن را بخوانید، بررسی کنید یا نسخه خودتان را اجرا کنید.\n' +
     '</details>',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
@@ -323,6 +329,10 @@ const fa = {
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
+  languageUsage: 'از <code>/language en</code>، <code>/language fa</code> یا <code>/language auto</code> استفاده کنید.',
+  languageSet: 'زبان روی فارسی تنظیم شد.',
+  languageAuto: 'زبان دوباره از تلگرام پیروی می‌کند.',
+  languagePrivate: 'زبان را در چت خصوصی با ربات تنظیم کنید.',
   verifyOk: 'متن‌باز',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
