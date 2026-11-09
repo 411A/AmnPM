@@ -28,16 +28,16 @@ function send(chatId, text, extra = {}) {
   });
 }
 
-function sendRich(chatId, html, extra = {}) {
+function sendRich(chatId, html, rtl = false, extra = {}) {
   return api.sendRichMessage({
     chat_id: chatId,
-    rich_message: { html },
+    rich_message: { html, ...(rtl ? { is_rtl: true } : {}) },
     ...extra,
   });
 }
 
-function sendRichHere(msg, html, extra = {}) {
-  return sendRich(msg.chat.id, html, {
+function sendRichHere(msg, html, rtl = false, extra = {}) {
+  return sendRich(msg.chat.id, html, rtl, {
     ...(msg.message_thread_id ? { message_thread_id: msg.message_thread_id } : {}),
     ...extra,
   });
@@ -354,10 +354,10 @@ async function command(msg, lang, now) {
   }
   if (head === '/newlink') return newLink(msg, arg, lang, now);
   if (head === '/settings') return settingsPage(msg, lang);
-  if (head === '/help') return sendRichHere(msg, t(lang, 'help'));
+  if (head === '/help') return sendRichHere(msg, t(lang, 'help'), lang === 'fa');
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
-  if (head === '/security') return sendRichHere(msg, t(lang, 'security'));
-  if (head === '/about') return sendRichHere(msg, render.about(lang));
+  if (head === '/security') return sendRichHere(msg, t(lang, 'security'), lang === 'fa');
+  if (head === '/about') return sendRichHere(msg, render.about(lang), lang === 'fa');
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
     const session = await store.getSession(await sessionKeyFor(chatId));

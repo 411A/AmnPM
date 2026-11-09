@@ -496,13 +496,13 @@ async function menu(q, data, lang, now) {
   if (data === CALLBACK.HELP) {
     await editRichMenu(q, t(lang, 'help'), {
       inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]],
-    });
+    }, lang === 'fa');
     return answer(q);
   }
   if (data === CALLBACK.ABOUT) {
     await editRichMenu(q, render.about(lang), {
       inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]],
-    });
+    }, lang === 'fa');
     return answer(q);
   }
   return answer(q);

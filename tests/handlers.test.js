@@ -13,6 +13,7 @@ import { configureBotOnce } from '../tgcloud/lib/bot-config.js';
 import * as store from '../tgcloud/lib/store.js';
 import { deliver } from '../tgcloud/lib/delivery.js';
 import { drain } from '../tgcloud/lib/queue.js';
+import { editRichMenu } from '../tgcloud/lib/menu.js';
 import { senderKeyFor, userKeyFor } from '../tgcloud/lib/links.js';
 
 beforeEach(() => {
@@ -27,7 +28,12 @@ function message(text, chatId, extra = {}) {
     message_id: extra.message_id ?? seq++,
     date: 0,
     chat: { id: chatId, type: 'private' },
-    from: { id: chatId, first_name: extra.first_name ?? 'T', language_code: 'en', is_bot: false },
+    from: {
+      id: chatId,
+      first_name: extra.first_name ?? 'T',
+      language_code: extra.language_code ?? 'en',
+      is_bot: false,
+    },
     ...(text === undefined ? {} : { text }),
     ...extra,
   };
@@ -172,11 +178,30 @@ test('new links use numbered default memos and keep explicit ones', async () => 
 
 test('security command returns the expandable security model', async () => {
   await onMessage(message('/security', 100));
-  const rich = callsOf('sendRichMessage').at(-1).args.rich_message.html;
-  assert.match(rich, /Security model/);
-  assert.match(rich, /<details>/);
-  assert.match(rich, /identity key/i);
-  assert.match(rich, /No logs, no analytics/);
+  const rich = callsOf('sendRichMessage').at(-1).args.rich_message;
+  assert.match(rich.html, /Security model/);
+  assert.match(rich.html, /<details>/);
+  assert.match(rich.html, /identity key/i);
+  assert.match(rich.html, /No logs, no analytics/);
+  assert.notEqual(rich.is_rtl, true);
+});
+
+test('Persian rich messages are marked RTL', async () => {
+  await onMessage(message('/security', 100, { language_code: 'fa' }));
+  const rich = callsOf('sendRichMessage').at(-1).args.rich_message;
+  assert.equal(rich.is_rtl, true);
+  assert.match(rich.html, /مدل امنیتی/);
+});
+
+test('Persian rich menu edits are marked RTL', async () => {
+  await editRichMenu(
+    { message: { chat: { id: 100 }, message_id: 5 } },
+    '<b>test</b>',
+    null,
+    true,
+  );
+  const call = callsOf('editMessageText').at(-1);
+  assert.equal(call.args.rich_message.is_rtl, true);
 });
 
 test('privacy command explains what is stored', async () => {
