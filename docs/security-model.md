@@ -1,8 +1,7 @@
 # Security model
 
-This page is the complete technical version. `/security` is the short,
-plain-language version for users; if a claim in either place disagrees with the
-code, the code is wrong.
+This page is the complete reference. `/security` is the short user-facing
+version; if either disagrees with the code, the code is wrong.
 
 ## Keys
 
@@ -129,10 +128,8 @@ public source. Self-hosting the same source is the only way for a user to avoid
 trusting the operator. The user-facing trust signals are “open source” and the
 ability to run their own copy.
 
-The user-facing `/security` and `/privacy` pages are deliberately short and
-reassuring; they omit detailed limitations such as media metadata, operator key
-access, and Telegram’s own message copy. This document is the complete version
-for technical readers.
+The `/security` and `/privacy` pages are the short user-facing versions. This
+page is the complete reference.
 
 ## Limits
 
