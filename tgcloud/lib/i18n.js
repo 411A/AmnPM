@@ -67,6 +67,9 @@ const en = {
     '<details><summary><b>Retention and limits</b></summary>\n' +
     'Links with no activity for 12 months are removed; a reminder is sent about 30 days before. Telegram keeps its own history. A compromised runtime or bot token can see incoming updates, and media metadata can identify a sender; metadata is not stripped by default. Client-side topic deletion is invisible to the bot.\n' +
     '</details>\n' +
+    '<details><summary><b>Running code</b></summary>\n' +
+    'The validator file checks the public GitHub source at the build commit against the embedded bundle hash. A mismatch fails. This proves the source and build, not the running server. Proving the running code needs a platform-signed deployment digest or a TEE attestation; Telegram Serverless does not expose one. To avoid trusting the operator, self-host the same source: <a href="{repo}">{repo}</a>.\n' +
+    '</details>\n' +
     'No logs, no analytics.',
   linkIntro:
     '{e.link} <b>Your link is ready</b>\n' +
@@ -105,8 +108,15 @@ const en = {
   sentHistory: '{e.history} Sent with history as <code>{indicator}</code>.',
   sentForward: '{e.forward} Forwarded.',
   capReached: '{e.warn} Link limit reached ({cap}). Revoke one in /settings.',
-  verifyOk: 'running code matches source',
+  verifyOk: 'source and build verified',
   verifyBad: 'unverified release',
+  validatorCaption:
+    '{e.lock} <b>Source validator</b>\n' +
+    'Generated: {time}\n' +
+    'Commit: <code>{commit}</code>\n' +
+    'Bundle: <code>{hash}</code>\n' +
+    'Run <code>node {file}</code>.\n' +
+    'It checks the public GitHub source and build hash; it cannot inspect the running server.',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +
@@ -294,6 +304,9 @@ const fa = {
     '<details><summary><b>نگهداری و محدودیت‌ها</b></summary>\n' +
     'لینک‌هایی که ۱۲ ماه فعالیت ندارند حذف می‌شوند؛ حدود ۳۰ روز قبل یادآوری فرستاده می‌شود. تلگرام تاریخچه خودش را نگه می‌دارد. اجرای نفوذشده یا توکن ربات می‌تواند به‌روزرسانی‌های ورودی را ببیند، و متادیتای رسانه می‌تواند فرستنده را شناسایی کند؛ متادیتا به‌طور پیش‌فرض حذف نمی‌شود. حذف موضوع از سمت کاربر برای ربات نامرئی است.\n' +
     '</details>\n' +
+    '<details><summary><b>کد در حال اجرا</b></summary>\n' +
+    'فایل اعتبارسنج، منبع عمومی GitHub را در کامیت بیلد با هش بسته مقایسه می‌کند؛ ناسازگاری باعث خطا می‌شود. این کار منبع و بیلد را ثابت می‌کند، نه سرور در حال اجرا را. اثبات فرایند در حال اجرا به digest امضاشده پلتفرم یا attestation مبتنی بر TEE نیاز دارد؛ Telegram Serverless چنین چیزی ارائه نمی‌دهد. برای اینکه به اپراتور اعتماد نکنید، همان منبع را خودتان میزبانی کنید: <a href="{repo}">{repo}</a>.\n' +
+    '</details>\n' +
     'بدون لاگ، بدون تحلیل.',
   linkIntro:
     '{e.link} <b>لینک شما آماده است</b>\n' +
@@ -332,8 +345,15 @@ const fa = {
   sentHistory: '{e.history} با سابقه به‌عنوان <code>{indicator}</code> ارسال شد.',
   sentForward: '{e.forward} هدایت شد.',
   capReached: '{e.warn} سقف لینک ({cap}) پر است. در /settings یکی را حذف کنید.',
-  verifyOk: 'کد در حال اجرا با منبع مطابقت دارد',
+  verifyOk: 'منبع و بیلد تأیید شده',
   verifyBad: 'انتشار تأییدنشده',
+  validatorCaption:
+    '{e.lock} <b>اعتبارسنج منبع</b>\n' +
+    'تولید: {time}\n' +
+    'کامیت: <code>{commit}</code>\n' +
+    'بسته: <code>{hash}</code>\n' +
+    'اجرا: <code>node {file}</code>\n' +
+    'منبع عمومی GitHub و هش بیلد را بررسی می‌کند؛ سرور در حال اجرا را نمی‌تواند بازرسی کند.',
   about:
     '{e.info} <b>AmnPM</b><br>\n' +
     '{verify}<br>\n' +

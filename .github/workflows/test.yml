@@ -31,6 +31,11 @@ jobs:
             exit 1
           fi
 
+      - name: 🏷️ Build stamp
+        id: build
+        continue-on-error: true
+        run: node tools/check-build.mjs
+
       - name: 🔐 Crypto primitives
         id: crypto
         continue-on-error: true
@@ -59,7 +64,7 @@ jobs:
       - name: 🛡️ Source guardrails
         id: source
         continue-on-error: true
-        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js
+        run: node --import ./tests/register.mjs --test --test-reporter=spec tests/source.test.js tests/validator.test.js
 
       - name: 🧵 Topic coordination
         id: topics
@@ -95,6 +100,7 @@ jobs:
             echo "| Section | Result |"
             echo "| --- | --- |"
             echo "| 🔐 Crypto primitives | ${{ steps.crypto.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| 🏷️ Build stamp | ${{ steps.build.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo "| 🔑 Tokens & IDs | ${{ steps.ids.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo "| 🗄️ Store & schema | ${{ steps.store.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
             echo "| 🤖 Handlers & routing | ${{ steps.handlers.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
@@ -109,6 +115,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "${{ steps.crypto.outcome }}" != "success" ] \
+            || [ "${{ steps.build.outcome }}" != "success" ] \
             || [ "${{ steps.ids.outcome }}" != "success" ] \
             || [ "${{ steps.store.outcome }}" != "success" ] \
             || [ "${{ steps.handlers.outcome }}" != "success" ] \

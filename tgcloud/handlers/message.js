@@ -15,6 +15,7 @@ import { configureBotOnce } from '../lib/bot-config.js';
 import { EMOJI, CALLBACK } from '../lib/constants.js';
 import { parseModes } from '../lib/modes.js';
 import { homeMenu, requestMemo } from '../lib/menu.js';
+import { sendValidator } from '../lib/validator.js';
 
 const nowSec = () => Math.floor(Date.now() / 1000);
 
@@ -356,7 +357,10 @@ async function command(msg, lang, now) {
   if (head === '/settings') return settingsPage(msg, lang);
   if (head === '/help') return sendRichHere(msg, t(lang, 'help'), lang === 'fa');
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
-  if (head === '/security') return sendRichHere(msg, t(lang, 'security'), lang === 'fa');
+  if (head === '/security') {
+    await sendRichHere(msg, t(lang, 'security'), lang === 'fa');
+    return sendValidator(msg, lang);
+  }
   if (head === '/about') {
     return sendRichHere(msg, render.about(lang), lang === 'fa', {
       reply_markup: render.aboutButtons(lang),

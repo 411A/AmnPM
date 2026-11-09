@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectBundle } from './bundle.mjs';
 
 const root = fileURLToPath(new URL('../tgcloud/', import.meta.url));
 const repo = fileURLToPath(new URL('../', import.meta.url));
@@ -11,21 +11,7 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (process.argv[i].startsWith('--')) args[process.argv[i].slice(2)] = process.argv[i + 1];
 }
 
-const files = [];
-(function walk(dir) {
-  for (const name of readdirSync(dir).sort()) {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) walk(path);
-    else if (name.endsWith('.js') && name !== 'build.js' && name !== 'secret.js') files.push(path);
-  }
-})(root);
-
-const hash = createHash('sha256');
-for (const file of files) {
-  hash.update(relative(root, file).split(sep).join('/'));
-  hash.update('\0');
-  hash.update(readFileSync(file));
-}
+const { files, bundleHash } = collectBundle(root);
 
 // Only a clean tree whose app source still matches --commit may claim the
 // deployed source was verified. Release/stamp commits may follow --commit, but
@@ -53,8 +39,9 @@ if (args.verified === 'true') {
 const build = {
   release: args.release ?? 'dev',
   commit: args.commit ?? 'local',
-  bundleHash: hash.digest('hex'),
+  bundleHash,
   verified: args.verified === 'true',
+  files,
 };
 
 writeFileSync(

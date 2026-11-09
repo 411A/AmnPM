@@ -52,6 +52,14 @@
    group and the version rules.
 10. **Security docs** — `docs/security-model.md` states the exact guarantees,
     the block-key limitation, and the rotation/data-lock rules.
+11. **Source/build evidence** — `tools/bundle.mjs` is the single bundle hash
+    implementation; `tools/check-build.mjs` fails CI if `build.js` or
+    `release/manifest.json` is stale; `/security` sends a standalone Node 18+
+    validator with the pinned commit, file list, bundle hash, and generated
+    time. The validator checks the public GitHub source against the hash and
+    reports missing/extra files. It explicitly says this is not proof of the
+    running server. `/about` now says “source and build verified” instead of
+    claiming the running code matches.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -67,9 +75,9 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 
 | Check | Result |
 |---|---|
-| Syntax check | 38 JS files + 2 JSON: pass |
+| Syntax check | 41 JS files + 2 JSON: pass |
 | Lint | pass, 0 warnings |
-| Full test suite | **188/188** (baseline 171; +15 hardening tests) |
+| Full test suite | **191/191** (baseline 171; +20 hardening/verification tests) |
 | Bench n=300, baseline vs secure | open-link p95 2.28 → 2.24 ms; sender-message 2.21 → 2.27 ms; mode-delivery 4.01 → 4.01 ms; owner-start 0.68 → 0.80 ms |
 | SQL per op, baseline vs secure | 10.09 → 10.07; 13.09 → 13.06; 23 → 23 |
 | API per op | unchanged |
@@ -77,7 +85,8 @@ revoke, albums in both directions, retention, help/privacy/about. Added:
 | Real-account `e2e_extra.py` (revision 100) | **11/11** |
 | Retention live core (revision 99) | **7/7**; full 40-check suite was **40/40** on revision 98, retention code unchanged |
 | `/security` live RichMessage | pass: title, key-domain section, expandable blocks; `/help` lists the command |
-| tgcloud | revision **100**, webhook in sync, tree clean |
+| `/security` validator | pending live check on the deployed revision |
+| tgcloud | revision **105**, webhook in sync, tree clean (before the validator stamp) |
 | Branch / PR | `more-secure` / PR #1; CI success |
 
 Note: two early `e2e_all.py` attempts hit Telegram rate-limit timeouts after many

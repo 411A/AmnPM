@@ -167,7 +167,7 @@ test('owner start shows one main-link button only after a link exists', async ()
   assert.equal(sent.args.reply_markup, undefined);
   assert.equal(rawDb().prepare('SELECT COUNT(*) AS n FROM links').get().n, 0);
   assert.match(sent.args.text, /Use \/newlink/);
-  assert.match(sent.args.text, /running code matches source|unverified release/);
+  assert.match(sent.args.text, /source and build verified|unverified release/);
 
   await onMessage(message('/newlink', 100));
   await onMessage(message('/start', 100));
@@ -195,8 +195,20 @@ test('security command returns the expandable security model', async () => {
   assert.match(rich.html, /Security model/);
   assert.match(rich.html, /<details>/);
   assert.match(rich.html, /identity key/i);
+  assert.match(rich.html, /Running code/);
+  assert.match(rich.html, /TEE attestation/);
   assert.match(rich.html, /No logs, no analytics/);
   assert.notEqual(rich.is_rtl, true);
+
+  const doc = callsOf('sendDocument').at(-1).args;
+  assert.match(doc.document.name, /^amnpm-validator-[0-9a-f]+\.js$/);
+  assert.match(doc.caption, /Source validator/);
+  assert.match(doc.caption, /cannot inspect the running server/);
+  assert.match(doc.caption, /UTC/);
+  const body = new TextDecoder().decode(doc.document.bytes);
+  assert.match(body, /AmnPM source validator/);
+  assert.match(body, /const TARGET = /);
+  assert.match(body, /cannot inspect the running server/);
 });
 
 test('Persian rich messages are marked RTL', async () => {
@@ -204,6 +216,7 @@ test('Persian rich messages are marked RTL', async () => {
   const rich = callsOf('sendRichMessage').at(-1).args.rich_message;
   assert.equal(rich.is_rtl, true);
   assert.match(rich.html, /مدل امنیتی/);
+  assert.match(callsOf('sendDocument').at(-1).args.caption, /اعتبارسنج منبع/);
 });
 
 test('Persian rich menu edits are marked RTL', async () => {

@@ -111,6 +111,25 @@ reminder. The check runs at most weekly, on bot updates. Telegram keeps its own
 history. Deleting a topic in the Telegram client does not notify the bot; the
 next send can resurrect the same topic. The TTL is the guaranteed cleanup.
 
+## Source and build verification
+
+The repository publishes the source and a reproducible bundle hash. `tools/check-build.mjs` fails CI if `tgcloud/lib/build.js` is stale: its hash and file list must match the source tree and `release/manifest.json`. The hash is the SHA-256 of each `.js` file in sorted walk order, as relative path + NUL + bytes; `build.js` and `secret.js` are excluded.
+
+`/security` sends `amnpm-validator-<commit>.js`, a standalone Node 18+ script. It fetches the public GitHub tree at the pinned commit, applies the same file order and hash, and compares the result with the embedded bundle hash. It reports missing or extra `.js` files and exits non-zero on any mismatch. The user runs it on their own machine; the bot never executes it.
+
+What this proves:
+
+- the public source at that commit hashes to the embedded bundle hash;
+- the file list matches the published tree;
+- CI rejects a stale build stamp.
+
+What it does not prove:
+
+- that the running Telegram Serverless deployment is that artifact. A modified deploy can change `build.js` or the validator, and a bot-sent file is not a root of trust.
+- Telegram Serverless exposes no platform-signed deployment digest or TEE attestation. Only self-hosting the same source, a platform attestation, or end-to-end encrypted content closes that gap.
+
+The validator is evidence about the source and build, not runtime proof. Users should inspect it, compare it with the generator in `tgcloud/lib/validator.js`, and run it themselves.
+
 ## Limits
 
 - Telegram always knows the sender. No bot can hide that.

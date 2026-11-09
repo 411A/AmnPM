@@ -15,7 +15,7 @@ test('welcome explains the bot and modes without listing commands', () => {
     assert.match(text, /😶‍🌫️/);
     assert.match(text, /😎/);
     assert.doesNotMatch(text, /<blockquote>[0-9a-f]{64}<\/blockquote>/);
-    assert.match(text, /matches source|unverified release|منبع مطابقت دارد|تأییدنشده/);
+    assert.match(text, /(?:source and build verified|unverified release|منبع و بیلد تأیید شده|تأییدنشده)/);
     assert.ok(text.split('\n').length <= 20, text);
   }
 });
@@ -53,7 +53,7 @@ test('about uses a rich table for bot and source', () => {
   for (const lang of ['en', 'fa']) {
     const text = render.about(lang);
     assert.match(text, /AmnPM<\/b><br>/, text);
-    assert.match(text, /(?:running code matches source|unverified release|کد در حال اجرا با منبع مطابقت دارد|انتشار تأییدنشده)<\/a><br>/, text);
+    assert.match(text, /(?:source and build verified|unverified release|منبع و بیلد تأیید شده|انتشار تأییدنشده)<\/a><br>/, text);
     assert.match(text, /<table bordered striped compact>/, text);
     assert.match(text, /<th align="center">/);
     assert.match(text, /<td align="center" valign="middle">/);
@@ -94,7 +94,7 @@ test('link intro puts the note on its own line and the link in its own block', (
   }
 });
 
-test('verification says the running code matches source without printing the hash', () => {
+test('verification says the source and build are verified without printing the hash', () => {
   const previousVerified = BUILD.verified;
   const previousRelease = BUILD.release;
   const hash = BUILD.bundleHash;
@@ -111,10 +111,10 @@ test('verification says the running code matches source without printing the has
   BUILD.verified = true;
   BUILD.release = 'v1.0.0';
   text = render.verifyLine();
-  assert.match(text, /running code matches source/);
+  assert.match(text, /source and build verified/);
   assert.match(text, /releases\/tag\/v1\.0\.0/);
   assert.equal(text.includes(hash), false);
-  assert.match(render.verifyLine('fa'), /کد در حال اجرا با منبع مطابقت دارد/);
+  assert.match(render.verifyLine('fa'), /منبع و بیلد تأیید شده/);
 
   BUILD.verified = previousVerified;
   BUILD.release = previousRelease;
