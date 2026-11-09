@@ -81,6 +81,11 @@
     `/security` page. README and `/help` describe `/about` as open source, not as
     runtime verification. The release check is worded as a deployed-snapshot
     check. Historical audit/handover files moved to `docs/archive/`.
+16. **Release metadata generation** — `tools/gen-build.mjs` writes
+    `build.js`, `release/manifest.json`, and `release/notes.md` in one run.
+    `--commit` defaults to `HEAD`; `--verified true` requires a clean tree and a
+    release name. Manual copying of the commit and hash into the manifest and
+    notes is gone.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -113,8 +118,9 @@ cooldown. No command, button, or behavior removed.
 | Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
 | Rename-state purge | link purge deletes owner-topic, sender-topic, and memo rename timestamps; covered by `tests/rename.test.js` |
 | GitHub security | CodeQL, dependency review, and Dependabot config valid; private reporting, vulnerability alerts, and security updates enabled; 0 open code/dependency/secret alerts |
-| tgcloud | revision **115**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI, CodeQL, and dependency review green on `e7056ef` (199 tests) |
+| Release metadata | `tools/gen-build.mjs` writes build.js, manifest, and notes together; policy test requires the generated header and matching release/hash/commit |
+| tgcloud | revision **116**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI, CodeQL, and dependency review green on `9d1323a` (199 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
 24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113
