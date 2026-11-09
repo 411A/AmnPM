@@ -76,6 +76,11 @@
     is needed. `/rename` sends the limit notice before the edit; the memo prompt
     includes the limit before the owner sends the new memo. A blocked attempt
     returns the remaining time.
+15. **Docs organization** — rename limits live only in this file.
+    `security-model.md` covers security guarantees and points to the short
+    `/security` page. README and `/help` describe `/about` as open source, not as
+    runtime verification. The release check is worded as a deployed-snapshot
+    check. Historical audit/handover files moved to `docs/archive/`.
 
 No schema migration is required for this branch. `tgcloud push` is enough after
 the secret is generated; the install-salt re-wrap is lazy.
@@ -105,8 +110,9 @@ cooldown. No command, button, or behavior removed.
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
 | `/language` live | pass: both test accounts set to **fa**; `/privacy` and `/security` are Persian even though Telegram reports `en`; `/language auto` restores English |
 | `/about` live | pass: English usernames have no RLM; Persian usernames keep RLM; “open source” links to GitHub |
-| tgcloud | revision **113**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI success on `31decea` (build stamp, lint, and all 198 tests) |
+| Documentation subjects | security-model = guarantees; security-hardening = branch changes/results; retention = retention; archive = historical; rename limits only in security-hardening |
+| tgcloud | revision **114**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` / PR #1; CI success on `bfcf273` (build stamp, lint, and all 198 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` were last green on revision 110. The
 24-hour limit suite (`e2e_rename_limit.py`) passed **21/21** on revision 113

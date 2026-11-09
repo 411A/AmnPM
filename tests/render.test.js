@@ -30,6 +30,8 @@ test('help lists every command once in the required order inside collapsed detai
     }
     assert.match(text, /<details><summary>/);
     assert.doesNotMatch(text, /<details open>/);
+    assert.match(text, /(?:plain-language security page|صفحه امنیتی ساده)/);
+    assert.match(text, /(?:public source|منبع عمومی)/);
   }
 });
 
