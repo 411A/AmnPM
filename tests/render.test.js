@@ -62,11 +62,17 @@ test('about uses a rich table for bot and source', () => {
     assert.match(text, /@JSONiceBot/);
     assert.match(text, /@HidEgoBot/);
     assert.match(text, /@ReForeBot/);
+    assert.match(text, /\u200F@JSONiceBot/);
+    assert.match(text, /\u200F@HidEgoBot/);
+    assert.match(text, /\u200F@ReForeBot/);
+    assert.match(text, /\u200F@AmnPMBot/);
+    assert.match(text, /<br>\n<br>\n<b>/);
+    assert.match(text, /<blockquote expandable>/);
+    assert.doesNotMatch(text, /<details>/);
     assert.ok(text.indexOf('@JSONiceBot') < text.indexOf('<table'));
     assert.doesNotMatch(text, /No message content is stored/);
     assert.match(text, /©️ 2026 - (?:Present|تاکنون)/);
     assert.match(text, /<a href="https:\/\/t\.me\/TechKraken">TechKraken<\/a>/);
-    assert.doesNotMatch(text, /<blockquote>/);
 
     const keyboard = render.aboutButtons(lang);
     assert.equal(keyboard.inline_keyboard.length, 1);
