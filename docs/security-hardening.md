@@ -99,8 +99,9 @@ No other command, button, or behavior removed.
 | `/security` live RichMessage | pass in English and Persian: four short sections; no fear-inducing details; no file upload; GitHub link works; `/help` lists the command |
 | Settings → Language live | pass: `🇬🇧 English` / `فارسی 🇮🇷` row on both test accounts; switching to Persian makes `/privacy` and `/security` Persian even though Telegram reports `en`; switching back restores English |
 | `/about` live | pass: “open source” links to GitHub |
-| tgcloud | revision **117**, webhook in sync, tree clean |
-| Branch / PR | `more-secure` / PR #1; CI, CodeQL, and dependency review green on `cda1a7b` (199 tests) |
+| Release | **v1.1.0** at `844cda1`; `manifest.json` asset published; `verify-deployed --github` **MATCH** |
+| tgcloud | revision **118**, webhook in sync, tree clean |
+| Branch / PR | `more-secure` merged into `main`; CI, CodeQL, and dependency review green on `844cda1` (199 tests) |
 
 Note: `e2e_all.py` and `e2e_extra.py` last ran on revision 110. The 24-hour
 suite (`e2e_rename_limit.py`) passed **21/21** on revision 117 with owner/visitor
