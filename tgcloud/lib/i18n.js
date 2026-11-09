@@ -477,9 +477,18 @@ const LTR_STRONG = /[A-Za-z\u00C0-\u024F]/;
 const RTL_STRONG = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
 
 function startsLatin(text) {
-  const plain = text.replace(/<[^>]*>/g, '');
-  const first = plain.match(FIRST_STRONG)?.[0] ?? '';
-  return LTR_STRONG.test(first) && RTL_STRONG.test(plain);
+  let first = '';
+  let sawRtl = false;
+  let inTag = false;
+  for (const ch of text) {
+    if (ch === '<') inTag = true;
+    else if (ch === '>') inTag = false;
+    else if (!inTag) {
+      if (!first && FIRST_STRONG.test(ch)) first = ch;
+      if (RTL_STRONG.test(ch)) sawRtl = true;
+    }
+  }
+  return sawRtl && LTR_STRONG.test(first);
 }
 
 export function t(lang, key, vars = {}) {
