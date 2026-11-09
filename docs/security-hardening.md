@@ -138,14 +138,16 @@ in a way that changes the query count.
 1. `node tools/gen-secret.mjs` (or fill `.env` first and run it).
 2. Confirm `secret.js` exports the three named groups and versions.
 3. Commit all source changes; the tree must be clean.
-4. `node tools/gen-build.mjs --release v1.0.0 --commit <source-commit> --verified true`.
-5. Copy the new commit and bundle hash into `release/manifest.json` and
-   `release/notes.md`, then commit the stamp.
+4. `node tools/gen-build.mjs --release v1.0.0 --verified true`. It writes
+   `tgcloud/lib/build.js`, `release/manifest.json`, and `release/notes.md`
+   together; `--commit` defaults to `HEAD`.
+5. Commit the three generated files.
 6. `node tools/check-build.mjs`; it must report `build check ok`.
-7. `tgcloud push`.
-8. `tgcloud status` and `tgcloud webhook`.
-9. Run the three real-account suites: `e2e_all.py`, `e2e_extra.py`, and
-   `e2e_rename_limit.py`; then run the retention suite.
+7. `tgcloud push`; `tgcloud fetch` updates the local snapshot.
+8. `tgcloud migrate --yes` if the schema changed.
+9. `tgcloud status` and `tgcloud webhook`.
+10. Run the three real-account suites: `e2e_all.py`, `e2e_extra.py`, and
+    `e2e_rename_limit.py`; then run the retention suite.
 
 Do not deploy a secret that reuses one key across domains; the generator
 validates and preserves existing groups. Do not deploy a `build.js` whose hash

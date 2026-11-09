@@ -179,36 +179,29 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 **Release and verification**
 
-The commands below assume a POSIX shell (WSL, Git Bash, or macOS/Linux). The release flow proves that the deployed snapshot, local source, release manifest, and GitHub asset all describe the same code before the release is marked verified.
+The release files are generated together, so `build.js`, `release/manifest.json`, and `release/notes.md` cannot drift. `--commit` defaults to `HEAD`.
 
 ```bash
-# 1. Freeze the code commit and create the unverified stamp.
-CODE_COMMIT=$(git rev-parse --short HEAD)
-node tools/gen-build.mjs --release v1.0.0 --commit "$CODE_COMMIT" --verified false
+RELEASE=v1.0.0
+node tools/gen-build.mjs --release "$RELEASE" --verified true
 
-# 2. Write release/manifest.json with the printed bundleHash, release tag,
-#    CODE_COMMIT, and "verified": true. Update release/notes.md, commit the
-#    manifest, notes, and build.js, create the GitHub release, and upload the
-#    manifest as its asset.
-
-# 3. Deploy and prove the hashes before stamping.
-tgcloud push
-tgcloud migrate --yes
-tgcloud pull --force
-node tools/verify-deployed.mjs --github --preflight
-
-# 4. Only after PREFLIGHT MATCH: stamp, commit the stamp, deploy, and verify.
-node tools/gen-build.mjs --release v1.0.0 --commit "$CODE_COMMIT" --verified true
-git add tgcloud/lib/build.js
-git commit -m "release: stamp the verified build"
+git add tgcloud/lib/build.js release/manifest.json release/notes.md
+git commit -m "release: $RELEASE"
 git push
+
 tgcloud push
+tgcloud fetch
 tgcloud migrate --yes
+
+# Publish the same manifest as the GitHub release asset.
+gh release create "$RELEASE" release/manifest.json \
+  --title "$RELEASE" --notes-file release/notes.md
+
 node tools/verify-deployed.mjs --github
 tgcloud status
 ```
 
-The final run prints `MATCH` only when the deployed snapshot, local manifest, and GitHub asset are all marked verified and the published manifest matches the local one byte for byte. The manifest can carry the release claim before the build is stamped; the deployed `build.js` stays `verified: false` until step 4, and the final check requires both. `gen-build` refuses `--verified true` on a dirty tree, a commit that is not an ancestor of `HEAD`, or any `tgcloud` source change after that commit; the generated `build.js` stamp is exempt. The bundle hash is unchanged by the stamp because `build.js` is excluded from it.
+If the release tag already exists, use `gh release upload "$RELEASE" release/manifest.json --clobber` instead of `gh release create`. `gen-build` refuses `--verified true` on a dirty tree, a missing `--release`, a commit that is not an ancestor of `HEAD`, or any `tgcloud` source change after that commit; the generated `build.js` stamp is exempt. It writes all three release files in one run; do not edit them manually. The final run prints `MATCH` only when the deployed snapshot, local manifest, and GitHub asset all agree and are marked verified.
 
 **Upgrade warning.** This revision uses a new session/sender key derivation and token format. Databases written by older revisions are not migrated in place. Start from a fresh database and create new links; old links will not resolve.
 
