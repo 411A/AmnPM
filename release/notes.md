@@ -3,9 +3,9 @@ Anonymous link-based Telegram bot.
 
 Release: v1.0.0
 
-Bundle hash: d15d4186a1e11e664fda798292c124507bd452574ce8b21c8d82b2e62f902363
+Bundle hash: ccd89f018d22d56ae9f3e8f497e6c9ae75d1af5a0300be45703489f6f2f342a1
 
-Code commit: 9e41585be759b326e9f6b9dbca1cf8aed9490cfc
+Code commit: 6fdfe92910482b504ee5b369110280227c50d89a
 
 The bundle hash covers every `.js` file under `tgcloud/` except `build.js` and
 `secret.js`, in sorted walk order (relative path + NUL + bytes). CI fails if
