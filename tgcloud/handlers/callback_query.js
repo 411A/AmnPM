@@ -500,8 +500,12 @@ async function menu(q, data, lang, now) {
     return answer(q);
   }
   if (data === CALLBACK.ABOUT) {
+    const links = render.aboutButtons(lang);
     await editRichMenu(q, render.about(lang), {
-      inline_keyboard: [[{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }]],
+      inline_keyboard: [
+        ...links.inline_keyboard,
+        [{ text: t(lang, 'back'), callback_data: CALLBACK.HOME }],
+      ],
     }, lang === 'fa');
     return answer(q);
   }

@@ -113,7 +113,10 @@ const en = {
     '<tr><td align="center" valign="middle">Bot</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
     '<tr><td align="center" valign="middle">Source</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
+    '©️ 2026 - Present · <a href="{developer}">TechKraken</a>\n' +
     'No message content is stored.',
+  contactDeveloper: 'Contact Developer',
+  developerChannel: 'Developer Channel',
   linksTitle:
     '{e.chain} <b>My links</b>\n' +
     'Pick one to manage.\n' +
@@ -329,7 +332,10 @@ const fa = {
     '<tr><td align="center" valign="middle">ربات</td><td align="center" valign="middle"><a href="{contact}">@AmnPMBot</a></td></tr>\n' +
     '<tr><td align="center" valign="middle">منبع</td><td align="center" valign="middle"><a href="{repo}">GitHub</a></td></tr>\n' +
     '</table>\n' +
+    '©️ 2026 - تاکنون · <a href="{developer}">TechKraken</a>\n' +
     'هیچ محتوای پیامی ذخیره نمی‌شود.',
+  contactDeveloper: 'تماس با توسعه‌دهنده',
+  developerChannel: 'کانال توسعه‌دهنده',
   linksTitle:
     '{e.chain} <b>لینک‌های من</b>\n' +
     'یکی را برای مدیریت انتخاب کنید.\n' +

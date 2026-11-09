@@ -22,4 +22,6 @@ export const CONFIG = {
   defaultMemo: 'link',
   repoUrl: 'https://github.com/411A/AmnPM',
   contactUrl: 'https://t.me/AmnPMBot',
+  developerUrl: 'https://t.me/TechKraken',
+  developerBotUrl: 'https://t.me/TechKrakenBot',
 };

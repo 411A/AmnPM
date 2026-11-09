@@ -357,7 +357,11 @@ async function command(msg, lang, now) {
   if (head === '/help') return sendRichHere(msg, t(lang, 'help'), lang === 'fa');
   if (head === '/privacy') return sendHere(msg, t(lang, 'privacy'));
   if (head === '/security') return sendRichHere(msg, t(lang, 'security'), lang === 'fa');
-  if (head === '/about') return sendRichHere(msg, render.about(lang), lang === 'fa');
+  if (head === '/about') {
+    return sendRichHere(msg, render.about(lang), lang === 'fa', {
+      reply_markup: render.aboutButtons(lang),
+    });
+  }
   if (head === '/rename') return renameTopic(msg, arg, lang);
   if (head === '/mode') {
     const session = await store.getSession(await sessionKeyFor(chatId));

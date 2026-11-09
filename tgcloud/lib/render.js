@@ -47,8 +47,18 @@ export function about(lang) {
   return t(lang, 'about', {
     contact: escapeHtml(CONFIG.contactUrl),
     repo: escapeHtml(CONFIG.repoUrl),
+    developer: escapeHtml(CONFIG.developerUrl),
     verify: verifyLine(),
   });
+}
+
+export function aboutButtons(lang) {
+  return {
+    inline_keyboard: [[
+      { text: t(lang, 'contactDeveloper'), url: CONFIG.developerBotUrl },
+      { text: t(lang, 'developerChannel'), url: CONFIG.developerUrl },
+    ]],
+  };
 }
 
 export function topicPrefix(kind) {

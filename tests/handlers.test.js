@@ -145,7 +145,15 @@ test('about renders bot and source as a rich table', async () => {
   assert.match(sent.args.rich_message.html, /<table/);
   assert.match(sent.args.rich_message.html, /@AmnPMBot/);
   assert.match(sent.args.rich_message.html, /GitHub/);
-  assert.equal(sent.args.reply_markup, undefined);
+  assert.match(sent.args.rich_message.html, /©️ 2026 - Present/);
+  assert.match(sent.args.rich_message.html, /TechKraken/);
+  const rows = sent.args.reply_markup.inline_keyboard;
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].map((button) => button.url), [
+    'https://t.me/TechKrakenBot',
+    'https://t.me/TechKraken',
+  ]);
+  assert.equal(rows.flat().some((button) => button.callback_data === 'm:home'), false);
 });
 
 test('owner start shows one main-link button only after a link exists', async () => {
@@ -236,7 +244,7 @@ test('help opened from settings edits the message with a back button last', asyn
   assert.equal(callsOf('sendMessage').length, before);
 });
 
-test('about opened from settings edits the message with a back button last', async () => {
+test('about opened from settings edits the message with links above the back button', async () => {
   await onMessage(message('/start', 100));
   await onMessage(message('/settings', 100));
   const before = callsOf('sendMessage').length;
@@ -244,7 +252,14 @@ test('about opened from settings edits the message with a back button last', asy
   const edit = callsOf('editMessageText').at(-1);
   assert.match(edit.args.rich_message.html, /<table/);
   assert.match(edit.args.rich_message.html, /No message content is stored/);
-  assert.equal(edit.args.reply_markup.inline_keyboard.at(-1)[0].callback_data, 'm:home');
+  assert.match(edit.args.rich_message.html, /©️ 2026 - Present/);
+  const rows = edit.args.reply_markup.inline_keyboard;
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows[0].map((button) => button.url), [
+    'https://t.me/TechKrakenBot',
+    'https://t.me/TechKraken',
+  ]);
+  assert.equal(rows.at(-1)[0].callback_data, 'm:home');
   assert.equal(callsOf('sendMessage').length, before);
 });
 

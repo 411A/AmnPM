@@ -59,7 +59,17 @@ test('about uses a rich table for bot and source', () => {
     assert.match(text, /<td align="center" valign="middle">/);
     assert.match(text, /@AmnPMBot/);
     assert.match(text, /GitHub/);
+    assert.match(text, /©️ 2026 - (?:Present|تاکنون)/);
+    assert.match(text, /<a href="https:\/\/t\.me\/TechKraken">TechKraken<\/a>/);
     assert.doesNotMatch(text, /<blockquote>/);
+
+    const keyboard = render.aboutButtons(lang);
+    assert.equal(keyboard.inline_keyboard.length, 1);
+    assert.deepEqual(keyboard.inline_keyboard[0].map((button) => button.url), [
+      'https://t.me/TechKrakenBot',
+      'https://t.me/TechKraken',
+    ]);
+    assert.ok(keyboard.inline_keyboard[0].every((button) => Boolean(button.text)));
   }
 });
 
