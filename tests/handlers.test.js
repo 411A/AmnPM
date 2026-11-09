@@ -895,6 +895,7 @@ test('changing a memo renames the topics', async () => {
   await click(menuData, 100);
   const memoData = buttons().find((entry) => entry.startsWith('E|'));
   await click(memoData, 100);
+  assert.match(callsOf('sendMessage').at(-1).args.text, /once every 24 hours/);
   await onMessage(message('newmemo', 100));
 
   const edits = callsOf('editForumTopic');
@@ -970,10 +971,39 @@ test('a second topic rename within 24h is refused', async () => {
   await deliverAnonymous();
   const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
   await onMessage(message('/rename First', 100, { message_thread_id: thread }));
+  assert.ok(callsOf('sendMessage').some((call) => /once every 24 hours/.test(call.args.text ?? '')));
   await onMessage(message('/rename Second', 100, { message_thread_id: thread }));
 
   assert.match(callsOf('sendMessage').at(-1).args.text, /24h/);
   assert.equal(callsOf('editForumTopic').length, 1);
+});
+
+test('a same-label no-op does not consume the daily rename', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename Same', 100, { message_thread_id: thread }));
+
+  clearRenameLimits();
+  const before = callsOf('editForumTopic').length;
+  await onMessage(message('/rename Same', 100, { message_thread_id: thread }));
+  assert.equal(callsOf('editForumTopic').length, before);
+
+  await onMessage(message('/rename Different', 100, { message_thread_id: thread }));
+  assert.equal(callsOf('editForumTopic').length, before + 1);
+});
+
+test('a topic rename does not consume the memo rename', async () => {
+  await setupLink();
+  await deliverAnonymous();
+  const thread = rawDb().prepare("SELECT thread_id FROM topics WHERE kind = 'anon' LIMIT 1").get().thread_id;
+  await onMessage(message('/rename First', 100, { message_thread_id: thread }));
+
+  await openLinkList();
+  await click(buttons().find((entry) => entry.startsWith('D|')), 100);
+  await click(buttons().find((entry) => entry.startsWith('E|')), 100);
+  await onMessage(message('newmemo', 100));
+  assert.match(callsOf('sendMessage').at(-1).args.text, /Memo updated/);
 });
 
 test('a second memo change within 24h is refused', async () => {

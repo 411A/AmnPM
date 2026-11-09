@@ -455,8 +455,7 @@ async function memoPrompt(q, opened, lang, now) {
   if (await store.getReplyWindow(opened.link.owner_key, now)) {
     return answer(q, t(lang, 'replyBusy'), true);
   }
-  const salt = await ownerSalt();
-  const wait = await renameWait(await ownerChatId(opened.link), 'memo', now, salt);
+  const wait = await renameWait(opened.link.id, 'memo', now);
   if (wait) return answer(q, t(lang, 'memoWait', { time: formatWait(wait) }), true);
   const openedMemo = await requestMemo(opened.link, lang, q.message?.message_thread_id ?? 0);
   if (!openedMemo) return answer(q, t(lang, 'replyBusy'), true);

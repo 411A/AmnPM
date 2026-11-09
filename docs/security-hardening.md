@@ -68,8 +68,8 @@
     menu list the command. English `/about` bot usernames no longer carry an RLM;
     Persian keeps it.
 14. **Rename limits** — topic renames and memo changes are each limited to once
-    per 24 hours per user. The timestamp is stored in the existing `meta` table
-    (`rename:<kind>:<user hash>`), so no schema change is needed. `/rename` sends
+    per 24 hours per link. The timestamp is stored in the existing `meta` table
+    (`rename:<kind>:<link id>`), so no schema change is needed. `/rename` sends
     the limit notice before the edit; the memo prompt includes the limit before
     the owner sends the new memo. A blocked attempt returns the remaining time.
 
