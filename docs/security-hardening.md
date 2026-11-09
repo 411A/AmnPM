@@ -118,7 +118,7 @@ in a way that changes the query count.
 1. `node tools/gen-secret.mjs` (or fill `.env` first and run it).
 2. Confirm `secret.js` exports the three named groups and versions.
 3. Commit all source changes; the tree must be clean.
-4. `node tools/gen-build.mjs --release v1.0.0 --verified true`. It writes
+4. `node tools/gen-build.mjs --release v1.1.0 --verified true`. It writes
    `tgcloud/lib/build.js`, `release/manifest.json`, and `release/notes.md`
    together; `--commit` defaults to `HEAD`.
 5. Commit the three generated files.
