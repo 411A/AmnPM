@@ -182,7 +182,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 The release files are generated together, so `build.js`, `release/manifest.json`, and `release/notes.md` cannot drift. `--commit` defaults to `HEAD`.
 
 ```bash
-RELEASE=v1.1.1
+RELEASE=v1.1.2
 node tools/gen-build.mjs --release "$RELEASE" --verified true
 
 git add tgcloud/lib/build.js release/manifest.json release/notes.md
